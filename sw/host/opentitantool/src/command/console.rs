@@ -7,6 +7,7 @@ use erased_serde::Serialize;
 use nix::unistd::isatty;
 use raw_tty::TtyModeGuard;
 use regex::Regex;
+use std::any::Any;
 use std::fs::File;
 use std::io;
 use std::io::{ErrorKind, Read, Write};
@@ -15,12 +16,16 @@ use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
 use opentitanlib::app::command::CommandDispatch;
-use opentitanlib::io::uart::Uart;
-use opentitanlib::transport::{Capability, Transport};
+use opentitanlib::app::TransportWrapper;
+use opentitanlib::io::uart::{Uart, UartParams};
+use opentitanlib::transport::Capability;
 use opentitanlib::util::file;
 
 #[derive(Debug, StructOpt)]
 pub struct Console {
+    #[structopt(flatten)]
+    params: UartParams,
+
     #[structopt(short, long, help = "Do not print console start end exit messages.")]
     quiet: bool,
 
@@ -38,7 +43,11 @@ pub struct Console {
 }
 
 impl CommandDispatch for Console {
-    fn run(&self, transport: &mut dyn Transport) -> Result<Option<Box<dyn Serialize>>> {
+    fn run(
+        &self,
+        _context: &dyn Any,
+        transport: &TransportWrapper,
+    ) -> Result<Option<Box<dyn Serialize>>> {
         // We need the UART for the console command to operate.
         transport.capabilities().request(Capability::UART).ok()?;
         let mut stdout = std::io::stdout();
@@ -82,7 +91,8 @@ impl CommandDispatch for Console {
             } else {
                 None
             };
-            console.interact(transport, &mut stdin, &mut stdout)?;
+            let uart = self.params.create(transport)?;
+            console.interact(&*uart, &mut stdin, &mut stdout)?;
         }
         if !self.quiet {
             println!("\n\nExiting interactive console.");
@@ -113,11 +123,10 @@ impl InnerConsole {
     // Runs an interactive console until CTRL_C is received.
     fn interact(
         &mut self,
-        transport: &mut dyn Transport,
+        uart: &dyn Uart,
         stdin: &mut (impl Read + AsRawFd),
         stdout: &mut impl Write,
     ) -> Result<()> {
-        let mut uart = transport.uart()?;
         let mut buf = [0u8; 256];
 
         loop {
@@ -145,7 +154,7 @@ impl InnerConsole {
             // better way to approach waiting on the UART and keyboard.
 
             // Check for input on the uart.
-            match self.uart_read(&mut *uart, Duration::from_millis(10), stdout)? {
+            match self.uart_read(uart, Duration::from_millis(10), stdout)? {
                 ExitStatus::None => {}
                 ExitStatus::ExitSuccess => {
                     break;
@@ -169,19 +178,16 @@ impl InnerConsole {
 
     // Maintain a buffer for the exit regexes to match against.
     fn append_buffer(&mut self, data: &[u8]) {
-        self.buffer.push_str(&String::from_utf8_lossy(&data[..]));
-        if self.buffer.len() > InnerConsole::BUFFER_LEN {
-            let (_, end) = self
-                .buffer
-                .split_at(self.buffer.len() - InnerConsole::BUFFER_LEN);
-            self.buffer = end.to_string();
+        self.buffer.push_str(&String::from_utf8_lossy(data));
+        while self.buffer.len() > InnerConsole::BUFFER_LEN {
+            self.buffer.remove(0);
         }
     }
 
     // Read from the uart and process the data read.
     fn uart_read(
         &mut self,
-        uart: &mut dyn Uart,
+        uart: &dyn Uart,
         timeout: Duration,
         stdout: &mut impl Write,
     ) -> Result<ExitStatus> {

@@ -4,6 +4,22 @@
 subdir('base')
 subdir('drivers')
 
+# Otbn utilities.
+sw_silicon_creator_lib_otbn_util = declare_dependency(
+  link_with: static_library(
+    'sw_silicon_creator_lib_otbn_util',
+    sources: [
+      'otbn_util.c',
+    ],
+    dependencies: [
+      sw_silicon_creator_lib_driver_otbn,
+    ],
+  ),
+)
+
+# Must be declared after otbn_util, which is used in the crypto library.
+subdir('crypto')
+
 # Mask ROM fake dependencies.  These are temporary dependencies until we
 # refactor or copy the other libraries we need (e.g. `runtime`).
 sw_silicon_creator_lib_fake_deps = declare_dependency(
@@ -13,6 +29,23 @@ sw_silicon_creator_lib_fake_deps = declare_dependency(
       'fake_deps.c',
     ],
     dependencies: [
+    ],
+  ),
+)
+
+# Boot data stored in the flash info partition.
+sw_silicon_creator_lib_boot_data = declare_dependency(
+  link_with: static_library(
+    'sw_silicon_creator_lib_boot_data',
+    sources: [
+      hw_ip_flash_ctrl_reg_h,
+      'boot_data.c',
+    ],
+    dependencies: [
+      #TODO(#8777): Replace with silicon_creator version.
+      #sw_silicon_creator_lib_driver_flash_ctrl,
+      sw_lib_flash_ctrl,
+      sw_silicon_creator_lib_driver_hmac,
     ],
   ),
 )
@@ -56,8 +89,11 @@ sw_silicon_creator_lib_sigverify = declare_dependency(
       hw_ip_otp_ctrl_reg_h,
     ],
     dependencies: [
-      sw_silicon_creator_lib_driver_hmac,
       sw_silicon_creator_lib_driver_otp,
+      sw_silicon_creator_lib_driver_lifecycle,
+      sw_lib_bitfield,
+      sw_silicon_creator_lib_otbn_util,
+      sw_silicon_creator_otbn['rsa']['rv32embed_dependency'],
     ],
   ),
 )
@@ -68,6 +104,7 @@ sw_silicon_creator_lib_shutdown = declare_dependency(
     sources: [
       hw_ip_alert_handler_reg_h,
       hw_ip_otp_ctrl_reg_h,
+      hw_ip_lc_ctrl_reg_h,
       hw_ip_keymgr_reg_h,
       hw_ip_sram_ctrl_reg_h,
       hw_ip_flash_ctrl_reg_h,
@@ -103,10 +140,36 @@ sw_silicon_creator_lib_epmp_test_unlock = declare_dependency(
   ),
 )
 
+# Silicon creator assembly exception handler.
+sw_silicon_creator_lib_irq_asm = declare_dependency(
+  link_with: static_library(
+    'sw_silicon_creator_lib_irq_asm',
+    sources: [
+      hw_ip_aon_timer_reg_h,
+      hw_ip_pwrmgr_reg_h,
+      'irq_asm.S',
+    ],
+  ),
+)
+
+# Logging library.
+sw_silicon_creator_lib_log = declare_dependency(
+  link_with: static_library(
+    'sw_silicon_creator_lib_log',
+    sources: [
+      'log.c',
+    ],
+    dependencies: [
+      sw_silicon_creator_lib_driver_uart,
+    ],
+  ),
+)
+
 test('sw_silicon_creator_lib_shutdown_unittest', executable(
     'sw_silicon_creator_lib_shutdown_unittest',
     sources: [
       hw_ip_alert_handler_reg_h,
+      hw_ip_lc_ctrl_reg_h,
       hw_ip_otp_ctrl_reg_h,
       hw_ip_keymgr_reg_h,
       hw_ip_sram_ctrl_reg_h,
@@ -174,6 +237,7 @@ test('sw_silicon_creator_lib_sigverify_unittest', executable(
     ],
     dependencies: [
       sw_vendor_gtest,
+      sw_lib_testing_bitfield,
     ],
     native: true,
   ),
@@ -188,7 +252,7 @@ test('sw_silicon_creator_lib_epmp_unittest', executable(
     ],
     dependencies: [
       sw_vendor_gtest,
-      sw_lib_base_testing_mock_csr,
+      sw_silicon_creator_lib_base_mock_csr,
       sw_lib_testing_bitfield,
     ],
     native: true,
@@ -198,6 +262,39 @@ test('sw_silicon_creator_lib_epmp_unittest', executable(
   suite: 'mask_rom',
 )
 
+test('sw_silicon_creator_lib_log_unittest', executable(
+    'sw_silicon_creator_lib_log_unittest',
+    sources: [
+      'log.c',
+      'log_unittest.cc',
+    ],
+    dependencies: [
+      sw_vendor_gtest,
+    ],
+    native: true,
+  ),
+  suite: 'mask_rom',
+)
+
+sw_silicon_creator_lib_boot_data_functest = declare_dependency(
+  link_with: static_library(
+    'sw_silicon_creator_lib_boot_data_functest',
+    sources: [
+      hw_ip_flash_ctrl_reg_h,
+      'boot_data_functest.c'
+    ],
+    dependencies: [
+      sw_lib_flash_ctrl,
+      sw_silicon_creator_lib_boot_data,
+    ],
+  ),
+)
+mask_rom_tests += {
+  'sw_silicon_creator_lib_boot_data_functest': {
+    'library': sw_silicon_creator_lib_boot_data_functest,
+  }
+}
+
 sw_silicon_creator_lib_sigverify_functest = declare_dependency(
   link_with: static_library(
     'sw_silicon_creator_lib_sigverify_functest',
@@ -206,11 +303,33 @@ sw_silicon_creator_lib_sigverify_functest = declare_dependency(
     ],
     dependencies: [
       sw_silicon_creator_lib_sigverify,
+      sw_silicon_creator_lib_driver_hmac,
     ],
   ),
 )
 mask_rom_tests += {
   'sw_silicon_creator_lib_sigverify_functest': {
     'library': sw_silicon_creator_lib_sigverify_functest,
+  }
+}
+
+sw_silicon_creator_lib_irq_asm_functest = declare_dependency(
+  link_with: static_library(
+    'sw_silicon_creator_lib_irq_asm_functest',
+    sources: [
+      hw_ip_rstmgr_reg_h,
+      'irq_asm_functest.c'
+    ],
+    dependencies: [
+      sw_silicon_creator_lib_irq_asm,
+      sw_silicon_creator_lib_driver_retention_sram,
+      sw_silicon_creator_lib_driver_rstmgr,
+      sw_silicon_creator_lib_driver_watchdog,
+    ],
+  ),
+)
+mask_rom_tests += {
+  'sw_silicon_creator_lib_irq_asm_functest': {
+    'library': sw_silicon_creator_lib_irq_asm_functest,
   }
 }

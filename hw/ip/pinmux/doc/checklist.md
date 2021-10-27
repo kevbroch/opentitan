@@ -18,7 +18,7 @@ RTL           | [IP_TOP][]                     | Done        |
 RTL           | [IP_INSTANTIABLE][]            | Done        |
 RTL           | [PHYSICAL_MACROS_DEFINED_80][] | Done        |
 RTL           | [FUNC_IMPLEMENTED][]           | Done        |
-RTL           | [ASSERT_KNOWN_ADDED][]         | Done        |
+RTL           | [ASSERT_KNOWN_ADDED][]         | Done        | Primary I/Os are exempted from KNOWN assertions since the chip-level testbench may drive X'es onto some of these signals.
 Code Quality  | [LINT_SETUP][]                 | Done        |
 
 
@@ -36,25 +36,23 @@ Code Quality  | [LINT_SETUP][]                 | Done        |
 
 Type          | Item                    | Resolution  | Note/Collaterals
 --------------|-------------------------|-------------|------------------
-Documentation | [NEW_FEATURES][]        | Not Started |
+Documentation | [NEW_FEATURES][]        | Done        |
 Documentation | [BLOCK_DIAGRAM][]       | Done        |
 Documentation | [DOC_INTERFACE][]       | Done        |
-Documentation | [MISSING_FUNC][]        | Not Started |
-Documentation | [FEATURE_FROZEN][]      | Not Started |
-RTL           | [FEATURE_COMPLETE][]    | Not Started |
-RTL           | [AREA_CHECK][]          | Not Started |
-RTL           | [PORT_FROZEN][]         | Not Started |
-RTL           | [ARCHITECTURE_FROZEN][] | Not Started |
-RTL           | [REVIEW_TODO][]         | Not Started |
-RTL           | [STYLE_X][]             | Not Started |
+Documentation | [MISSING_FUNC][]        | Done        |
+Documentation | [FEATURE_FROZEN][]      | Done        |
+RTL           | [FEATURE_COMPLETE][]    | Done        |
+RTL           | [AREA_CHECK][]          | Done        |
+RTL           | [PORT_FROZEN][]         | Done        |
+RTL           | [ARCHITECTURE_FROZEN][] | Done        |
+RTL           | [REVIEW_TODO][]         | Done        |
+RTL           | [STYLE_X][]             | Done        |
 Code Quality  | [LINT_PASS][]           | Done        |
-Code Quality  | [CDC_SETUP][]           | Done        |
-Code Quality  | [FPGA_TIMING][]         | Not Started |
+Code Quality  | [CDC_SETUP][]           | Waived      | CDC flow is not available yet.
+Code Quality  | [FPGA_TIMING][]         | Done        |
 Code Quality  | [CDC_SYNCMACRO][]       | Done        |
-Security      | [SEC_CM_IMPLEMENTED][]  | Not Started |
-Security      | [SEC_NON_RESET_FLOPS][] | Not Started |
-Security      | [SEC_SHADOW_REGS][]     | Not Started |
-Security      | [SEC_RND_CNST][]        | Not Started |
+Security      | [SEC_CM_DOCUMENTED][]   | N/A         |
+Security      | [SEC_RND_CNST][]        | N/A         |
 
 [NEW_FEATURES]:        {{<relref "/doc/project/checklist.md#new_features" >}}
 [BLOCK_DIAGRAM]:       {{<relref "/doc/project/checklist.md#block_diagram" >}}
@@ -71,9 +69,7 @@ Security      | [SEC_RND_CNST][]        | Not Started |
 [CDC_SETUP]:           {{<relref "/doc/project/checklist.md#cdc_setup" >}}
 [FPGA_TIMING]:         {{<relref "/doc/project/checklist.md#fpga_timing" >}}
 [CDC_SYNCMACRO]:       {{<relref "/doc/project/checklist.md#cdc_syncmacro" >}}
-[SEC_CM_IMPLEMENTED]:  {{<relref "/doc/project/checklist.md#sec_cm_implemented" >}}
-[SEC_NON_RESET_FLOPS]: {{<relref "/doc/project/checklist.md#sec_non_reset_flops" >}}
-[SEC_SHADOW_REGS]:     {{<relref "/doc/project/checklist.md#sec_shadow_regs" >}}
+[SEC_CM_DOCUMENTED]:   {{<relref "/doc/project/checklist.md#sec_cm_documented" >}}
 [SEC_RND_CNST]:        {{<relref "/doc/project/checklist.md#sec_rnd_cnst" >}}
 
 ### D3
@@ -90,6 +86,9 @@ Review        | [REVIEW_SW_CSR][]       | Not Started |
 Review        | [REVIEW_SW_FATAL_ERR][] | Not Started |
 Review        | [REVIEW_SW_CHANGE][]    | Not Started |
 Review        | [REVIEW_SW_ERRATA][]    | Not Started |
+Security      | [SEC_CM_IMPLEMENTED][]  | Not Started |
+Security      | [SEC_NON_RESET_FLOPS][] | Not Started |
+Security      | [SEC_SHADOW_REGS][]     | Not Started |
 Review        | Reviewer(s)             | Not Started |
 Review        | Signoff date            | Not Started |
 
@@ -104,6 +103,9 @@ Review        | Signoff date            | Not Started |
 [REVIEW_SW_FATAL_ERR]:  {{<relref "/doc/project/checklist.md#review_sw_fatal_err" >}}
 [REVIEW_SW_CHANGE]:     {{<relref "/doc/project/checklist.md#review_sw_change" >}}
 [REVIEW_SW_ERRATA]:     {{<relref "/doc/project/checklist.md#review_sw_errata" >}}
+[SEC_CM_IMPLEMENTED]:   {{<relref "/doc/project/checklist.md#sec_cm_implemented" >}}
+[SEC_NON_RESET_FLOPS]:  {{<relref "/doc/project/checklist.md#sec_non_reset_flops" >}}
+[SEC_SHADOW_REGS]:      {{<relref "/doc/project/checklist.md#sec_shadow_regs" >}}
 
 ## Verification Checklist
 

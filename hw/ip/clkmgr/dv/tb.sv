@@ -82,7 +82,7 @@ module tb;
     .clk_usb_i  (clk_usb),
     .rst_usb_ni (rst_usb_n),
     .clk_aon_i  (clk_aon),
-
+    .rst_aon_ni (rst_aon_n),
     .rst_io_div2_ni(rst_io_n),
     // Setting as above...
     .rst_io_div4_ni(rst_io_n),
@@ -105,9 +105,10 @@ module tb;
     .lc_clk_byp_req_i (clkmgr_if.lc_clk_byp_req),
     .lc_clk_byp_ack_o (clkmgr_if.lc_clk_byp_ack),
 
-    .jitter_en_o (clkmgr_if.jitter_en_o),
-    .clocks_ast_o(clkmgr_if.clocks_ast_o),
-    .clocks_o    (clkmgr_if.clocks_o)
+    .cg_en_o(),
+
+    .jitter_en_o(clkmgr_if.jitter_en_o),
+    .clocks_o   (clkmgr_if.clocks_o)
   );
 
   initial begin

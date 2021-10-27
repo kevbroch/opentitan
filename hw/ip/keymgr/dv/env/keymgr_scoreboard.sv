@@ -47,6 +47,8 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
     NotUpdate
   } update_result_e;
 
+  localparam int RESET_ADV_CYCLES = 2000;
+
   int adv_cnt = 0;
 
   // local variables
@@ -108,6 +110,11 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
       forever begin
         wait(cfg.keymgr_vif.keymgr_en_sync2 != lc_ctrl_pkg::On);
 
+        if (cfg.en_cov) begin
+          cov.lc_disable_cg.sample(current_state, get_operation,
+                                   current_op_status == keymgr_pkg::OpWip);
+        end
+
         if (current_state != keymgr_pkg::StReset || current_op_status == keymgr_pkg::OpWip) begin
           wipe_hw_keys();
         end
@@ -120,41 +127,42 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
   virtual function void process_kmac_data_req(kmac_app_item item);
     keymgr_pkg::keymgr_ops_e op = get_operation();
 
-    // there must be a OP which causes the KMAC data req
-    `DV_CHECK_EQ(current_op_status, keymgr_pkg::OpWip)
 
     if (!cfg.keymgr_vif.get_keymgr_en()) begin
       compare_invalid_data(item.byte_data_q);
       return;
+    end else begin
+      // there must be a OP which causes the KMAC data req
+      `DV_CHECK_EQ(current_op_status, keymgr_pkg::OpWip)
     end
 
     case (op)
       keymgr_pkg::OpAdvance: begin
+        bit is_err = get_hw_invalid_input();
+        `uvm_info(`gfn, $sformatf("What is is_err: %d", is_err), UVM_MEDIUM)
 
         case (current_state)
           keymgr_pkg::StInit: begin
-            bit is_err = get_hw_invalid_input();
             compare_adv_creator_data(.cdi_type(current_cdi),
                                      .exp_match(!is_err),
                                      .byte_data_q(item.byte_data_q));
-            if (is_err) compare_invalid_data(item.byte_data_q);
           end
           keymgr_pkg::StCreatorRootKey: begin
-            bit is_err = get_hw_invalid_input();
-
             compare_adv_owner_int_data(.cdi_type(current_cdi),
                                        .exp_match(!is_err),
                                        .byte_data_q(item.byte_data_q));
-            if (is_err) compare_invalid_data(item.byte_data_q);
           end
           keymgr_pkg::StOwnerIntKey: begin
-            compare_adv_owner_data(current_cdi, item.byte_data_q);
+            compare_adv_owner_data(.cdi_type(current_cdi),
+                                   .exp_match(!is_err),
+                                   .byte_data_q(item.byte_data_q));
           end
           keymgr_pkg::StOwnerKey, keymgr_pkg::StDisabled, keymgr_pkg::StInvalid: begin
-            compare_invalid_data(item.byte_data_q);
+            is_err = 0;
           end
           default: `uvm_error(`gfn, $sformatf("Unexpected current_state: %0d", current_state))
         endcase
+        if (is_err) compare_invalid_data(item.byte_data_q);
       end
       keymgr_pkg::OpGenId: begin
         if (get_is_kmac_data_correct()) compare_id_data(item.byte_data_q);
@@ -175,8 +183,10 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
     update_result_e update_result;
     bit process_update;
 
-    is_kmac_rsp_err = item.rsp_error;
-    is_kmac_invalid_data = item.get_is_kmac_rsp_data_invalid();
+    // fault error is preserved until reset
+    if (!is_kmac_rsp_err) is_kmac_rsp_err = item.rsp_error;
+    if (!is_kmac_invalid_data) is_kmac_invalid_data = item.get_is_kmac_rsp_data_invalid();
+
     update_result = process_update_after_op_done();
 
     case (update_result)
@@ -191,29 +201,28 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
              current_internal_key[current_cdi], current_state.name, current_cdi.name), UVM_MEDIUM)
       end
       UpdateSwOut: begin
-        bit [keymgr_pkg::Shares-1:0][DIGEST_SHARE_WORD_NUM-1:0][TL_DW-1:0] sw_share_output;
+        if (!get_fault_err) begin
+          bit [keymgr_pkg::Shares-1:0][DIGEST_SHARE_WORD_NUM-1:0][TL_DW-1:0] sw_share_output;
+          // digest is 384 bits wide while SW output is only 256, need to truncate it
+          sw_share_output = {item.rsp_digest_share1[keymgr_pkg::KeyWidth-1:0],
+                             item.rsp_digest_share0[keymgr_pkg::KeyWidth-1:0]};
+          foreach (sw_share_output[i, j]) begin
+            string csr_name = $sformatf("sw_share%0d_output_%0d", i, j);
+            uvm_reg csr = ral.get_reg_by_name(csr_name);
 
-        // digest is 384 bits wide while SW output is only 256, need to truncate it
-        sw_share_output = {item.rsp_digest_share1[keymgr_pkg::KeyWidth-1:0],
-                           item.rsp_digest_share0[keymgr_pkg::KeyWidth-1:0]};
-        foreach (sw_share_output[i, j]) begin
-          string csr_name = $sformatf("sw_share%0d_output_%0d", i, j);
-          uvm_reg csr = ral.get_reg_by_name(csr_name);
-
-          void'(csr.predict(.value(sw_share_output[i][j]), .kind(UVM_PREDICT_DIRECT)));
-          `uvm_info(`gfn, $sformatf("Predict %0s = 0x%0h", csr_name, sw_share_output[i][j]),
-                    UVM_MEDIUM)
+            void'(csr.predict(.value(sw_share_output[i][j]), .kind(UVM_PREDICT_DIRECT)));
+            `uvm_info(`gfn, $sformatf("Predict %0s = 0x%0h", csr_name, sw_share_output[i][j]),
+                      UVM_MEDIUM)
+          end
         end
       end
       UpdateHwOut: begin
         kmac_digests_t key_shares = {item.rsp_digest_share1, item.rsp_digest_share0};
-        bit good_key = (get_err_code() == 0);
         keymgr_pkg::keymgr_key_dest_e dest = keymgr_pkg::keymgr_key_dest_e'(
             `gmv(ral.control.dest_sel));
 
-        if (dest != keymgr_pkg::None) begin
-          cfg.keymgr_vif.update_sideload_key(key_shares, current_state, current_cdi,
-                                             dest, good_key);
+        if (dest != keymgr_pkg::None && !get_fault_err()) begin
+          cfg.keymgr_vif.update_sideload_key(key_shares, current_state, current_cdi, dest);
           `uvm_info(`gfn, $sformatf("Update sideload key 0x%0h for %s", key_shares, dest.name),
                     UVM_MEDIUM)
         end
@@ -221,12 +230,10 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
       default: `uvm_info(`gfn, "KMAC result isn't updated to any output", UVM_MEDIUM)
     endcase
 
-    if (!cfg.keymgr_vif.get_keymgr_en()) current_state = keymgr_pkg::StInvalid;
-
-    if (!(current_state inside {keymgr_pkg::StReset, keymgr_pkg::StInvalid}) &&
+    if (current_state != keymgr_pkg::StReset &&
         get_operation() inside {keymgr_pkg::OpAdvance, keymgr_pkg::OpDisable}) begin
       current_cdi = get_adv_cdi_type();
-      if (current_cdi > 0) begin
+      if (current_cdi > 0 && current_internal_key[current_cdi] > 0) begin
         cfg.keymgr_vif.update_kdf_key(current_internal_key[current_cdi], current_state,
                                       get_is_kmac_key_correct());
       end
@@ -239,6 +246,10 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
     update_result_e update_result;
     keymgr_pkg::keymgr_ops_e op = get_operation();
     bit is_final_kdf;
+
+    // Update state to Invalid earlier so that we can get InvalidOp error, as LC disable in the
+    // middle of OP will trigger this error
+    if (!cfg.keymgr_vif.get_keymgr_en()) current_state = get_next_state();
 
     // for advance after StReset, it needs 2 KDF. Only update opt_status after the last one
     if (!(op inside {keymgr_pkg::OpAdvance, keymgr_pkg::OpDisable}) ||
@@ -253,36 +264,68 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
       begin
         cfg.clk_rst_vif.wait_n_clks(1);
         if (is_final_kdf) begin
-          if (get_err_code()) current_op_status = keymgr_pkg::OpDoneFail;
-          else                current_op_status = keymgr_pkg::OpDoneSuccess;
+          if (get_err_code() || get_fault_err()) current_op_status = keymgr_pkg::OpDoneFail;
+          else                                   current_op_status = keymgr_pkg::OpDoneSuccess;
+
+          if (cfg.en_cov && cfg.keymgr_vif.get_keymgr_en() && is_final_kdf) begin
+            keymgr_pkg::keymgr_key_dest_e dest = keymgr_pkg::keymgr_key_dest_e'(
+                `gmv(ral.control.dest_sel));
+            cov.state_and_op_cg.sample(current_state, op, current_op_status, current_cdi, dest);
+          end
         end
       end
     join_none
 
-    if (is_final_kdf) process_error_n_alert();
-    // IntrOpDone occurs after every KDF
-    void'(ral.intr_state.predict(.value(1 << int'(IntrOpDone))));
+    if (is_final_kdf) begin
+      process_error_n_alert();
+      void'(ral.intr_state.predict(.value(1 << int'(IntrOpDone))));
+      if (cfg.en_cov && cfg.keymgr_vif.get_keymgr_en()) begin
+        compare_op_e key_version_cmp;
 
+        if (`gmv(ral.key_version[0]) > get_current_max_version) begin
+          key_version_cmp = CompareOpGt;
+        end else if (`gmv(ral.key_version[0]) == get_current_max_version) begin
+          key_version_cmp = CompareOpEq;
+        end else begin
+          key_version_cmp = CompareOpLt;
+        end
+        cov.key_version_compare_cg.sample(key_version_cmp, current_state, op);
+      end
+    end
+
+    if (get_fault_err() || !cfg.keymgr_vif.get_keymgr_en()) begin
+      if (op inside {keymgr_pkg::OpAdvance, keymgr_pkg::OpDisable}) begin
+        if (adv_cnt != keymgr_pkg::CDIs - 1) begin
+          adv_cnt++;
+          is_sw_share_corrupted = 1;
+          cfg.keymgr_vif.wipe_sideload_keys();
+        end else begin
+          adv_cnt = 0;
+          update_state(keymgr_pkg::StInvalid);
+        end
+      end else begin // other non-advance OP
+        update_state(keymgr_pkg::StInvalid);
+      end
+      return NotUpdate;
+    end
     case (current_state)
       keymgr_pkg::StInit, keymgr_pkg::StCreatorRootKey, keymgr_pkg::StOwnerIntKey,
           keymgr_pkg::StOwnerKey: begin
 
         case (op)
           keymgr_pkg::OpAdvance: begin
-            if (get_fault_err()) begin
-              current_state = keymgr_pkg::StDisabled;
-              update_result = NotUpdate;
-            end else if (get_op_err()) begin
+            // if it's StOwnerKey, it advacens to OpDisable. Key is just random value
+            if (current_state == keymgr_pkg::StOwnerKey || get_op_err()) begin
               update_result = NotUpdate;
             end else begin
-              // if it's StOwnerKey, it advacens to OpDisable. Key is just random value
-              if (current_state == keymgr_pkg::StOwnerKey) update_result = NotUpdate;
-              else                                         update_result = UpdateInternalKey;
+              update_result = UpdateInternalKey;
+            end
 
-              if (adv_cnt != keymgr_pkg::CDIs - 1) begin
-                adv_cnt++;
-              end else begin
-                adv_cnt = 0;
+            if (adv_cnt != keymgr_pkg::CDIs - 1) begin
+              adv_cnt++;
+            end else begin
+              adv_cnt = 0;
+              if (!get_op_err()) begin
                 update_state(get_next_state(current_state));
                 // set sw_binding_regwen after advance OP
                 void'(ral.sw_binding_regwen.predict(.value(1)));
@@ -291,7 +334,7 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
             end
           end
           keymgr_pkg::OpDisable: begin
-            update_result = UpdateInternalKey;
+            update_result = NotUpdate;
             if (adv_cnt != keymgr_pkg::CDIs - 1) begin
               adv_cnt++;
             end else begin
@@ -301,14 +344,13 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
           end
           keymgr_pkg::OpGenId, keymgr_pkg::OpGenSwOut, keymgr_pkg::OpGenHwOut: begin
             // If only op error but no fault error, no update for output
-            if (get_op_err() && !get_fault_err()) begin
+            if (get_op_err()) begin
               update_result = NotUpdate;
             end else if (op == keymgr_pkg::OpGenHwOut) begin
               update_result = UpdateHwOut;
             end else begin
               update_result = UpdateSwOut;
             end
-            if (get_fault_err()) update_state(keymgr_pkg::StDisabled);
           end
           default: `uvm_fatal(`gfn, $sformatf("Unexpected operation: %0s", op.name))
         endcase
@@ -343,7 +385,7 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
     uvm_reg csr;
     bit     do_read_check   = 1'b1;
     bit     write           = item.is_write();
-    uvm_reg_addr_t csr_addr = ral.get_word_aligned_addr(item.a_addr);
+    uvm_reg_addr_t csr_addr = cfg.ral_models[ral_name].get_word_aligned_addr(item.a_addr);
 
     bit addr_phase_read   = (!write && channel == AddrChannel);
     bit addr_phase_write  = (write && channel == AddrChannel);
@@ -352,7 +394,7 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
 
     // if access was to a valid csr, get the csr handle
     if (csr_addr inside {cfg.ral_models[ral_name].csr_addrs}) begin
-      csr = ral.default_map.get_reg_by_offset(csr_addr);
+      csr = cfg.ral_models[ral_name].default_map.get_reg_by_offset(csr_addr);
       `DV_CHECK_NE_FATAL(csr, null)
       `downcast(dv_reg, csr)
     end
@@ -362,20 +404,39 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
 
     // if incoming access is a write to a valid csr, then make updates right away
     if (addr_phase_write) begin
+      // sample regwen and its locked CSRs
+      if (cfg.en_cov && ral.cfg_regwen.locks_reg_or_fld(dv_reg) &&
+          cfg.keymgr_vif.get_keymgr_en()) begin
+        bit cfg_regwen = (current_op_status == keymgr_pkg::OpWip);
+        if (csr.get_name() == "control") begin
+          cov.control_w_regwen_cg.sample(item.a_data, cfg_regwen);
+        end else if (csr.get_name() == "sideload_clear") begin
+          cov.sideload_clear_cg.sample(`gmv(ral.sideload_clear.val),
+                                       current_state,
+                                       get_operation(),
+                                       cfg.keymgr_vif.aes_sideload_status == SideLoadAvail,
+                                       cfg.keymgr_vif.kmac_sideload_status == SideLoadAvail,
+                                       cfg.keymgr_vif.otbn_sideload_status == SideLoadAvail,
+                                       cfg_regwen);
+        end else begin
+          cov.sw_input_cg_wrap[csr.get_name()].sample(item.a_data, cfg_regwen);
+        end
+      end
+      if (cfg.en_cov && ral.sw_binding_regwen.locks_reg_or_fld(dv_reg)) begin
+        cov.sw_input_cg_wrap[csr.get_name()].sample(
+            item.a_data,
+            `gmv(ral.sw_binding_regwen));
+      end
+
       // if OP WIP or keymgr_en=0, will clear cfg_regwen and below csr can't be written
       if ((current_op_status == keymgr_pkg::OpWip || !cfg.keymgr_vif.get_keymgr_en()) &&
           ral.cfg_regwen.locks_reg_or_fld(dv_reg)) begin
-        `uvm_info(`gfn, $sformatf("Reg write to %0s is ignored due to cfg_regwen=0", csr.get_name()),
+        `uvm_info(`gfn, $sformatf("Reg write to %s is ignored due to cfg_regwen=0", csr.get_name()),
                   UVM_MEDIUM)
         return;
-      end else if (`gmv(ral.sw_binding_regwen) == 0 &&
+      end else if ((`gmv(ral.sw_binding_regwen) == 0 || !cfg.keymgr_vif.get_keymgr_en()) &&
           ral.sw_binding_regwen.locks_reg_or_fld(dv_reg)) begin
         `uvm_info(`gfn, $sformatf("Reg write to %0s is ignored due to sw_binding_regwen=0",
-                                  csr.get_name()), UVM_MEDIUM)
-        return;
-      end else if (csr.get_name() == "sw_binding_regwen" && current_state == keymgr_pkg::StReset)
-      begin
-        `uvm_info(`gfn, $sformatf("Reg write to %0s is ignored due to state in StReset",
                                   csr.get_name()), UVM_MEDIUM)
         return;
       end else begin
@@ -406,11 +467,46 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
 
             `DV_CHECK_CASE_EQ(cfg.intr_vif.pins[i], (intr_en[i] & intr_exp[i]),
                            $sformatf("Interrupt_pin: %0s", intr.name));
+
+            if (cfg.en_cov) begin
+              cov.intr_cg.sample(intr, intr_en[intr], intr_exp[intr]);
+              cov.intr_pins_cg.sample(intr, cfg.intr_vif.pins[intr]);
+            end
           end
         end
       end
-      "intr_enable", "err_code", "sw_binding_regwen": begin
+      "intr_enable", "sw_binding_regwen": begin
         // no speical handle is needed
+      end
+      "err_code": begin
+        // Check in this block
+        do_read_check = 1'b0;
+
+        if (data_phase_read) begin
+          bit [TL_DW-1:0] err_code = `gmv(ral.err_code);
+
+          `DV_CHECK_EQ(item.d_data[keymgr_pkg::ErrInvalidOp],
+                       err_code[keymgr_pkg::ErrInvalidOp])
+
+          // skip checking ErrShadowUpdate as it's done in common direct sequence where we disable
+          // the scb
+
+          // when op error occurs with keymgr_en = 0, input is meaningless. Design may or may not
+          // assert ErrInvalidIn, which doesn't matter
+          if (!err_code[keymgr_pkg::ErrInvalidOp] && cfg.keymgr_vif.get_keymgr_en()) begin
+            `DV_CHECK_EQ(item.d_data[keymgr_pkg::ErrInvalidIn],
+                         err_code[keymgr_pkg::ErrInvalidIn])
+          end
+
+          if (cfg.en_cov) begin
+            if (err_code[keymgr_pkg::ErrInvalidOp]) begin
+              cov.err_code_cg.sample(keymgr_pkg::ErrInvalidOp);
+            end
+            if (err_code[keymgr_pkg::ErrInvalidIn]) begin
+              cov.err_code_cg.sample(keymgr_pkg::ErrInvalidIn);
+            end
+          end
+        end
       end
       "intr_test": begin
         if (write && channel == AddrChannel) begin
@@ -456,10 +552,17 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
             case (current_state)
               keymgr_pkg::StReset: begin
                 if (op == keymgr_pkg::OpAdvance) begin
+                  key_shares_t otp_key;
+                  if (cfg.keymgr_vif.otp_key.valid) begin
+                    otp_key = {cfg.keymgr_vif.otp_key.key_share1,
+                               cfg.keymgr_vif.otp_key.key_share0};
+                  end else begin
+                    if (cfg.en_cov) cov.invalid_hw_input_cg.sample(OtpRootKeyValidLow);
+                    `uvm_info(`gfn, "otp_key valid is low", UVM_LOW)
+                  end
                   // for advance to OwnerRootSecret, both KDF use same otp_key
-                  current_internal_key[Sealing] = {cfg.keymgr_vif.otp_key.key_share1,
-                                                   cfg.keymgr_vif.otp_key.key_share0};
-                  current_internal_key[Attestation] = current_internal_key[Sealing];
+                  current_internal_key[Sealing] = otp_key;
+                  current_internal_key[Attestation] = otp_key;
                   cfg.keymgr_vif.store_internal_key(current_internal_key[Sealing], current_state,
                                                     current_cdi);
 
@@ -469,10 +572,18 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
                   current_op_status = keymgr_pkg::OpDoneFail;
                   // No KDF issued, done interrupt/alert is triggered in next cycle
                   void'(ral.intr_state.predict(.value(1 << int'(IntrOpDone))));
-                  fork
+                  if (cfg.keymgr_vif.get_keymgr_en()) fork
                     begin
                       cfg.clk_rst_vif.wait_clks(1);
                       process_error_n_alert();
+
+                      if (cfg.en_cov) begin
+                        keymgr_pkg::keymgr_key_dest_e dest = keymgr_pkg::keymgr_key_dest_e'(
+                            `gmv(ral.control.dest_sel));
+
+                        cov.state_and_op_cg.sample(current_state, op, current_op_status,
+                            current_cdi, dest);
+                      end
                     end
                   join_none
                 end
@@ -494,8 +605,10 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
                   `downcast(current_cdi, cdi_sel)
                 end
                 // update kmac key for check
-                cfg.keymgr_vif.update_kdf_key(current_internal_key[current_cdi], current_state,
-                                              good_key);
+                if (current_internal_key[current_cdi] > 0) begin
+                  cfg.keymgr_vif.update_kdf_key(current_internal_key[current_cdi], current_state,
+                                                good_key);
+                end
               end
             endcase
             // start will be clear after OP is done
@@ -533,9 +646,22 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
           if (current_state == keymgr_pkg::StReset) begin
             // when advance from StReset to StInit, we don't know how long it will take, it's ok
             // when status is WIP or success
-            `DV_CHECK_EQ(item.d_data inside {current_op_status, keymgr_pkg::OpDoneSuccess}, 1)
-            if (item.d_data == keymgr_pkg::OpDoneSuccess) begin
-              current_op_status = keymgr_pkg::OpDoneSuccess;
+            if (cfg.keymgr_vif.get_keymgr_en()) begin
+              `DV_CHECK_EQ(item.d_data inside {current_op_status, keymgr_pkg::OpDoneSuccess}, 1)
+            end
+            // advance OP completes
+            if (current_op_status == keymgr_pkg::OpWip &&
+                item.d_data inside {keymgr_pkg::OpDoneSuccess, keymgr_pkg::OpDoneFail}) begin
+              current_op_status = item.d_data;
+
+              if (cfg.en_cov) begin
+                keymgr_pkg::keymgr_key_dest_e dest = keymgr_pkg::keymgr_key_dest_e'(
+                    `gmv(ral.control.dest_sel));
+
+                cov.state_and_op_cg.sample(current_state, get_operation(), current_op_status,
+                    current_cdi, dest);
+              end
+
               current_state = get_next_state(current_state);
               void'(ral.intr_state.predict(.value(1 << int'(IntrOpDone))));
 
@@ -549,8 +675,48 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
         end
       end
       "reseed_interval_shadowed": begin
-        if (addr_phase_write)
+        if (addr_phase_write) begin
           cfg.keymgr_vif.edn_interval = `gmv(ral.reseed_interval_shadowed.val);
+
+          if (cfg.en_cov) cov.reseed_interval_cg.sample(`gmv(ral.reseed_interval_shadowed.val));
+        end
+      end
+      "sideload_clear": begin
+        if (addr_phase_write) begin
+          fork
+            begin
+              cfg.clk_rst_vif.wait_clks(1);
+              cfg.keymgr_vif.clear_sideload_key(`gmv(ral.sideload_clear.val));
+            end
+          join_none
+        end
+      end
+      "max_creator_key_ver_shadowed": begin
+        if (cfg.en_cov && addr_phase_write) begin
+          cov.sw_input_cg_wrap["max_creator_key_ver_shadowed"].sample(item.a_data,
+              `gmv(ral.max_creator_key_ver_regwen));
+        end
+      end
+      "max_owner_int_key_ver_shadowed": begin
+        if (cfg.en_cov && addr_phase_write) begin
+          cov.sw_input_cg_wrap["max_owner_int_key_ver_shadowed"].sample(item.a_data,
+              `gmv(ral.max_owner_int_key_ver_regwen));
+        end
+      end
+      "max_owner_key_ver_shadowed": begin
+        if (cfg.en_cov && addr_phase_write) begin
+          cov.sw_input_cg_wrap["max_owner_key_ver_shadowed"].sample(item.a_data,
+              `gmv(ral.max_owner_key_ver_regwen));
+        end
+      end
+      "fault_status": begin
+        // Check in this block
+        do_read_check = 1'b0;
+
+        if (data_phase_read) begin
+          `DV_CHECK_EQ(item.d_data[keymgr_pkg::FaultKmacOp],  is_kmac_rsp_err)
+          `DV_CHECK_EQ(item.d_data[keymgr_pkg::FaultKmacOut], is_kmac_invalid_data)
+        end
       end
       default: begin
         if (!uvm_re_match("sw_share*", csr.get_name())) begin // sw_share
@@ -558,8 +724,10 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
           if (addr_phase_read) begin
             addr_phase_is_sw_share_corrupted = is_sw_share_corrupted;
           end else if (data_phase_read && addr_phase_is_sw_share_corrupted) begin
+            // disable read check outside of the item compare.
+            // it is possible for the returned data when corrupted, to be 0
+            do_read_check = 1'b0;
             if (item.d_data != 0) begin
-              do_read_check = 1'b0;
               `DV_CHECK_NE(item.d_data, `gmv(csr))
             end
           end
@@ -581,6 +749,9 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
   endtask
 
   virtual function bit [TL_DW-1:0] get_current_max_version();
+    // design change this to 0 if LC turns off keymgr.
+    if (!cfg.keymgr_vif.get_keymgr_en()) return 0;
+
     case (current_state)
       keymgr_pkg::StCreatorRootKey: return `gmv(ral.max_creator_key_ver_shadowed);
       keymgr_pkg::StOwnerIntKey:    return `gmv(ral.max_owner_int_key_ver_shadowed);
@@ -592,49 +763,56 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
 
   virtual function void process_error_n_alert();
     bit [TL_DW-1:0] err = get_err_code();
+
     void'(ral.err_code.predict(err));
 
-    if (get_fault_err()) set_exp_alert("fatal_fault_err", .is_fatal(1));
+    if (get_fault_err() || !cfg.keymgr_vif.get_keymgr_en()) begin
+      is_sw_share_corrupted = 1;
+      cfg.keymgr_vif.wipe_sideload_keys();
+    end
+
+    if (get_fault_err()) begin
+      set_exp_alert("fatal_fault_err", .is_fatal(1));
+    end
+
     if (get_op_err()) set_exp_alert("recov_operation_err");
 
-    `uvm_info(`gfn, $sformatf("at %s, %s is issued and error code is 'b%0b",
+    `uvm_info(`gfn, $sformatf("at %s, %s is issued and error 'b%0b",
               current_state, get_operation(), err), UVM_MEDIUM)
   endfunction
 
   virtual function bit [TL_DW-1:0] get_fault_err();
-    bit [TL_DW-1:0] err = get_err_code();
-    return err[keymgr_pkg::ErrInvalidOut] || err[keymgr_pkg::ErrInvalidStates];
+    return is_kmac_rsp_err | is_kmac_invalid_data;
   endfunction
 
   virtual function bit [TL_DW-1:0] get_op_err();
     bit [TL_DW-1:0] err = get_err_code();
-    return err[keymgr_pkg::ErrInvalidOp] || err[keymgr_pkg::ErrInvalidIn];
+    bit fault = get_fault_err();
+
+    // A detected fault causes the operation to transition into invalid,
+    // which will report an invalid operation
+    return err[keymgr_pkg::ErrInvalidOp] || err[keymgr_pkg::ErrInvalidIn] ||
+      fault;
   endfunction
 
   virtual function bit [TL_DW-1:0] get_err_code();
     bit [TL_DW-1:0] err_code;
 
-    // if keymgr_en is off during an OP, suppress op err
-    if (cfg.keymgr_vif.get_keymgr_en() || current_state == keymgr_pkg::StInvalid) begin
-      err_code[keymgr_pkg::ErrInvalidOp]  = get_op_error();
-    end
+    // A detected fault will cause us to transition to invalid where
+    // operations are always error'd
+    err_code[keymgr_pkg::ErrInvalidOp] = get_invalid_op() | get_fault_err();
 
-    err_code[keymgr_pkg::ErrInvalidStates] = is_kmac_rsp_err | is_kmac_invalid_data;
+    err_code[keymgr_pkg::ErrInvalidIn] = get_hw_invalid_input() | get_sw_invalid_input();
 
-    if (cfg.keymgr_vif.keymgr_en_sync2 == lc_ctrl_pkg::On) begin
-      err_code[keymgr_pkg::ErrInvalidIn]  = get_hw_invalid_input() | get_sw_invalid_input();
-    end
-
-    err_code[keymgr_pkg::ErrInvalidOut] = is_kmac_invalid_data;
-
-    `uvm_info(`gfn, $sformatf("op_err = %0d, rsp_err = %0d, kmac_invalid =%0d, hw_invalid = %0d \
-              sw_invalid = %0d, kmac_invalid_data = %0d",
-              get_op_error(), is_kmac_rsp_err, is_kmac_invalid_data, get_hw_invalid_input(),
-              get_sw_invalid_input(), is_kmac_invalid_data), UVM_MEDIUM)
+    `uvm_info(`gfn, $sformatf({"op_err = %0d, rsp_err = %0d, hw_invalid = %0d, sw_invalid = %0d, ",
+              "kmac_invalid_data = %0d"},
+              get_invalid_op(), is_kmac_rsp_err, get_hw_invalid_input(), get_sw_invalid_input(),
+              is_kmac_invalid_data), UVM_MEDIUM)
     return err_code;
   endfunction
 
-  virtual function bit get_op_error();
+  virtual function bit get_invalid_op();
+    `uvm_info(`gfn, $sformatf("current_state: %s", current_state), UVM_MEDIUM)
     case (current_state)
       keymgr_pkg::StReset: begin
         if (get_operation() != keymgr_pkg::OpAdvance) begin
@@ -659,7 +837,7 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
 
   virtual function bit get_sw_invalid_input();
     if (get_operation() inside {keymgr_pkg::OpGenSwOut, keymgr_pkg::OpGenHwOut}) begin
-      return get_current_max_version() < `gmv(ral.key_version);
+      return get_current_max_version() < `gmv(ral.key_version[0]);
     end else begin
       return 0;
     end
@@ -675,59 +853,72 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
   // When a generate output key operation is invoked:
   //   The working state key is checked for all 0's and all 1's.
   virtual function bit get_hw_invalid_input();
-    bit is_err;
+    int err_cnt;
+    keymgr_invalid_hw_input_type_e invalid_hw_input_type;
 
-    if (current_internal_key[current_cdi] inside {0, '1} && current_state != keymgr_pkg::StReset)
+    // if it's an invalid op, kmac key and data are random value, they shouldn't be all 0s/1s
+    if (get_invalid_op()) return 0;
+
+    if ((current_internal_key[current_cdi][0] inside {0, '1} ||
+         current_internal_key[current_cdi][1] inside {0, '1}) &&
+         current_state != keymgr_pkg::StReset)
     begin
-      is_err = 1;
+      invalid_hw_input_type = OtpRootKeyInvalid;
+      err_cnt++;
       `uvm_info(`gfn, $sformatf("internal key for %s %s is invalid", current_state, current_cdi),
                 UVM_LOW)
     end
 
-    if (get_operation() != keymgr_pkg::OpAdvance) return is_err;
+    if (get_operation() != keymgr_pkg::OpAdvance) return err_cnt > 0;
 
-    // TODO, expand all types of errors for adding coverage later
     case (current_state)
       keymgr_pkg::StInit: begin
         if (cfg.keymgr_vif.keymgr_div inside {0, '1}) begin
-          is_err = 1;
+          invalid_hw_input_type = LcStateInvalid;
+          err_cnt++;
           `uvm_info(`gfn, "HW invalid input on keymgr_div", UVM_LOW)
         end
 
         if (cfg.keymgr_vif.otp_device_id inside {0, '1}) begin
-          is_err = 1;
+          invalid_hw_input_type = OtpDevIdInvalid;
+          err_cnt++;
           `uvm_info(`gfn, "HW invalid input on otp_device_id", UVM_LOW)
         end
 
         if (cfg.keymgr_vif.rom_digest.data inside {0, '1}) begin
-          is_err = 1;
+          invalid_hw_input_type = RomDigestInvalid;
+          err_cnt++;
           `uvm_info(`gfn, "HW invalid input on rom_digest", UVM_LOW)
         end
 
-        if (cfg.keymgr_vif.otp_key.key_share0 inside {0, '1}) begin
-          is_err = 1;
-          `uvm_info(`gfn, "HW invalid input on key_share0", UVM_LOW)
-        end
-
-        if (cfg.keymgr_vif.otp_key.key_share1 inside {0, '1}) begin
-          is_err = 1;
-          `uvm_info(`gfn, "HW invalid input on key_share1", UVM_LOW)
+        if (!cfg.keymgr_vif.rom_digest.valid) begin
+          invalid_hw_input_type = RomDigestValidLow;
+          err_cnt++;
+          `uvm_info(`gfn, "HW invalid input, rom_digest.valid is low", UVM_LOW)
         end
 
         if (cfg.keymgr_vif.flash.seeds[flash_ctrl_pkg::CreatorSeedIdx] inside {0, '1}) begin
-          is_err = 1;
+          invalid_hw_input_type = FlashCreatorSeedInvalid;
+          err_cnt++;
           `uvm_info(`gfn, "HW invalid input on flash.seeds[CreatorSeedIdx]", UVM_LOW)
         end
       end
       keymgr_pkg::StCreatorRootKey: begin
         if (cfg.keymgr_vif.flash.seeds[flash_ctrl_pkg::OwnerSeedIdx] inside {0, '1}) begin
-          is_err = 1;
+          invalid_hw_input_type = FlashOwnerSeedInvalid;
+          err_cnt++;
           `uvm_info(`gfn, "HW invalid input on flash.seeds[OwnerSeedIdx]", UVM_LOW)
         end
       end
       default: ;
     endcase
-    return is_err;
+
+    // Sample error when there is only one error to make sure each error can cause operation to
+    // fail
+    if (err_cnt == 1 && cfg.en_cov) begin
+      cov.invalid_hw_input_cg.sample(invalid_hw_input_type);
+    end
+    return err_cnt > 0;
   endfunction
 
   // in normal operational states, invalid command etc lead to random data for gen-out OP
@@ -737,8 +928,7 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
 
     if (current_state inside {keymgr_pkg::StCreatorRootKey, keymgr_pkg::StOwnerIntKey,
                               keymgr_pkg::StOwnerKey}) begin
-      return !(err_code[keymgr_pkg::ErrInvalidStates] |
-               err_code[keymgr_pkg::ErrInvalidOut] |
+      return !(get_fault_err() |
                err_code[keymgr_pkg::ErrInvalidIn]  |
                !cfg.keymgr_vif.get_keymgr_en());
     end else begin
@@ -755,7 +945,7 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
         op == keymgr_pkg::OpDisable || !cfg.keymgr_vif.get_keymgr_en()) begin
       return 0;
     end else begin
-      return !(err_code[keymgr_pkg::ErrInvalidOp]);
+      return !(err_code[keymgr_pkg::ErrInvalidOp]) && !get_fault_err();
     end
   endfunction
 
@@ -806,7 +996,7 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
 
     `CREATE_CMP_STR(unused)
     `CREATE_CMP_STR(OwnerRootSecret)
-    for (int i=0; i < keymgr_reg_pkg::NumSwBindingReg; i++) begin
+    for (int i = 0; i < keymgr_reg_pkg::NumSwBindingReg; i++) begin
       `CREATE_CMP_STR(SoftwareBinding[i])
     end
 
@@ -820,6 +1010,7 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
   endfunction
 
   virtual function void compare_adv_owner_data(keymgr_cdi_type_e cdi_type,
+                                               bit exp_match,
                                                const ref byte byte_data_q[$]);
     adv_owner_data_t exp, act;
     string str = $sformatf("cdi_type: %s\n", cdi_type.name);
@@ -833,9 +1024,13 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
       `CREATE_CMP_STR(SoftwareBinding[i])
     end
 
-    `DV_CHECK_EQ(act, exp, str)
+    if (exp_match) begin
+      `DV_CHECK_EQ(act, exp, str)
+    end else begin
+      `DV_CHECK_NE(act, exp, str)
+    end
 
-    adv_data_a_array[Sealing][keymgr_pkg::StOwnerKey] = act;
+    if (exp_match) adv_data_a_array[Sealing][keymgr_pkg::StOwnerKey] = act;
   endfunction
 
   // for invalid OP, should not output any meaningful data to KMAC. Check the outputs aren't
@@ -888,7 +1083,7 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
 
     act = {<<8{byte_data_q}};
 
-    exp.KeyVersion = `gmv(ral.key_version);
+    exp.KeyVersion = `gmv(ral.key_version[0]);
     for (int i = 0; i < keymgr_reg_pkg::NumSaltReg; i++) begin
       uvm_reg rg = ral.get_reg_by_name($sformatf("salt_%0d", i));
       exp.Salt[i] = `gmv(rg);
@@ -948,12 +1143,15 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
     return op;
   endfunction
 
-  virtual function keymgr_pkg::keymgr_working_state_e get_next_state(keymgr_pkg::keymgr_working_state_e cur);
+  virtual function keymgr_pkg::keymgr_working_state_e get_next_state(
+      keymgr_pkg::keymgr_working_state_e cur = current_state);
     if (!cfg.keymgr_vif.get_keymgr_en()) return keymgr_pkg::StInvalid;
     else                                 return keymgr_env_pkg::get_next_state(cur);
   endfunction
 
-  virtual function void update_state(keymgr_pkg::keymgr_working_state_e new_state, int cyc_dly = 1);
+  virtual function void update_state(
+      keymgr_pkg::keymgr_working_state_e new_state = get_next_state(),
+      int cyc_dly = 1);
     fork
       begin
         // it takes 1 cycle to update state after rsp_done is set. add one more negedge to avoid
@@ -965,16 +1163,39 @@ class keymgr_scoreboard extends cip_base_scoreboard #(
   endfunction
 
   virtual function void wipe_hw_keys();
-    if (current_op_status != keymgr_pkg::OpWip) begin
-      // design takes 2 cycle to update state
-      update_state(keymgr_pkg::StInvalid, .cyc_dly(2));
-      `uvm_info(`gfn, "Keymgr_en is Off, wipe secret and move state to Invalid", UVM_LOW)
-    end
     fork
       begin
+        keymgr_pkg::keymgr_working_state_e current_design_state;
+        cfg.clk_rst_vif.wait_n_clks(1);
+        // When LC disables keymgr across with an operation, will have InvalidOp error.
+        // If no operation at that time, no error.
+        // Need to know the actual state in design, in order to predict correctly
+        // And we will check that hw key is wiped no matter whether InvalidOp is set or not.
+        csr_rd(.ptr(ral.working_state), .value(current_design_state), .backdoor(1'b1));
+
+        // LC-disable happens during advancing to StInit
+        // If LC-disable happens during an operation in other states, KDF will occur.
+        // err_code/alert is updated when KDF is done
+        if (current_design_state == keymgr_pkg::StReset) begin
+          bit [TL_DW-1:0] err_code = get_err_code();
+          err_code[keymgr_pkg::ErrInvalidOp] = 1;
+          // if it's StReset, the Advance OP is ongoing. alert will be sent after the OP
+          set_exp_alert("recov_operation_err", .max_delay(RESET_ADV_CYCLES));
+          void'(ral.err_code.predict(err_code));
+          `uvm_info(`gfn,
+              "Keymgr_en is Off when advancing to StInit, wipe secret and move state to Invalid",
+              UVM_LOW)
+        end
+        else if (current_op_status != keymgr_pkg::OpWip) begin
+          update_state(.cyc_dly(2));
+          `uvm_info(`gfn, "Keymgr_en is Off, wipe secret and move state to Invalid", UVM_LOW)
+        end
+      end
+      begin
         // it takes 2 cycle to wipe sw_share. add one more negedge to avoid race condition
+        // corner case
         cfg.clk_rst_vif.wait_n_clks(3);
-        update_state(keymgr_pkg::StInvalid);
+        cfg.keymgr_vif.wipe_sideload_keys();
         is_sw_share_corrupted = 1;
       end
     join_none

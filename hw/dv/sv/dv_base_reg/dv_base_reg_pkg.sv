@@ -38,11 +38,10 @@ package dv_base_reg_pkg;
   } csr_test_type_e;
 
   typedef enum bit[2:0] {
+    // If it's a shadow reg, BkdrRegPathRtl is the path to committed reg
     BkdrRegPathRtl,          // backdoor path for reg's val in RTL
-    BkdrRegPathRtlCommitted, // backdoor path for shadow reg's committed val in RTL
     BkdrRegPathRtlShadow,    // backdoor path for shadow reg's shadow val in RTL
     BkdrRegPathGls,          // backdoor path for reg's val in GLS
-    BkdrRegPathGlsCommitted, // backdoor path for shadow reg's committed val in GLS
     BkdrRegPathGlsShdow      // backdoor path for shadow reg's shadow val in GLS
   } bkdr_reg_path_e;
 
@@ -71,6 +70,14 @@ package dv_base_reg_pkg;
       `uvm_fatal(msg, $sformatf("obj %0s is not of type uvm_reg or uvm_reg_field",
                       obj.get_full_name()))
     end
+  endfunction
+
+  // mask and shift data to extract the value specific to that supplied field
+  function automatic uvm_reg_data_t get_field_val(uvm_reg_field   field,
+                                                  uvm_reg_data_t  value);
+    uvm_reg_data_t  mask = (1 << field.get_n_bits()) - 1;
+    uint            shift = field.get_lsb_pos();
+    get_field_val = (value >> shift) & mask;
   endfunction
 
 endpackage

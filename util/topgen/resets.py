@@ -19,8 +19,14 @@ class ResetItem:
         self.path = ""
         if self.rst_type == 'top':
             self.path = f"{hier['top']}rst_{self.name}_n"
+            self.lpg_path = f"{hier['lpg']}{self.name}"
         elif self.rst_type == 'ext':
             self.path = f"{hier['ext']}{self.name}"
+
+        self.shadow_path = ""
+        if self.rst_type == 'top':
+            self.shadow_path = f"{hier['top']}rst_{self.name}_shadowed_n"
+            self.shadow_lpg_path = f"{hier['lpg']}{self.name}_shadowed"
 
         # to be constructed later
         self.domains = []
@@ -107,29 +113,19 @@ class Resets:
             if reset.rst_type != 'ext':
                 clocks[reset.clock.name] = 1
 
-        return clocks.keys()
+        return list(clocks)
 
-    def get_generated_resets(self) -> Dict[str, object]:
-        '''Get generated resets and return dict with
-           with related clock
+    def get_generated_resets(self) -> list:
+        '''Get generated resets and return reset object
         '''
-
-        ret = []
-        for reset in self.nodes.values():
-            if reset.gen:
-                entry = {}
-                entry['name'] = reset.name
-                entry['clk'] = reset.clock.name
-                entry['parent'] = reset.parent
-                entry['sw'] = reset.sw
-                ret.append(entry)
-
-        return ret
+        return [reset
+                for reset in self.nodes.values()
+                if reset.gen]
 
     def get_top_resets(self) -> list:
         '''Get resets pushed to the top level'''
 
-        return [reset.name
+        return [reset
                 for reset in self.nodes.values()
                 if reset.rst_type == 'top']
 
@@ -140,7 +136,7 @@ class Resets:
                 for reset in self.nodes.values()
                 if reset.sw]
 
-    def get_path(self, name: str, domain: Optional[str]) -> str:
+    def get_path(self, name: str, domain: Optional[str], shadow = False) -> str:
         '''Get path to reset'''
 
         reset = self.get_reset_by_name(name)
@@ -150,11 +146,35 @@ class Resets:
         if reset.rst_type == 'ext':
             return reset.path
 
-        # if a generated reset
-        if domain:
-            return f'{reset.path}[rstmgr_pkg::Domain{domain}Sel]'
+        if shadow:
+            path = reset.shadow_path
         else:
-            return reset.path
+            path = reset.path
+
+        if domain:
+            path += f'[rstmgr_pkg::Domain{domain}Sel]'
+
+        return path
+
+    def get_lpg_path(self, name: str, domain: Optional[str], shadow = False) -> str:
+        '''Get path to lpg indication signals'''
+
+        reset = self.get_reset_by_name(name)
+        if reset.rst_type == 'int':
+            raise ValueError(f'Reset {name} is not a reset exported from rstmgr')
+
+        if reset.rst_type == 'ext':
+            raise ValueError(f'External reset {name} cannot be associated with an LPG')
+
+        if shadow:
+            path = reset.shadow_lpg_path
+        else:
+            path = reset.lpg_path
+
+        if domain:
+            path += f'[rstmgr_pkg::Domain{domain}Sel]'
+
+        return path
 
     def get_unused_resets(self, domains: list) -> Dict[str, str]:
         '''Get unused resets'''
@@ -167,7 +187,13 @@ class Resets:
         for reset in top_resets:
             for dom in domains:
                 if dom not in reset.domains:
-                    ret[reset.name] = dom
+                    doml = dom.lower()
+                    ret[f'unused_d{doml}_rst_{reset.name}'] = \
+                        f'{reset.path}[rstmgr_pkg::Domain{dom}Sel]'
+
+                    if reset.shadowed:
+                        ret[f'unused_d{doml}_rst_{reset.name}_shadowed'] = \
+                            f'{reset.shadow_path}[rstmgr_pkg::Domain{dom}Sel]'
 
         return ret
 
@@ -180,3 +206,12 @@ class Resets:
         if reset.rst_type == 'top':
             if domain not in reset.domains:
                 reset.domains.append(domain)
+
+    def has_shadowed_reset(self) -> bool:
+        '''Do any generated resets have a shadow version?'''
+
+        for reset in self.nodes.values():
+            if reset.shadowed:
+                return True
+
+        return False

@@ -50,14 +50,33 @@ package otbn_pkg;
     RegFileFPGA  = 1  // FPGA implmentation, does infer RAM primitives.
   } regfile_e;
 
+  // Command to execute. See the CMD register description in otbn.hjson for details.
+  typedef enum logic [7:0] {
+    CmdExecute     = 8'hd8,
+    CmdSecWipeDmem = 8'hc3,
+    CmdSecWipeImem = 8'h1e
+  } cmd_e;
+
+  // Status register values. See the STATUS register description in otbn.hjson for details.
+  typedef enum logic [7:0] {
+    StatusIdle            = 8'h00,
+    StatusBusyExecute     = 8'h01,
+    StatusBusySecWipeDmem = 8'h02,
+    StatusBusySecWipeImem = 8'h03,
+    StatusLocked          = 8'hFF
+  } status_e;
+
   // Error bits
   //
-  // Note: These errors are duplicated in the register HJSON (../data/otbn.hjson), the ISS
-  // (../dv/otbnsim/sim/alert.py), and the DIF. If updating them here, update those too.
+  // Note: These errors are duplicated in other places. If updating them here, update those too.
   typedef struct packed {
-    logic fatal_reg;
-    logic fatal_dmem;
-    logic fatal_imem;
+    logic fatal_software;
+    logic lifecycle_escalation;
+    logic illegal_bus_access;
+    logic bus_intg_violation;
+    logic reg_intg_violation;
+    logic dmem_intg_violation;
+    logic imem_intg_violation;
     logic loop;
     logic illegal_insn;
     logic call_stack;
@@ -361,17 +380,22 @@ package otbn_pkg;
   } mac_bignum_operation_t;
 
   // States for controller state machine
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     OtbnStateHalt,
     OtbnStateUrndRefresh,
     OtbnStateRun,
-    OtbnStateStall
+    OtbnStateStall,
+    OtbnStateLocked
   } otbn_state_e;
 
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     OtbnStartStopStateHalt,
     OtbnStartStopStateUrndRefresh,
-    OtbnStartStopStateRunning
+    OtbnStartStopStateRunning,
+    OtbnStartStopSecureWipeWdrUrnd,
+    OtbnStartStopSecureWipeAccModBaseUrnd,
+    OtbnStartStopSecureWipeAllZero,
+    OtbnStartStopSecureWipeComplete
   } otbn_start_stop_state_e;
 
   // URNG PRNG default LFSR seed and permutation

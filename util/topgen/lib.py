@@ -16,7 +16,8 @@ from reggen.ip_block import IpBlock
 # Ignore flake8 warning as the function is used in the template
 # disable isort formating, as conflicting with flake8
 from .intermodule import find_otherside_modules  # noqa : F401 # isort:skip
-from .intermodule import im_portname, im_defname, im_netname  # noqa : F401 # isort:skip
+from .intermodule import im_portname, im_defname, im_netname # noqa : F401 # isort:skip
+from .intermodule import get_direction # noqa : F401 # isort:skip
 from .intermodule import get_dangling_im_def # noqa : F401 # isort:skip
 
 
@@ -289,10 +290,38 @@ def get_clk_name(clk):
         return "clk_{}_i".format(clk)
 
 
-def get_reset_path(reset, domain, top):
+def is_shadowed_port(block: IpBlock, port: str) -> bool:
+    """Return boolean indication whether a port is a shadow reset port
+    """
+    shadowed_port = block.clocking.primary.reset if block.has_shadowed_reg() \
+        else None
+
+    return port == shadowed_port
+
+
+def shadow_name(name: str) -> str:
+    """Return the appropriate shadow reset name based on port name
+    """
+    match = re.match(r'^rst_([A-Za-z0-9_]+)_ni?', name)
+    if match:
+        return f'rst_{match.group(1)}_shadowed_ni'
+    else:
+        return 'rst_shadowed_ni'
+
+
+def get_reset_path(top: object, reset: str, shadow_sel: bool = False):
     """Return the appropriate reset path given name
     """
-    return top['resets'].get_path(reset, domain)
+    return top['resets'].get_path(reset['name'], reset['domain'], shadow_sel)
+
+
+def get_reset_lpg_path(top: object, reset: str, shadow_sel: bool = False, domain: bool = None):
+    """Return the appropriate LPG reset path given name
+    """
+    if domain is not None:
+        return top['resets'].get_lpg_path(reset['name'], domain, shadow_sel)
+    else:
+        return top['resets'].get_lpg_path(reset['name'], reset['domain'], shadow_sel)
 
 
 def get_unused_resets(top):
@@ -485,6 +514,16 @@ def is_rom_ctrl(modules):
     '''
     for m in modules:
         if m['type'] == 'rom_ctrl':
+            return True
+
+    return False
+
+
+def is_lc_ctrl(modules):
+    '''Return true if lc_ctrl exists in the design
+    '''
+    for m in modules:
+        if m['type'] == 'lc_ctrl':
             return True
 
     return False

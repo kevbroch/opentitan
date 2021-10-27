@@ -22,63 +22,83 @@ module keymgr_sideload_key_ctrl import keymgr_pkg::*;(
   output logic prng_en_o,
   output hw_key_req_t aes_key_o,
   output hw_key_req_t kmac_key_o,
-  output otbn_key_req_t otbn_key_o
+  output otbn_key_req_t otbn_key_o,
+  output logic fsm_err_o
 );
 
-  // Enumeration for working state
-  typedef enum logic [2:0] {
-    StSideloadReset,
-    StSideloadIdle,
-    StSideloadClear,
-    StSideloadWipe,
-    StSideloadStop
+  // Encoding generated with:
+  // $ ./util/design/sparse-fsm-encode.py -d 5 -m 4 -n 10 \
+  //      -s 1700801647 --language=sv
+  //
+  // Hamming distance histogram:
+  //
+  //  0: --
+  //  1: --
+  //  2: --
+  //  3: --
+  //  4: --
+  //  5: |||||||||||||||||||| (33.33%)
+  //  6: |||||||||| (16.67%)
+  //  7: |||||||||||||||||||| (33.33%)
+  //  8: |||||||||| (16.67%)
+  //  9: --
+  // 10: --
+  //
+  // Minimum Hamming distance: 5
+  // Maximum Hamming distance: 8
+  // Minimum Hamming weight: 3
+  // Maximum Hamming weight: 7
+  //
+  localparam int StateWidth = 10;
+  typedef enum logic [StateWidth-1:0] {
+    StSideloadReset = 10'b0011111011,
+    StSideloadIdle  = 10'b0101000101,
+    StSideloadWipe  = 10'b1110110010,
+    StSideloadStop  = 10'b1000001010
   } keymgr_sideload_e;
 
   keymgr_sideload_e state_q, state_d;
-  logic [3:0] cnt_q, cnt_d;
-  logic cnt_end;
-  logic clr;
-  logic keys_en;
 
+  // This primitive is used to place a size-only constraint on the
+  // flops in order to prevent FSM state encoding optimizations.
+  logic [StateWidth-1:0] state_raw_q;
+  assign state_q = keymgr_sideload_e'(state_raw_q);
+  prim_flop #(
+    .Width(StateWidth),
+    .ResetValue(StateWidth'(StSideloadReset))
+  ) u_state_regs (
+    .clk_i,
+    .rst_ni,
+    .d_i ( state_d     ),
+    .q_o ( state_raw_q )
+  );
+
+  logic keys_en;
   logic [Shares-1:0][KeyWidth-1:0] data_truncated;
   for(genvar i = 0; i < Shares; i++) begin : gen_truncate_data
     assign data_truncated[i] = data_i[i][KeyWidth-1:0];
   end
 
-
-  always_ff @(posedge clk_i or negedge rst_ni) begin
-    if (!rst_ni) begin
-      state_q <= StSideloadReset;
-      cnt_q <= '0;
-    end else begin
-      state_q <= state_d;
-      cnt_q <= cnt_d;
-    end
-  end
-
-  assign cnt_end = cnt_q[3];
-  assign cnt_d = cnt_end ? cnt_q :
-                 clr     ? cnt_q + 1'b1 : cnt_q;
-
-  logic clr_key;
-  assign clr_key = (clr_key_i != SideLoadClrIdle);
-
+  // clear all keys when selected by software, or when
+  // wipe command is received
   logic clr_all_keys;
-  assign clr_all_keys = !(clr_key_i inside {SideLoadClrIdle,
+  assign clr_all_keys = wipe_key_i |
+                        !(clr_key_i inside {SideLoadClrIdle,
                                             SideLoadClrAes,
                                             SideLoadClrKmac,
                                             SideLoadClrOtbn});
-
   logic aes_clr, kmac_clr, otbn_clr;
-  assign aes_clr  = clr & (clr_all_keys | (clr_key_i == SideLoadClrAes));
-  assign kmac_clr = clr & (clr_all_keys | (clr_key_i == SideLoadClrKmac));
-  assign otbn_clr = clr & (clr_all_keys | (clr_key_i == SideLoadClrOtbn));
+  assign aes_clr  = clr_all_keys | (clr_key_i == SideLoadClrAes);
+  assign kmac_clr = clr_all_keys | (clr_key_i == SideLoadClrKmac);
+  assign otbn_clr = clr_all_keys | (clr_key_i == SideLoadClrOtbn);
+
+  logic clr;
+  assign clr = aes_clr | kmac_clr | otbn_clr;
 
   always_comb begin
-
-    clr = 1'b0;
     keys_en = 1'b0;
     state_d = state_q;
+    fsm_err_o = 1'b0;
 
     unique case (state_q)
       StSideloadReset: begin
@@ -87,29 +107,17 @@ module keymgr_sideload_key_ctrl import keymgr_pkg::*;(
         end
       end
 
-      // when clear is received, delete the key and return to idle.
+      // when clear is received, delete the selected key
       // when wipe is received, delete the key and disable sideload until reboot.
       StSideloadIdle: begin
         keys_en = 1'b1;
-        if (wipe_key_i || clr_key) begin
-          state_d = wipe_key_i ? StSideloadWipe : StSideloadClear;
-        end
-      end
-
-      // if wipe asserts while clearing, follow the normal wipe protocol
-      StSideloadClear: begin
-        keys_en = 1'b0;
-        clr = 1'b1;
         if (wipe_key_i) begin
           state_d = StSideloadWipe;
-        end else if (!clr_key) begin
-          state_d = StSideloadIdle;
         end
       end
 
       StSideloadWipe: begin
         keys_en = 1'b0;
-        clr = 1'b1;
         if (!wipe_key_i) begin
           state_d = StSideloadStop;
         end
@@ -120,7 +128,10 @@ module keymgr_sideload_key_ctrl import keymgr_pkg::*;(
         keys_en = 1'b0;
       end
 
-      default:;
+      default: begin
+        fsm_err_o = 1'b1;
+      end
+
     endcase // unique case (state_q)
   end
 

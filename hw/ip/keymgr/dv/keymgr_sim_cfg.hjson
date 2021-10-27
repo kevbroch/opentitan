@@ -32,6 +32,7 @@
                 "{proj_root}/hw/dv/tools/dvsim/tests/intr_test.hjson",
                 "{proj_root}/hw/dv/tools/dvsim/tests/alert_test.hjson",
                 "{proj_root}/hw/dv/tools/dvsim/tests/tl_access_tests.hjson",
+                "{proj_root}/hw/dv/tools/dvsim/tests/shadow_reg_errors_tests.hjson",
                 "{proj_root}/hw/dv/tools/dvsim/tests/stress_tests.hjson"
                 ]
 
@@ -115,6 +116,11 @@
     {
       name: keymgr_cmd_invalid
       uvm_test_seq: keymgr_cmd_invalid_vseq
+    }
+
+    {
+      name: keymgr_sync_async_fault_cross
+      uvm_test_seq: keymgr_sync_async_fault_cross_vseq
     }
 
     {

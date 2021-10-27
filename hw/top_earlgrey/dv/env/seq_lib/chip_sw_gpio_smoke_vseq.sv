@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-// This test vseq is paired with SW test `sw/device/tests/dif_gpio_smoketest.c`.
+// This test vseq is paired with SW test `sw/device/tests/gpio_smoketest.c`.
 class chip_sw_gpio_smoke_vseq extends chip_sw_base_vseq;
   `uvm_object_utils(chip_sw_gpio_smoke_vseq)
 
@@ -28,9 +28,12 @@ class chip_sw_gpio_smoke_vseq extends chip_sw_base_vseq;
   endfunction
 
   virtual task cpu_init();
+    bit [7:0] byte_gpio_vals[];
     super.cpu_init();
     // Need to convert integer array to byte array.
-    sw_symbol_backdoor_overwrite(SW_SYM_GPIO_VALS, {<<byte{{<<int{gpio_vals}}}});
+    byte_gpio_vals = new[4 * num_gpio_vals];
+    byte_gpio_vals = {<<byte{{<<int{gpio_vals}}}};
+    sw_symbol_backdoor_overwrite(SW_SYM_GPIO_VALS, byte_gpio_vals);
   endtask
 
   virtual task body();

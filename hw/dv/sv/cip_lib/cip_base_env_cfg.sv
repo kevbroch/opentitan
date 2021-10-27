@@ -13,11 +13,18 @@ class cip_base_env_cfg #(type RAL_T = dv_base_reg_block) extends dv_base_env_cfg
 
   // Override this alert name at `initialize` if it's not as below
   string              tl_intg_alert_name = "fatal_fault";
+
   // If there is a bit in an "alert cause" register that will be set by a corrupt bus access, this
   // should be the name of that field (with syntax "reg.field"). Used by cip_base_scoreboard to
   // update the relevant field in the RAL model if it sees an error.
   // Format: tl_intg_alert_fields[ral.a_reg.a_field] = value
   uvm_reg_data_t      tl_intg_alert_fields[dv_base_reg_field];
+
+  // Similar as the associative array above, if DUT has shadow registers, these two associative
+  // arrays contains register fields related to shadow register's update and storage error status.
+  uvm_reg_data_t      shadow_update_err_status_fields[dv_base_reg_field];
+  uvm_reg_data_t      shadow_storage_err_status_fields[dv_base_reg_field];
+
   // Enables TL integrity generation & checking with *_user bits.
   // Assume ALL TL agents have integrity check enabled or disabled altogether.
   bit                 en_tl_intg_gen = 1;
@@ -26,11 +33,13 @@ class cip_base_env_cfg #(type RAL_T = dv_base_reg_block) extends dv_base_env_cfg
   push_pull_agent_cfg#(.DeviceDataWidth(EDN_DATA_WIDTH)) m_edn_pull_agent_cfg;
 
   // EDN clk freq setting, if EDN is present.
-  rand clk_freq_mhz_e edn_clk_freq_mhz;
+  rand uint edn_clk_freq_mhz;
+  rand clk_freq_diff_e tlul_and_edn_clk_freq_diff;
 
   // Common interfaces - intrrupts, alerts, edn clk.
-  intr_vif    intr_vif;
-  devmode_vif devmode_vif;
+  intr_vif            intr_vif;
+  devmode_vif         devmode_vif;
+  rst_shadowed_vif    rst_shadowed_vif;
   virtual clk_rst_if  edn_clk_rst_vif;
 
   // en_devmode default sets to 1 because all IPs' devmode_i is tied off internally to 1
@@ -38,6 +47,7 @@ class cip_base_env_cfg #(type RAL_T = dv_base_reg_block) extends dv_base_env_cfg
   bit  has_devmode = 1;
   bit  en_devmode = 1;
   bit  has_edn = 0;
+  bit  has_shadowed_regs = 0;
 
   uint num_interrupts;
 
@@ -45,6 +55,24 @@ class cip_base_env_cfg #(type RAL_T = dv_base_reg_block) extends dv_base_env_cfg
   // function is called
   string list_of_alerts[] = {};
 
+  constraint edn_clk_freq_mhz_c {
+    solve tlul_and_edn_clk_freq_diff before edn_clk_freq_mhz;
+
+    if (tlul_and_edn_clk_freq_diff == ClkFreqDiffNone) {
+      edn_clk_freq_mhz == clk_freq_mhz;
+    } else if (tlul_and_edn_clk_freq_diff == ClkFreqDiffSmall) {
+      edn_clk_freq_mhz != clk_freq_mhz;
+      // This could have used a function, but per the LRM that could cause circular
+      // constraints against the "solve ... before" above. Same thing below for the
+      // "big" setting.
+      (edn_clk_freq_mhz - clk_freq_mhz) inside {[-2 : 2]};
+    } else if (tlul_and_edn_clk_freq_diff == ClkFreqDiffBig) {
+      // max diff is 100-24=76
+      !((edn_clk_freq_mhz - clk_freq_mhz) inside {[-70 : 70]});
+    }
+
+    `DV_COMMON_CLK_CONSTRAINT(edn_clk_freq_mhz)
+  }
   `uvm_object_param_utils_begin(cip_base_env_cfg #(RAL_T))
     `uvm_field_aa_object_string(m_tl_agent_cfgs,   UVM_DEFAULT)
     `uvm_field_aa_object_string(m_alert_agent_cfg, UVM_DEFAULT)

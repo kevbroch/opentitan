@@ -1222,6 +1222,14 @@ class kmac_scoreboard extends cip_base_scoreboard #(
                               // latched by the flushing logic.
                               // We can also increment the fifo_rd_ptr and increment
                               // num_blocks_filled as a result.
+                              //
+                              // We need to also check the exact timestep that this code starts
+                              // executing, so insert a zero delay.
+                              #0;
+                              if (fifo_wr_ptr > fifo_rd_ptr) begin
+                                do_increment = 1;
+                                incr_fifo_wr_in_flush = 1;
+                              end
                               @(fifo_wr_ptr);
                               incr_fifo_wr_in_flush = 1;
                               do_increment = 1;
@@ -1888,7 +1896,7 @@ class kmac_scoreboard extends cip_base_scoreboard #(
 
     bit     do_read_check         = 1'b1;
     bit     write                 = item.is_write();
-    uvm_reg_addr_t csr_addr       = ral.get_word_aligned_addr(item.a_addr);
+    uvm_reg_addr_t csr_addr       = cfg.ral_models[ral_name].get_word_aligned_addr(item.a_addr);
     bit [TL_AW-1:0] csr_addr_mask = ral.get_addr_mask();
 
     bit addr_phase_read   = (!write && channel == AddrChannel);
@@ -1898,7 +1906,7 @@ class kmac_scoreboard extends cip_base_scoreboard #(
 
     // if access was to a valid csr, get the csr handle
     if (csr_addr inside {cfg.ral_models[ral_name].csr_addrs}) begin
-      csr = ral.default_map.get_reg_by_offset(csr_addr);
+      csr = cfg.ral_models[ral_name].default_map.get_reg_by_offset(csr_addr);
       `DV_CHECK_NE_FATAL(csr, null)
       `downcast(check_locked_reg, csr)
 
@@ -2062,11 +2070,20 @@ class kmac_scoreboard extends cip_base_scoreboard #(
         // TODO - handle error cases
         if (addr_phase_write) begin
           if (app_fsm_active) begin
+            // As per designer comment in https://github.com/lowRISC/opentitan/issues/7716,
+            // if CmdStart is sent during an active App operation, KMAC will throw
+            // ErrSwIssuedCmdInAppActive, but for any other command the KMAC will throw a
+            // ErrSwCmdSequence.
             if (kmac_cmd_e'(item.a_data) != CmdNone) begin
-              kmac_err.valid  = 1;
-              kmac_err.code   = kmac_pkg::ErrSwIssuedCmdInAppActive;
-              kmac_err.info   = 24'(item.a_data);
-
+              if (kmac_cmd_e'(item.a_data) == CmdStart) begin
+                kmac_err.valid = 1;
+                kmac_err.code  = kmac_pkg::ErrSwIssuedCmdInAppActive;
+                kmac_err.info  = 24'(item.a_data);
+              end begin
+                kmac_err.valid = 1;
+                kmac_err.code  = kmac_pkg::ErrSwCmdSequence;
+                kmac_err.info  = 24'(item.a_data);
+              end
               predict_err(.is_kmac_err(1));
             end
           end else begin
@@ -2396,6 +2413,11 @@ class kmac_scoreboard extends cip_base_scoreboard #(
       void'(ral.err_code.predict(.value(TL_DW'(sha3_err)), .kind(UVM_PREDICT_DIRECT)));
     end else if (is_kmac_err) begin
       void'(ral.err_code.predict(.value(TL_DW'(kmac_err)), .kind(UVM_PREDICT_DIRECT)));
+    end
+
+    // collect coverage
+    if (cfg.en_cov) begin
+      cov.error_cg.sample(kmac_err.code, unchecked_kmac_cmd, hash_mode, strength);
     end
 
     kmac_err = '{valid: 1'b0,

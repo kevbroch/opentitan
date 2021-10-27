@@ -30,20 +30,26 @@ module spi_device
   output logic [3:0] cio_sd_en_o,
   input        [3:0] cio_sd_i,
 
+  input              cio_tpm_csb_i,
+
   // Passthrough interface
   output spi_device_pkg::passthrough_req_t passthrough_o,
   input  spi_device_pkg::passthrough_rsp_t passthrough_i,
 
   // Interrupts
-  output logic intr_rxf_o,         // RX FIFO Full
-  output logic intr_rxlvl_o,       // RX FIFO above level
-  output logic intr_txlvl_o,       // TX FIFO below level
-  output logic intr_rxerr_o,       // RX Frame error
-  output logic intr_rxoverflow_o,  // RX Async FIFO Overflow
-  output logic intr_txunderflow_o, // TX Async FIFO Underflow
+  output logic intr_rx_full_o,              // RX FIFO Full
+  output logic intr_rx_watermark_o,         // RX FIFO above level
+  output logic intr_tx_watermark_o,         // TX FIFO below level
+  output logic intr_rx_error_o,             // RX Frame error
+  output logic intr_rx_overflow_o,          // RX Async FIFO Overflow
+  output logic intr_tx_underflow_o,         // TX Async FIFO Underflow
+  output logic intr_tpm_header_not_empty_o, // TPM Command/Address buffer
 
   // Memory configuration
   input prim_ram_2p_pkg::ram_2p_cfg_t ram_cfg_i,
+
+  // External clock sensor
+  output logic sck_monitor_o,
 
   // DFT related controls
   input mbist_en_i,
@@ -86,6 +92,7 @@ module spi_device
   logic              mem_a_write;
   logic [SramAw-1:0] mem_a_addr;
   logic [SramDw-1:0] mem_a_wdata;
+  logic [SramDw-1:0] mem_a_wmask;
   logic              mem_a_rvalid;
   logic [SramDw-1:0] mem_a_rdata;
   logic [1:0]        mem_a_rerror;
@@ -110,6 +117,38 @@ module spi_device
   logic [3:0] internal_sd, internal_sd_en;
   logic [3:0] passthrough_sd, passthrough_sd_en;
 
+  // Upload related interfaces (SRAM, FIFOs)
+  // Initially, SysSramEnd was the end of the enum variable. But lint tool
+  // raises errors the value being used in the parameter. So changed to
+  // localparam
+  typedef enum int unsigned {
+    SysSramFw       = 0,
+    SysSramCmdFifo  = 1,
+    SysSramAddrFifo = 2,
+    SysSramEnd      = 3
+  } sys_sram_e;
+
+  sram_l2m_t sys_sram_l2m [SysSramEnd]; // FW, CMDFIFO, ADDRFIFO
+  sram_m2l_t sys_sram_m2l [SysSramEnd];
+
+  logic       cmdfifo_rvalid, cmdfifo_rready;
+  logic [7:0] cmdfifo_rdata;
+  logic       cmdfifo_notempty;
+
+  logic        addrfifo_rvalid, addrfifo_rready;
+  logic [31:0] addrfifo_rdata;
+  logic        addrfifo_notempty;
+
+  localparam int unsigned CmdFifoPtrW = $clog2(SramCmdFifoDepth+1);
+  localparam int unsigned AddrFifoPtrW = $clog2(SramAddrFifoDepth+1);
+
+  localparam int unsigned PayloadByte = SramPayloadDepth * (SramDw/$bits(spi_byte_t));
+  localparam int unsigned PayloadDepthW = $clog2(PayloadByte+1);
+
+  logic [CmdFifoPtrW-1:0]    cmdfifo_depth;
+  logic [AddrFifoPtrW-1:0]   addrfifo_depth;
+  logic [PayloadDepthW-1:0]  payload_depth;
+
   /////////////////////
   // Control signals //
   /////////////////////
@@ -131,7 +170,6 @@ module spi_device
   //spi_addr_size_e addr_size; // Not used in fwmode
   spi_mode_e spi_mode;
   //spi_byte_t fw_dummy_byte;
-  logic [255:0] cfg_upload_mask;
   logic cfg_addr_4b_en;
 
   logic intr_sram_rxf_full, intr_fwm_rxerr;
@@ -184,6 +222,9 @@ module spi_device
   // Mailbox in Passthrough needs to take SPI if readcmd hits mailbox address
   logic mailbox_assumed, passthrough_assumed_by_internal;
 
+  logic cfg_mailbox_en;
+  logic [31:0] mailbox_addr;
+
   // Threshold value of a buffer in bytes
   logic [BufferAw:0] readbuf_threshold;
 
@@ -210,6 +251,48 @@ module spi_device
 
   // Jedec ID
   logic [23:0] jedec_id;
+
+  // TPM ===============================================================
+  localparam int unsigned TpmFifoDepth    = 4; // 4B
+  localparam int unsigned TpmFifoPtrW     = $clog2(TpmFifoDepth+1);
+
+  // pulse signal to set once from tpm_status_cmdaddr_notempty
+  logic intr_tpm_cmdaddr_notempty;
+
+  // Interface
+  logic tpm_mosi, tpm_miso, tpm_miso_en;
+  assign tpm_mosi = cio_sd_i[0];
+
+  // Return-by-HW registers
+  logic [8*spi_device_reg_pkg::NumLocality-1:0] tpm_access;
+  logic [31:0]                                  tpm_int_enable;
+  logic [7:0]                                   tpm_int_vector;
+  logic [31:0]                                  tpm_int_status;
+  logic [31:0]                                  tpm_intf_capability;
+  logic [31:0]                                  tpm_status;
+  logic [31:0]                                  tpm_did_vid;
+  logic [7:0]                                   tpm_rid;
+
+  // Buffer and FIFO signals
+  logic        tpm_cmdaddr_rvalid, tpm_cmdaddr_rready;
+  logic [31:0] tpm_cmdaddr_rdata;
+  logic        tpm_wrfifo_rvalid, tpm_wrfifo_rready;
+  logic [7:0]  tpm_wrfifo_rdata;
+  logic        tpm_rdfifo_wvalid, tpm_rdfifo_wready;
+  logic [7:0]  tpm_rdfifo_wdata;
+
+  tpm_cap_t tpm_cap;
+
+  // TPM CFG
+  logic cfg_tpm_en, cfg_tpm_mode, cfg_tpm_hw_reg_dis;
+  logic cfg_tpm_invalid_locality, cfg_tpm_reg_chk_dis;
+
+  // TPM_STATUS
+  logic tpm_status_cmdaddr_notempty, tpm_status_rdfifo_notempty;
+  logic [TpmFifoPtrW-1:0] tpm_status_rdfifo_depth;
+  logic [TpmFifoPtrW-1:0] tpm_status_wrfifo_depth;
+
+  // TPM ---------------------------------------------------------------
 
   //////////////////////////////////////////////////////////////////////
   // Connect phase (between control signals above and register module //
@@ -285,9 +368,6 @@ module spi_device
 
   assign spi_mode = spi_mode_e'(reg2hw.control.mode.q);
 
-  // TODO: Define and connect masks.
-  assign cfg_upload_mask = '0;
-
   // Async FIFO level
   //  rx rdepth, tx wdepth to be in main clock domain
   assign hw2reg.async_fifo_level.txlvl.d  = {{(8-AsFifoDepthW){1'b0}}, as_txfifo_depth};
@@ -355,31 +435,96 @@ module spi_device
     .dst_pulse_o (intr_fwm_txunderflow)
   );
 
-  assign intr_rxlvl_o       = reg2hw.intr_enable.rxlvl.q       & reg2hw.intr_state.rxlvl.q;
-  assign intr_txlvl_o       = reg2hw.intr_enable.txlvl.q       & reg2hw.intr_state.txlvl.q;
-  assign intr_rxf_o         = reg2hw.intr_enable.rxf.q         & reg2hw.intr_state.rxf.q;
-  assign intr_rxerr_o       = reg2hw.intr_enable.rxerr.q       & reg2hw.intr_state.rxerr.q;
-  assign intr_rxoverflow_o  = reg2hw.intr_enable.rxoverflow.q  & reg2hw.intr_state.rxoverflow.q;
-  assign intr_txunderflow_o = reg2hw.intr_enable.txunderflow.q & reg2hw.intr_state.txunderflow.q;
+  prim_intr_hw #(.Width(1)) u_intr_rxf (
+    .clk_i,
+    .rst_ni,
+    .event_intr_i           (intr_sram_rxf_full          ),
+    .reg2hw_intr_enable_q_i (reg2hw.intr_enable.rx_full.q),
+    .reg2hw_intr_test_q_i   (reg2hw.intr_test.rx_full.q  ),
+    .reg2hw_intr_test_qe_i  (reg2hw.intr_test.rx_full.qe ),
+    .reg2hw_intr_state_q_i  (reg2hw.intr_state.rx_full.q ),
+    .hw2reg_intr_state_de_o (hw2reg.intr_state.rx_full.de),
+    .hw2reg_intr_state_d_o  (hw2reg.intr_state.rx_full.d ),
+    .intr_o                 (intr_rx_full_o              )
+  );
 
-  assign hw2reg.intr_state.rxf.d    = 1'b1;
-  assign hw2reg.intr_state.rxf.de   = intr_sram_rxf_full |
-                                      (reg2hw.intr_test.rxf.qe   & reg2hw.intr_test.rxf.q);
-  assign hw2reg.intr_state.rxerr.d  = 1'b1;
-  assign hw2reg.intr_state.rxerr.de = intr_fwm_rxerr |
-                                      (reg2hw.intr_test.rxerr.qe & reg2hw.intr_test.rxerr.q);
-  assign hw2reg.intr_state.rxlvl.d  = 1'b1;
-  assign hw2reg.intr_state.rxlvl.de = intr_fwm_rxlvl |
-                                      (reg2hw.intr_test.rxlvl.qe & reg2hw.intr_test.rxlvl.q);
-  assign hw2reg.intr_state.txlvl.d  = 1'b1;
-  assign hw2reg.intr_state.txlvl.de = intr_fwm_txlvl |
-                                      (reg2hw.intr_test.txlvl.qe & reg2hw.intr_test.txlvl.q);
-  assign hw2reg.intr_state.rxoverflow.d   = 1'b1;
-  assign hw2reg.intr_state.rxoverflow.de  = intr_fwm_rxoverflow |
-      (reg2hw.intr_test.rxoverflow.qe  & reg2hw.intr_test.rxoverflow.q);
-  assign hw2reg.intr_state.txunderflow.d  = 1'b1;
-  assign hw2reg.intr_state.txunderflow.de = intr_fwm_txunderflow |
-      (reg2hw.intr_test.txunderflow.qe & reg2hw.intr_test.txunderflow.q);
+  prim_intr_hw #(.Width(1)) u_intr_rxlvl (
+    .clk_i,
+    .rst_ni,
+    .event_intr_i           (intr_fwm_rxlvl                   ),
+    .reg2hw_intr_enable_q_i (reg2hw.intr_enable.rx_watermark.q),
+    .reg2hw_intr_test_q_i   (reg2hw.intr_test.rx_watermark.q  ),
+    .reg2hw_intr_test_qe_i  (reg2hw.intr_test.rx_watermark.qe ),
+    .reg2hw_intr_state_q_i  (reg2hw.intr_state.rx_watermark.q ),
+    .hw2reg_intr_state_de_o (hw2reg.intr_state.rx_watermark.de),
+    .hw2reg_intr_state_d_o  (hw2reg.intr_state.rx_watermark.d ),
+    .intr_o                 (intr_rx_watermark_o              )
+  );
+
+  prim_intr_hw #(.Width(1)) u_intr_txlvl (
+    .clk_i,
+    .rst_ni,
+    .event_intr_i           (intr_fwm_txlvl                   ),
+    .reg2hw_intr_enable_q_i (reg2hw.intr_enable.tx_watermark.q),
+    .reg2hw_intr_test_q_i   (reg2hw.intr_test.tx_watermark.q  ),
+    .reg2hw_intr_test_qe_i  (reg2hw.intr_test.tx_watermark.qe ),
+    .reg2hw_intr_state_q_i  (reg2hw.intr_state.tx_watermark.q ),
+    .hw2reg_intr_state_de_o (hw2reg.intr_state.tx_watermark.de),
+    .hw2reg_intr_state_d_o  (hw2reg.intr_state.tx_watermark.d ),
+    .intr_o                 (intr_tx_watermark_o              )
+  );
+
+  prim_intr_hw #(.Width(1)) u_intr_rxerr (
+    .clk_i,
+    .rst_ni,
+    .event_intr_i           (intr_fwm_rxerr               ),
+    .reg2hw_intr_enable_q_i (reg2hw.intr_enable.rx_error.q),
+    .reg2hw_intr_test_q_i   (reg2hw.intr_test.rx_error.q  ),
+    .reg2hw_intr_test_qe_i  (reg2hw.intr_test.rx_error.qe ),
+    .reg2hw_intr_state_q_i  (reg2hw.intr_state.rx_error.q ),
+    .hw2reg_intr_state_de_o (hw2reg.intr_state.rx_error.de),
+    .hw2reg_intr_state_d_o  (hw2reg.intr_state.rx_error.d ),
+    .intr_o                 (intr_rx_error_o              )
+  );
+
+  prim_intr_hw #(.Width(1)) u_intr_rxoverflow (
+    .clk_i,
+    .rst_ni,
+    .event_intr_i           (intr_fwm_rxoverflow             ),
+    .reg2hw_intr_enable_q_i (reg2hw.intr_enable.rx_overflow.q),
+    .reg2hw_intr_test_q_i   (reg2hw.intr_test.rx_overflow.q  ),
+    .reg2hw_intr_test_qe_i  (reg2hw.intr_test.rx_overflow.qe ),
+    .reg2hw_intr_state_q_i  (reg2hw.intr_state.rx_overflow.q ),
+    .hw2reg_intr_state_de_o (hw2reg.intr_state.rx_overflow.de),
+    .hw2reg_intr_state_d_o  (hw2reg.intr_state.rx_overflow.d ),
+    .intr_o                 (intr_rx_overflow_o              )
+  );
+
+  prim_intr_hw #(.Width(1)) u_intr_txunderflow (
+    .clk_i,
+    .rst_ni,
+    .event_intr_i           (intr_fwm_txunderflow             ),
+    .reg2hw_intr_enable_q_i (reg2hw.intr_enable.tx_underflow.q),
+    .reg2hw_intr_test_q_i   (reg2hw.intr_test.tx_underflow.q  ),
+    .reg2hw_intr_test_qe_i  (reg2hw.intr_test.tx_underflow.qe ),
+    .reg2hw_intr_state_q_i  (reg2hw.intr_state.tx_underflow.q ),
+    .hw2reg_intr_state_de_o (hw2reg.intr_state.tx_underflow.de),
+    .hw2reg_intr_state_d_o  (hw2reg.intr_state.tx_underflow.d ),
+    .intr_o                 (intr_tx_underflow_o              )
+  );
+
+  prim_intr_hw #(.Width(1)) u_intr_tpm_cmdaddr_notempty (
+    .clk_i,
+    .rst_ni,
+    .event_intr_i           (intr_tpm_cmdaddr_notempty                ),
+    .reg2hw_intr_enable_q_i (reg2hw.intr_enable.tpm_header_not_empty.q),
+    .reg2hw_intr_test_q_i   (reg2hw.intr_test.tpm_header_not_empty.q  ),
+    .reg2hw_intr_test_qe_i  (reg2hw.intr_test.tpm_header_not_empty.qe ),
+    .reg2hw_intr_state_q_i  (reg2hw.intr_state.tpm_header_not_empty.q ),
+    .hw2reg_intr_state_d_o  (hw2reg.intr_state.tpm_header_not_empty.d ),
+    .hw2reg_intr_state_de_o (hw2reg.intr_state.tpm_header_not_empty.de),
+    .intr_o                 (intr_tpm_header_not_empty_o              )
+  );
 
   // SPI Flash commands registers
   // TODO: Add 2FF sync? or just waive?
@@ -397,6 +542,12 @@ module spi_device
   assign jedec_id = {reg2hw.jedec_id.mf.q, reg2hw.jedec_id.id.q};
 
   assign readbuf_threshold = reg2hw.read_threshold.q[BufferAw:0];
+
+  localparam int unsigned MailboxAw = $clog2(SramMailboxDepth*SramDw/8);
+  assign cfg_mailbox_en = reg2hw.cfg.mailbox_en.q;
+  assign mailbox_addr   = { reg2hw.mailbox_addr.q[31:MailboxAw],
+                            {MailboxAw{1'b0}}
+                          };
 
   // Passthrough config: value shall be stable while SPI transaction is active
   //assign cmd_filter = reg2hw.cmd_filter.q;
@@ -421,7 +572,9 @@ module spi_device
         dummy_en:         reg2hw.cmd_info[i].dummy_en.q,
         dummy_size:       reg2hw.cmd_info[i].dummy_size.q,
         payload_en:       reg2hw.cmd_info[i].payload_en.q,
-        payload_dir:      payload_dir_e'(reg2hw.cmd_info[i].payload_dir.q)
+        payload_dir:      payload_dir_e'(reg2hw.cmd_info[i].payload_dir.q),
+        upload:           reg2hw.cmd_info[i].upload.q,
+        busy:             reg2hw.cmd_info[i].busy.q
       };
     end
   end
@@ -452,6 +605,7 @@ module spi_device
     .scanmode_i(scanmode[ClkInvSel] == lc_ctrl_pkg::On)
   );
 
+  assign sck_monitor_o = cio_sck_i;
   assign clk_spi_in  = (cpha ^ cpol) ? sck_n    : cio_sck_i   ;
   assign clk_spi_out = (cpha ^ cpol) ? cio_sck_i    : sck_n   ;
 
@@ -547,7 +701,9 @@ module spi_device
     .clk_o  (sram_clk_muxed)
   );
 
-  prim_clock_gating u_sram_clk_cg (
+  prim_clock_gating #(
+    .FpgaBufGlobal(1'b0)
+  ) u_sram_clk_cg (
     .clk_i  (sram_clk_muxed),
     .en_i   (sram_clk_en),
     .test_en_i ((scanmode[ClkSramSel] == lc_ctrl_pkg::On) | mbist_en_i),
@@ -674,7 +830,7 @@ module spi_device
 
             // Leave SRAM default;
           end
-          DpReadCmd: begin
+          DpReadCmd, DpReadSFDP: begin
             io_mode = sub_iomode[IoModeReadCmd];
 
             p2s_valid = sub_p2s_valid[IoModeReadCmd];
@@ -696,15 +852,24 @@ module spi_device
             // default memory (tied)
           end
 
-          DpReadSFDP: begin
+          DpReadJEDEC: begin
             io_mode = sub_iomode[IoModeJedec];
 
             p2s_valid = sub_p2s_valid[IoModeJedec];
             p2s_data  = sub_p2s_data[IoModeJedec];
             sub_p2s_sent[IoModeJedec] = p2s_sent;
           end
-          // DpReadJEDEC:
-          // DpUpload:
+
+          DpUpload: begin
+            io_mode = sub_iomode[IoModeUpload];
+
+            p2s_valid = sub_p2s_valid[IoModeUpload];
+            p2s_data  = sub_p2s_data[IoModeUpload];
+            sub_p2s_sent[IoModeUpload] = p2s_sent;
+
+            mem_b_l2m = sub_sram_l2m[IoModeUpload];
+            sub_sram_m2l[IoModeUpload] = mem_b_m2l;
+          end
           // DpUnknown:
           default: begin
             io_mode = sub_iomode[IoModeCmdParse];
@@ -725,27 +890,35 @@ module spi_device
     cio_sd_o    = internal_sd;
     cio_sd_en_o = internal_sd_en;
 
-    unique case (spi_mode)
-      FwMode, FlashMode: begin
-        cio_sd_o    = internal_sd;
-        cio_sd_en_o = internal_sd_en;
-      end
+    if (cfg_tpm_en && !cio_tpm_csb_i) begin : miso_tpm
+      // TPM transaction is on-going. MOSI, MISO is being used by TPM
+      cio_sd_o    = {2'b 00, tpm_miso,    1'b 0};
+      cio_sd_en_o = {2'b 00, tpm_miso_en, 1'b 0};
 
-      PassThrough: begin
-        if (passthrough_assumed_by_internal) begin
+    end else begin : spi_out_flash_passthrough
+      // SPI Generic, Flash, Passthrough modes
+      unique case (spi_mode)
+        FwMode, FlashMode: begin
           cio_sd_o    = internal_sd;
           cio_sd_en_o = internal_sd_en;
-        end else begin
-          cio_sd_o    = passthrough_sd;
-          cio_sd_en_o = passthrough_sd_en;
         end
-      end
 
-      default: begin
-        cio_sd_o    = internal_sd;
-        cio_sd_en_o = internal_sd_en;
-      end
-    endcase
+        PassThrough: begin
+          if (passthrough_assumed_by_internal) begin
+            cio_sd_o    = internal_sd;
+            cio_sd_en_o = internal_sd_en;
+          end else begin
+            cio_sd_o    = passthrough_sd;
+            cio_sd_en_o = passthrough_sd_en;
+          end
+        end
+
+        default: begin
+          cio_sd_o    = internal_sd;
+          cio_sd_en_o = internal_sd_en;
+        end
+      endcase
+    end
   end
   assign passthrough_assumed_by_internal = mailbox_assumed
     // TOGO: Uncomment below when those submodules are implemented.
@@ -868,8 +1041,6 @@ module spi_device
 
     .spi_mode_i   (spi_mode),
 
-    .upload_mask_i(cfg_upload_mask),
-
     .cmd_info_i   (cmd_info),
 
     .io_mode_o    (sub_iomode[IoModeCmdParse]),
@@ -916,8 +1087,8 @@ module spi_device
 
     .addr_4b_en_i (cfg_addr_4b_en),
 
-    .mailbox_en_i      (1'b 0),
-    .mailbox_addr_i    ('0), // 32
+    .mailbox_en_i      (cfg_mailbox_en ),
+    .mailbox_addr_i    (mailbox_addr   ),
     .mailbox_assumed_o (mailbox_assumed),
 
     .readbuf_address_o (readbuf_addr_sck),
@@ -973,8 +1144,6 @@ module spi_device
   // Temporary:
   logic unused_busy;
   assign unused_busy = status_busy_broadcast;
-  // TODO: replace to the output of upload module
-  assign status_busy_set = 1'b 0;
 
   // Tie unused
   logic unused_sub_sram_status;
@@ -1014,12 +1183,107 @@ module spi_device
   };
   assign sub_sram_l2m[IoModeJedec] = '0;
 
+  // Begin: Upload ===================================================
+  spid_upload #(
+    .CmdFifoBaseAddr  (SramCmdFifoIdx),
+    .CmdFifoDepth     (SramCmdFifoDepth),
+    .AddrFifoBaseAddr (SramAddrFifoIdx),
+    .AddrFifoDepth    (SramAddrFifoDepth),
+    .PayloadBaseAddr  (SramPayloadIdx),
+    .PayloadDepth     (SramPayloadDepth),
+
+    .SpiByte ($bits(spi_byte_t))
+  ) u_upload (
+    .clk_i  (clk_spi_in_buf),
+    .rst_ni (rst_spi_n),
+
+    .sys_clk_i  (clk_i),
+    .sys_rst_ni (rst_ni),
+
+    .sys_csb_deasserted_pulse_i (csb_deasserted_busclk),
+
+    .sel_dp_i (cmd_dp_sel),
+
+    .sck_sram_o (sub_sram_l2m[IoModeUpload]),
+    .sck_sram_i (sub_sram_m2l[IoModeUpload]),
+
+    .sys_cmdfifo_sram_o (sys_sram_l2m[SysSramCmdFifo]),
+    .sys_cmdfifo_sram_i (sys_sram_m2l[SysSramCmdFifo]),
+
+    .sys_addrfifo_sram_o (sys_sram_l2m[SysSramAddrFifo]),
+    .sys_addrfifo_sram_i (sys_sram_m2l[SysSramAddrFifo]),
+
+    // SYS clock FIFO interface
+    .sys_cmdfifo_rvalid_o (cmdfifo_rvalid),
+    .sys_cmdfifo_rready_i (cmdfifo_rready),
+    .sys_cmdfifo_rdata_o  (cmdfifo_rdata),
+
+    .sys_addrfifo_rvalid_o (addrfifo_rvalid),
+    .sys_addrfifo_rready_i (addrfifo_rready),
+    .sys_addrfifo_rdata_o  (addrfifo_rdata),
+
+    // Interface: SPI to Parallel
+    .s2p_valid_i  (s2p_data_valid),
+    .s2p_byte_i   (s2p_data),
+    .s2p_bitcnt_i (s2p_bitcnt),
+
+    // Interface: Parallel to SPI
+    .p2s_valid_o (sub_p2s_valid[IoModeUpload]),
+    .p2s_data_o  (sub_p2s_data [IoModeUpload]),
+    .p2s_sent_i  (sub_p2s_sent [IoModeUpload]),
+
+    .spi_mode_i (spi_mode),
+
+    .cfg_addr_4b_en_i (cfg_addr_4b_en),
+
+    .cmd_info_i     (cmd_info_broadcast),
+    .cmd_info_idx_i (cmd_info_idx_broadcast),
+
+    .io_mode_o (sub_iomode[IoModeUpload]),
+
+    .set_busy_o (status_busy_set),
+
+    .sys_cmdfifo_notempty_o  (cmdfifo_notempty),
+    .sys_cmdfifo_full_o      (), // not used
+    .sys_addrfifo_notempty_o (addrfifo_notempty),
+    .sys_addrfifo_full_o     (), // not used
+
+    .sys_cmdfifo_depth_o  (cmdfifo_depth),
+    .sys_addrfifo_depth_o (addrfifo_depth),
+    .sys_payload_depth_o  (payload_depth)
+  );
+  // FIFO connect
+  assign cmdfifo_rready = reg2hw.upload_cmdfifo.re;
+  assign hw2reg.upload_cmdfifo.d = cmdfifo_rdata;
+  logic unused_cmdfifo_q;
+  assign unused_cmdfifo_q = ^{reg2hw.upload_cmdfifo.q, cmdfifo_rvalid};
+
+  assign addrfifo_rready = reg2hw.upload_addrfifo.re;
+  assign hw2reg.upload_addrfifo.d = addrfifo_rdata;
+  logic unused_addrfifo_q;
+  assign unused_addrfifo_q = ^{reg2hw.upload_addrfifo.q, addrfifo_rvalid};
+
+  // Connect UPLOAD_STATUS
+  assign hw2reg.upload_status.cmdfifo_depth.de = 1'b1;
+  assign hw2reg.upload_status.cmdfifo_depth.d  = cmdfifo_depth;
+
+  assign hw2reg.upload_status.cmdfifo_notempty.de = 1'b1;
+  assign hw2reg.upload_status.cmdfifo_notempty.d  = cmdfifo_notempty;
+
+  assign hw2reg.upload_status.addrfifo_depth.de = 1'b 1;
+  assign hw2reg.upload_status.addrfifo_depth.d  = addrfifo_depth;
+
+  assign hw2reg.upload_status.addrfifo_notempty.de = 1'b 1;
+  assign hw2reg.upload_status.addrfifo_notempty.d  = addrfifo_notempty;
+
+  assign hw2reg.upload_status.payload_depth.de = 1'b 1;
+  assign hw2reg.upload_status.payload_depth.d  = payload_depth;
+
+  // End:   Upload ---------------------------------------------------
   /////////////////////
   // SPI Passthrough //
   /////////////////////
-  spi_passthrough #(
-    .NumCmdInfo(spi_device_reg_pkg::NumCmdInfo)
-  ) u_passthrough (
+  spi_passthrough u_passthrough (
     .clk_i     (clk_spi_in_buf),
     .rst_ni    (rst_spi_n),
     .clk_out_i (clk_spi_out_buf),
@@ -1052,9 +1316,151 @@ module spi_device
     .event_cmd_filtered_o ()
   );
 
+  //////////////////
+  // TPM over SPI //
+  //////////////////
+  // Interrupt: Creating a pulse signal
+  prim_edge_detector #(
+    .Width (1),
+    .EnSync (1'b 0)
+  ) u_cmdaddr_notempty_edge (
+    .clk_i,
+    .rst_ni,
+    .d_i               (tpm_status_cmdaddr_notempty),
+    .q_sync_o          (),
+    .q_posedge_pulse_o (intr_tpm_cmdaddr_notempty),
+    .q_negedge_pulse_o ()
+  );
+
+  // Instance of spi_tpm
+  spi_tpm #(
+    // CmdAddrFifoDepth
+    .WrFifoDepth (TpmFifoDepth),
+    .RdFifoDepth (TpmFifoDepth),
+    .EnLocality  (1)
+  ) u_spi_tpm (
+    .clk_in_i  (clk_spi_in_buf ),
+    .clk_out_i (clk_spi_out_buf),
+
+    .sys_clk_i  (clk_i),
+    .sys_rst_ni (rst_ni),
+
+    .scan_rst_ni,
+    .scanmode_i  (scanmode[TpmRstSel]),
+
+    .csb_i     (cio_tpm_csb_i),
+    .mosi_i    (tpm_mosi     ),
+    .miso_o    (tpm_miso     ),
+    .miso_en_o (tpm_miso_en  ),
+
+    .tpm_cap_o (tpm_cap),
+
+    .cfg_tpm_en_i               (cfg_tpm_en              ),
+    .cfg_tpm_mode_i             (cfg_tpm_mode            ),
+    .cfg_tpm_hw_reg_dis_i       (cfg_tpm_hw_reg_dis      ),
+    .cfg_tpm_reg_chk_dis_i      (cfg_tpm_reg_chk_dis     ),
+    .cfg_tpm_invalid_locality_i (cfg_tpm_invalid_locality),
+
+    .sys_access_reg_i          (tpm_access         ),
+    .sys_int_enable_reg_i      (tpm_int_enable     ),
+    .sys_int_vector_reg_i      (tpm_int_vector     ),
+    .sys_int_status_reg_i      (tpm_int_status     ),
+    .sys_intf_capability_reg_i (tpm_intf_capability),
+    .sys_status_reg_i          (tpm_status         ),
+    .sys_id_reg_i              (tpm_did_vid        ),
+    .sys_rid_reg_i             (tpm_rid            ),
+
+    .sys_cmdaddr_rvalid_o (tpm_cmdaddr_rvalid),
+    .sys_cmdaddr_rdata_o  (tpm_cmdaddr_rdata ),
+    .sys_cmdaddr_rready_i (tpm_cmdaddr_rready),
+
+    .sys_wrfifo_rvalid_o (tpm_wrfifo_rvalid),
+    .sys_wrfifo_rdata_o  (tpm_wrfifo_rdata ),
+    .sys_wrfifo_rready_i (tpm_wrfifo_rready),
+
+    .sys_rdfifo_wvalid_i (tpm_rdfifo_wvalid),
+    .sys_rdfifo_wdata_i  (tpm_rdfifo_wdata ),
+    .sys_rdfifo_wready_o (tpm_rdfifo_wready),
+
+    .sys_cmdaddr_notempty_o (tpm_status_cmdaddr_notempty),
+    .sys_rdfifo_notempty_o  (tpm_status_rdfifo_notempty ),
+    .sys_rdfifo_depth_o     (tpm_status_rdfifo_depth    ),
+    .sys_wrfifo_depth_o     (tpm_status_wrfifo_depth    )
+  );
+
+  // Register connection
+  //  TPM_CAP:
+  assign hw2reg.tpm_cap = '{
+    rev:           '{ de: 1'b 1, d: tpm_cap.rev           },
+    locality:      '{ de: 1'b 1, d: tpm_cap.locality      },
+    max_xfer_size: '{ de: 1'b 1, d: tpm_cap.max_xfer_size }
+  };
+
+  //  CFG:
+  assign cfg_tpm_en               = reg2hw.tpm_cfg.en.q;
+  assign cfg_tpm_mode             = reg2hw.tpm_cfg.tpm_mode.q;
+  assign cfg_tpm_hw_reg_dis       = reg2hw.tpm_cfg.hw_reg_dis.q;
+  assign cfg_tpm_reg_chk_dis      = reg2hw.tpm_cfg.tpm_reg_chk_dis.q;
+  assign cfg_tpm_invalid_locality = reg2hw.tpm_cfg.invalid_locality.q;
+
+  //  STATUS:
+  assign hw2reg.tpm_status = '{
+    cmdaddr_notempty: '{ de: 1'b 1, d: tpm_status_cmdaddr_notempty },
+    rdfifo_notempty:  '{ de: 1'b 1, d: tpm_status_rdfifo_notempty  },
+    rdfifo_depth:     '{ de: 1'b 1, d: tpm_status_rdfifo_depth     },
+    wrfifo_depth:     '{ de: 1'b 1, d: tpm_status_wrfifo_depth     }
+  };
+
+  //  Return-by-HW registers:
+  //    TPM_ACCESS_x, TPM_STS_x, TPM_INT_ENABLE, TPM_INT_VECTOR,
+  //    TPM_INT_STATUS, TPM_INTF_CAPABILITY, TPM_DID_VID, TPM_RID
+  for (genvar i = 0 ; i < NumLocality ; i++) begin : g_tpm_access
+    assign tpm_access[8*i+:8] = reg2hw.tpm_access[i].q;
+  end : g_tpm_access
+
+  assign tpm_int_enable      = reg2hw.tpm_int_enable.q;
+  assign tpm_int_vector      = reg2hw.tpm_int_vector.q;
+  assign tpm_int_status      = reg2hw.tpm_int_status.q;
+  assign tpm_intf_capability = reg2hw.tpm_intf_capability.q;
+  assign tpm_status          = reg2hw.tpm_sts.q;
+  assign tpm_did_vid         = { reg2hw.tpm_did_vid.did.q ,
+                                 reg2hw.tpm_did_vid.vid.q };
+  assign tpm_rid             = reg2hw.tpm_rid.q;
+
+  // Command / Address Buffer
+  logic  unused_tpm_cmdaddr;
+  assign unused_tpm_cmdaddr = ^{tpm_cmdaddr_rvalid, reg2hw.tpm_cmd_addr};
+
+  assign tpm_cmdaddr_rready  = reg2hw.tpm_cmd_addr.cmd.re;
+  assign hw2reg.tpm_cmd_addr = '{
+    addr: tpm_cmdaddr_rdata[23: 0],
+    cmd:  tpm_cmdaddr_rdata[31:24]
+  };
+
+  // Write FIFO (read by SW)
+  logic  unused_tpm_wrfifo;
+  assign unused_tpm_wrfifo= ^{tpm_wrfifo_rvalid, reg2hw.tpm_write_fifo};
+
+  assign tpm_wrfifo_rready = reg2hw.tpm_write_fifo.re;
+
+  assign hw2reg.tpm_write_fifo.d = tpm_wrfifo_rdata;
+
+  // Read FIFO (write by SW)
+  logic  unused_tpm_rdfifo;
+  assign unused_tpm_rdfifo= tpm_rdfifo_wready;
+
+  assign tpm_rdfifo_wvalid = reg2hw.tpm_read_fifo.qe;
+  assign tpm_rdfifo_wdata  = reg2hw.tpm_read_fifo.q;
+
+  `ASSUME(TpmRdfifoNotFull_A, tpm_rdfifo_wvalid |-> tpm_rdfifo_wready)
+
+  // END: TPM over SPI --------------------------------------------------------
+
   ////////////////////
   // Common modules //
   ////////////////////
+
+  logic [SramDw-1:0] sys_sram_l2m_fw_wmask;
 
   tlul_adapter_sram #(
     .SramAw      (SramAw),
@@ -1067,18 +1473,78 @@ module spi_device
 
     .tl_i        (tl_sram_h2d),
     .tl_o        (tl_sram_d2h),
-    .en_ifetch_i (tlul_pkg::InstrDis),
-    .req_o       (mem_a_req),
+    .en_ifetch_i (prim_mubi_pkg::MuBi4False),
+    .req_o       (sys_sram_l2m[SysSramFw].req),
     .req_type_o  (),
-    .gnt_i       (mem_a_req),  //Always grant when request
-    .we_o        (mem_a_write),
-    .addr_o      (mem_a_addr),
-    .wdata_o     (mem_a_wdata),
-    .wmask_o     (),           // Not used
+    .gnt_i       (1'b1),  // TODO: Connect arbiter grant here
+    .we_o        (sys_sram_l2m[SysSramFw].we),
+    .addr_o      (sys_sram_l2m[SysSramFw].addr),
+    .wdata_o     (sys_sram_l2m[SysSramFw].wdata),
+    .wmask_o     (sys_sram_l2m_fw_wmask),           // Not used
     .intg_error_o(),
-    .rdata_i     (mem_a_rdata),
-    .rvalid_i    (mem_a_rvalid),
-    .rerror_i    (mem_a_rerror)
+    .rdata_i     (sys_sram_m2l[SysSramFw].rdata),
+    .rvalid_i    (sys_sram_m2l[SysSramFw].rvalid),
+    .rerror_i    (sys_sram_m2l[SysSramFw].rerror)
+  );
+  assign sys_sram_l2m[SysSramFw].wstrb = sram_mask2strb(sys_sram_l2m_fw_wmask);
+
+  // Arbiter among Upload CmdFifo/AddrFifo & FW access
+  logic [SysSramEnd-1:0] sys_sram_req                ;
+  logic [SysSramEnd-1:0] sys_sram_gnt                ;
+  logic [SramAw-1:0]     sys_sram_addr   [SysSramEnd];
+  logic [SysSramEnd-1:0] sys_sram_write              ;
+  logic [SramDw-1:0]     sys_sram_wdata  [SysSramEnd];
+  logic [SramDw-1:0]     sys_sram_wmask  [SysSramEnd];
+  logic [SysSramEnd-1:0] sys_sram_rvalid             ;
+  logic [SramDw-1:0]     sys_sram_rdata  [SysSramEnd];
+  logic [1:0]            sys_sram_rerror [SysSramEnd];
+
+  for (genvar i = 0 ; i < SysSramEnd ; i++) begin : g_sram_connect
+    assign sys_sram_req   [i] = sys_sram_l2m[i].req;
+    assign sys_sram_addr  [i] = sys_sram_l2m[i].addr;
+    assign sys_sram_write [i] = sys_sram_l2m[i].we;
+    assign sys_sram_wdata [i] = sys_sram_l2m[i].wdata;
+    assign sys_sram_wmask [i] = sram_strb2mask(sys_sram_l2m[i].wstrb);
+
+    assign sys_sram_m2l[i].rvalid = sys_sram_rvalid[i];
+    assign sys_sram_m2l[i].rdata  = sys_sram_rdata[i];
+    assign sys_sram_m2l[i].rerror = sys_sram_rerror[i];
+
+    `ASSERT(ReqAlwaysAccepted_A, sys_sram_req[i] |-> sys_sram_gnt[i])
+  end : g_sram_connect
+
+  logic unused_sys_sram_gnt;
+  assign unused_sys_sram_gnt = ^sys_sram_gnt;
+
+  prim_sram_arbiter #(
+    .N      (SysSramEnd),
+    .SramDw (SramDw),
+    .SramAw (SramAw),
+
+    .EnMask (1'b 1)
+  ) u_sys_sram_arbiter (
+    .clk_i,
+    .rst_ni,
+
+    .req_i       (sys_sram_req),
+    .req_addr_i  (sys_sram_addr),
+    .req_write_i (sys_sram_write),
+    .req_wdata_i (sys_sram_wdata),
+    .req_wmask_i (sys_sram_wmask),
+    .gnt_o       (sys_sram_gnt),
+
+    .rsp_rvalid_o (sys_sram_rvalid),
+    .rsp_rdata_o  (sys_sram_rdata),
+    .rsp_error_o  (sys_sram_rerror),
+
+    .sram_req_o    (mem_a_req),
+    .sram_addr_o   (mem_a_addr),
+    .sram_write_o  (mem_a_write),
+    .sram_wdata_o  (mem_a_wdata),
+    .sram_wmask_o  (mem_a_wmask),
+    .sram_rvalid_i (mem_a_rvalid),
+    .sram_rdata_i  (mem_a_rdata),
+    .sram_rerror_i (mem_a_rerror)
   );
 
   // SRAM Wrapper
@@ -1112,7 +1578,7 @@ module spi_device
     .a_write_i  (mem_a_write),
     .a_addr_i   (mem_a_addr),
     .a_wdata_i  (mem_a_wdata),
-    .a_wmask_i  ({SramDw{1'b1}}),
+    .a_wmask_i  (mem_a_wmask),
     .a_rvalid_o (mem_a_rvalid),
     .a_rdata_o  (mem_a_rdata),
     .a_rerror_o (mem_a_rerror),
@@ -1174,13 +1640,17 @@ module spi_device
   `ASSERT_KNOWN(scanmodeKnown, scanmode_i, clk_i, 0)
   `ASSERT_KNOWN(CioSdoEnOKnown, cio_sd_en_o)
 
-  `ASSERT_KNOWN(IntrRxfOKnown,         intr_rxf_o        )
-  `ASSERT_KNOWN(IntrRxlvlOKnown,       intr_rxlvl_o      )
-  `ASSERT_KNOWN(IntrTxlvlOKnown,       intr_txlvl_o      )
-  `ASSERT_KNOWN(IntrRxerrOKnown,       intr_rxerr_o      )
-  `ASSERT_KNOWN(IntrRxoverflowOKnown,  intr_rxoverflow_o )
-  `ASSERT_KNOWN(IntrTxunderflowOKnown, intr_txunderflow_o)
+  `ASSERT_KNOWN(IntrRxfOKnown,         intr_rx_full_o     )
+  `ASSERT_KNOWN(IntrRxlvlOKnown,       intr_rx_watermark_o)
+  `ASSERT_KNOWN(IntrTxlvlOKnown,       intr_tx_watermark_o)
+  `ASSERT_KNOWN(IntrRxerrOKnown,       intr_rx_error_o    )
+  `ASSERT_KNOWN(IntrRxoverflowOKnown,  intr_rx_overflow_o )
+  `ASSERT_KNOWN(IntrTxunderflowOKnown, intr_tx_underflow_o)
+  `ASSERT_KNOWN(IntrTpmHeaderNotEmptyOKnown, intr_tpm_header_not_empty_o)
 
   `ASSERT_KNOWN(AlertKnownO_A,         alert_tx_o)
+
+  // Assume the tpm_en is set when TPM transaction is idle.
+  `ASSUME(TpmEnableWhenTpmCsbIdle_M, cfg_tpm_en |-> cio_tpm_csb_i)
 
 endmodule

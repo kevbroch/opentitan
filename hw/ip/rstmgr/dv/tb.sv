@@ -25,25 +25,44 @@ module tb;
 
   // interfaces
   clk_rst_if clk_rst_if (
-    .clk  (clk),
-    .rst_n(rst_n)
+    .clk,
+    .rst_n
   );
-  clk_rst_if aon_clk_rst_if (.clk(clk_aon));
-  clk_rst_if io_clk_rst_if (.clk(clk_io));
-  clk_rst_if io_div2_clk_rst_if (.clk(clk_io_div2));
-  clk_rst_if io_div4_clk_rst_if (.clk(clk_io_div4));
-  clk_rst_if main_clk_rst_if (.clk(clk_main));
-  clk_rst_if usb_clk_rst_if (.clk(clk_usb));
+  clk_rst_if aon_clk_rst_if (
+    .clk  (clk_aon),
+    .rst_n()
+  );
+  clk_rst_if io_clk_rst_if (
+    .clk  (clk_io),
+    .rst_n()
+  );
+  clk_rst_if io_div2_clk_rst_if (
+    .clk  (clk_io_div2),
+    .rst_n()
+  );
+  clk_rst_if io_div4_clk_rst_if (
+    .clk  (clk_io_div4),
+    .rst_n()
+  );
+  clk_rst_if main_clk_rst_if (
+    .clk  (clk_main),
+    .rst_n()
+  );
+  clk_rst_if usb_clk_rst_if (
+    .clk  (clk_usb),
+    .rst_n()
+  );
 
   pins_if #(1) devmode_if (devmode);
   tl_if tl_if (
-    .clk  (clk),
-    .rst_n(rst_n)
+    .clk,
+    .rst_n
   );
 
   rstmgr_if rstmgr_if (
-    .clk  (clk),
-    .rst_n(rst_n)
+    .clk_aon,
+    .clk,
+    .rst_n
   );
 
   initial begin
@@ -59,9 +78,11 @@ module tb;
   `DV_ALERT_IF_CONNECT
 
   // dut
+  // IMPORTANT: Notice the rst_ni input is connected to one of dut's outputs.
+  // This is consistent with rstmgr being the only source of resets.
   rstmgr dut (
     .clk_i        (clk),
-    .rst_ni       (rst_n),
+    .rst_ni       (rstmgr_if.resets_o.rst_por_io_div4_n[rstmgr_pkg::DomainAonSel]),
     .clk_aon_i    (clk_aon),
     .clk_io_div4_i(clk_io_div4),
     .clk_main_i   (clk_main),
@@ -74,6 +95,8 @@ module tb;
     .alert_rx_i(alert_rx),
     .alert_tx_o(alert_tx),
 
+    .por_n_i(rstmgr_if.por_n),
+
     .pwr_i(rstmgr_if.pwr_i),
     .pwr_o(rstmgr_if.pwr_o),
 
@@ -84,11 +107,11 @@ module tb;
 
     .cpu_dump_i(rstmgr_if.cpu_dump_i),
 
-    .scan_rst_ni(rstmgr_if.scan_rst_ni),
-    .scanmode_i (rstmgr_if.scanmode_i),
+    .rst_en_o(),
 
-    .resets_ast_o(rstmgr_if.resets_ast_o),
-    .resets_o    (rstmgr_if.resets_o)
+    .scan_rst_ni(rstmgr_if.scan_rst_ni),
+    .scanmode_i(rstmgr_if.scanmode_i),
+    .resets_o(rstmgr_if.resets_o)
   );
 
   initial begin
@@ -106,6 +129,8 @@ module tb;
     uvm_config_db#(devmode_vif)::set(null, "*.env", "devmode_vif", devmode_if);
     uvm_config_db#(virtual tl_if)::set(null, "*.env.m_tl_agent*", "vif", tl_if);
 
+    uvm_config_db#(virtual pwrmgr_rstmgr_sva_if)::set(null, "*.env", "pwrmgr_rstmgr_sva_vif",
+                                                      dut.pwrmgr_rstmgr_sva_if);
     uvm_config_db#(virtual rstmgr_if)::set(null, "*.env", "rstmgr_vif", rstmgr_if);
 
     $timeformat(-12, 0, " ps", 12);

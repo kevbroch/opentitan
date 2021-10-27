@@ -13,13 +13,14 @@
 #include "sw/device/silicon_creator/lib/error.h"
 
 extern "C" {
-// This is an extern in the sec_mmio module.
-sec_mmio_ctx_t sec_mmio_ctx;
+// Declared in the sec_mmio module.
+extern sec_mmio_ctx_t sec_mmio_ctx;
 }
 
 namespace sec_mmio_unittest {
 namespace {
 using ::testing::Each;
+using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Test;
 
@@ -46,6 +47,46 @@ TEST_F(SecMmioTest, Initialize) {
   EXPECT_EQ(ctx_->last_index, 0);
   EXPECT_EQ(ctx_->write_count, 0);
   EXPECT_THAT(ctx_->addrs, Each(Eq(UINT32_MAX)));
+  EXPECT_THAT(ctx_->values, Each(Eq(UINT32_MAX)));
+}
+
+TEST_F(SecMmioTest, NextStageInitialize) {
+  // Ensure the register file size is greater than zero to ensure checks are
+  // performed on non-zero sized arrays.
+  static_assert(kSecMmioRegFileSize > 2);
+  std::array<uint32_t, kSecMmioRegFileSize> expected_addrs;
+  std::array<uint32_t, kSecMmioRegFileSize> expected_values;
+
+  // Prefill data to simulate a pre-initialization conditions. Use different
+  // values for `addr` and `values` to ensure the test checks are specific for
+  // each array.
+  for (size_t i = 0; i < kSecMmioRegFileSize; ++i) {
+    ctx_->addrs[i] = i ^ 0xa;
+    ctx_->values[i] = i ^ 0x5;
+    expected_addrs[i] = ctx_->addrs[i];
+    expected_values[i] = ctx_->values[i];
+  }
+
+  ctx_->check_count = 5;
+  ctx_->expected_write_count = 6;
+  ctx_->write_count = 6;
+
+  const uint32_t kExpectedWriteCount = kSecMmioRegFileSize / 2;
+  ctx_->last_index = kExpectedWriteCount;
+
+  for (size_t i = kExpectedWriteCount; i < kSecMmioRegFileSize; ++i) {
+    expected_addrs[i] = UINT32_MAX;
+    expected_values[i] = UINT32_MAX;
+  }
+
+  sec_mmio_next_stage_init(+[](rom_error_t) { std::abort(); });
+
+  EXPECT_EQ(ctx_->write_count, 6);
+  EXPECT_EQ(ctx_->expected_write_count, 6);
+  EXPECT_EQ(ctx_->last_index, kExpectedWriteCount);
+  EXPECT_EQ(ctx_->check_count, 0);
+  EXPECT_THAT(ctx_->addrs, ElementsAreArray(expected_addrs));
+  EXPECT_THAT(ctx_->values, ElementsAreArray(expected_values));
 }
 
 TEST_F(SecMmioTest, Read32OrDie) {
@@ -109,15 +150,20 @@ TEST_F(SecMmioTest, CheckValues) {
   EXPECT_ABS_READ32(8, 0);
   sec_mmio_write32(8, 0);
 
+  // Test an expected value modification which gets updated by a read.
+  EXPECT_ABS_READ32(8, 0xa5a5a5a5);
+  EXPECT_ABS_READ32(8, 0xa5a5a5a5);
+  EXPECT_EQ(sec_mmio_read32(8), 0xa5a5a5a5);
+
   // The expected permutation order for rnd_offset=0 is {1, 2, 0}.
   EXPECT_ABS_READ32(4, 0x87654321);
-  EXPECT_ABS_READ32(8, 0);
+  EXPECT_ABS_READ32(8, 0xa5a5a5a5);
   EXPECT_ABS_READ32(0, 0x12345678);
   sec_mmio_check_values(/*rnd_offset=*/0);
   EXPECT_EQ(ctx_->check_count, 1);
 
   // The expected permutation order for rnd_offset=1 is {2, 0, 1}.
-  EXPECT_ABS_READ32(8, 0);
+  EXPECT_ABS_READ32(8, 0xa5a5a5a5);
   EXPECT_ABS_READ32(0, 0x12345678);
   EXPECT_ABS_READ32(4, 0x87654321);
   sec_mmio_check_values(/*rnd_offset=*/1);
@@ -126,7 +172,7 @@ TEST_F(SecMmioTest, CheckValues) {
   // The expected permutation order for rnd_offset=32 is {0, 1, 2}.
   EXPECT_ABS_READ32(0, 0x12345678);
   EXPECT_ABS_READ32(4, 0x87654321);
-  EXPECT_ABS_READ32(8, 0);
+  EXPECT_ABS_READ32(8, 0xa5a5a5a5);
   sec_mmio_check_values(/*rnd_offset=*/32);
   EXPECT_EQ(ctx_->check_count, 3);
 }

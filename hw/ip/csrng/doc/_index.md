@@ -142,8 +142,8 @@ The table below lists other CSRNG signals.
 
 Signal                       | Direction        | Type                        | Description
 -----------------------------|------------------|-----------------------------|---------------
-`otp_en_csrng_sw_app_read_i` | `input `         | `otp_en_t `                 | An efuse that will enable firmware to access the NIST ctr_drbg internal state through registers.
-`lc_hw_debug_en_i`           | `input`          | `lc_tx_t `                  | A life-cycle that will allow disabling of the AES encryption block, to be used for debug only.
+`otp_en_csrng_sw_app_read_i` | `input `         | `otp_en_t `                 | An efuse that will enable firmware to access the NIST ctr_drbg internal state and genbits through registers.
+`lc_hw_debug_en_i`           | `input`          | `lc_tx_t `                  | A life-cycle that will select which diversification value is used for xoring with the seed from ENTROPY_SRC.
 `entropy_src_hw_if_o`        | `output`         | `entropy_src_hw_if_req_t`   | Seed request made to the ENTROPY_SRC module.
 `entropy_src_hw_if_i`        | `input`          | `entropy_src_hw_if_rsp_t`   | Seed response from the ENTROPY_SRC module.
 `cs_aes_halt_i`              | `input`          | `cs_aes_halt_req_t`         | Request to CSRNG from ENTROPY_SRC to halt requests to the AES block for power leveling purposes.
@@ -320,20 +320,32 @@ The actions performed by each command, as well as which flags are supported, are
     <td>Instantiate</td>
     <td>0x1</td>
     <td> Initializes an instance in CSRNG.
-         When seeding, if <tt>flag0</tt> is not set and <tt>clen</tt> is zero, then a seed of only the entropy source seed will be used.
-         If <tt>flag0</tt> is not set and <tt>clen</tt> is non-zero, then the seed will xor'ed with the provided additional data.
-         If <tt>flag0</tt> is set and <tt>clen</tt> is zero, then a seed of zero with no entropy source seed material will be used.
-         If <tt>flag0</tt> is set and <tt>clen</tt> is non-zero, then only the provided additional data will be used as the seed.
-         WARNING: Though <tt>flag0</tt> may be useful for generating fully-determininistic bit sequences, the use of this flag will render the instance non-FIPS compliant until it is re-instantiated.
-         When the <tt>instantiate</tt> command is completed, the active bit in the CSRNG working state will be set.
+         When seeding, the following table describes how the seed is determined based on flag0 and the clen field.
+         Note that the last table entry (<tt>flag0</tt> is set and <tt>clen</tt> is set to non-zero) is intended for known answer testing (KAT).
+        WARNING: Though <tt>flag0</tt> may be useful for generating fully-determininistic bit sequences, the use of this flag will render the instance non-FIPS compliant until it is re-instantiated.
+         When the <tt>Instantiate</tt> command is completed, the active bit in the CSRNG working state will be set.
+        <table>
+          <thead>
+            <tr><th>flag0</th><th>clen</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0</td><td>0</td><td>Only entropy source seed is used.</td></tr>
+            <tr><td>0</td><td>1-12</td><td>Entropy source seed is xor'ed with provided additional data.</td></tr>
+            <tr><td>1</td><td>0</td><td>Seed of zero is used (no entropy source seed used).</td></tr>
+            <tr><td>1</td><td>1-12</td><td>Only provided additional data will be used as seed.</td></tr>
+          </tbody>
+        </table>
     </td>
   </tr>
   <tr>
     <td>Reseed</td>
     <td>0x2</td>
     <td> Reseeds an existing instance in CSRNG.
-         When <tt>clen</tt> is set to zero for this command, only the entropy source seed will be used to reseed the instance.
-         If <tt>clen</tt> is set to non-zero (up to twelve), the additional data provided with be xor'ed with the entropy source seed.
+         The flag0 and clen table in the <tt>Instance</tt> command description above also applies to the <tt>Reseed</tt> command.
+         Note that the last table entry (<tt>flag0</tt> is set and <tt>clen</tt> is set to non-zero) is intended for known answer testing (KAT).
+         The reseed command only takes in one group (a maximum of twelve 32 bit words) of generic additional data.
+         In that case that both a seed and additional data must be provided to the reseed call, the seed and additional data must be xor'ed first.
+         This scenario will then pass the NIST vector test requiring both a provided seed and additional data.
     </td>
   </tr>
   <tr>
@@ -344,6 +356,7 @@ The actions performed by each command, as well as which flags are supported, are
          The <tt>glen</tt> field needs to be a minimum value of one.
          The NIST reference to the <tt>prediction_resistance_flag</tt> is not directly supported as a flag.
          It is the resposibility of the calling application to reseed as needed before the generate command to properly support prediction resistance.
+         Note that additional data is also supported when the  <tt>clen</tt> field is set to non-zero.
     </td>
   </tr>
   <tr>

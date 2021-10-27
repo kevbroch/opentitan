@@ -50,9 +50,7 @@ Code Quality  | [LINT_PASS][]           | Done        |
 Code Quality  | [CDC_SETUP][]           | NA          |
 Code Quality  | [FPGA_TIMING][]         | Done        |
 Code Quality  | [CDC_SYNCMACRO][]       | Done        |
-Security      | [SEC_CM_IMPLEMENTED][]  | Waived      | Full security countermeasures postponed to post d2
-Security      | [SEC_NON_RESET_FLOPS][] | Done        |
-Security      | [SEC_SHADOW_REGS][]     | Waived      | Full security countermeasures postponed to post d2
+Security      | [SEC_CM_DOCUMENTED][]   | Waived      | Full security countermeasures postponed to post d2
 Security      | [SEC_RND_CNST][]        | NA          |
 
 [NEW_FEATURES]:        {{<relref "/doc/project/checklist.md#new_features" >}}
@@ -70,9 +68,7 @@ Security      | [SEC_RND_CNST][]        | NA          |
 [CDC_SETUP]:           {{<relref "/doc/project/checklist.md#cdc_setup" >}}
 [FPGA_TIMING]:         {{<relref "/doc/project/checklist.md#fpga_timing" >}}
 [CDC_SYNCMACRO]:       {{<relref "/doc/project/checklist.md#cdc_syncmacro" >}}
-[SEC_CM_IMPLEMENTED]:  {{<relref "/doc/project/checklist.md#sec_cm_implemented" >}}
-[SEC_NON_RESET_FLOPS]: {{<relref "/doc/project/checklist.md#sec_non_reset_flops" >}}
-[SEC_SHADOW_REGS]:     {{<relref "/doc/project/checklist.md#sec_shadow_regs" >}}
+[SEC_CM_DOCUMENTED]:   {{<relref "/doc/project/checklist.md#sec_cm_documented" >}}
 [SEC_RND_CNST]:        {{<relref "/doc/project/checklist.md#sec_rnd_cnst" >}}
 
 ### D3
@@ -89,6 +85,9 @@ Review        | [REVIEW_SW_CSR][]       | Not Started |
 Review        | [REVIEW_SW_FATAL_ERR][] | Not Started |
 Review        | [REVIEW_SW_CHANGE][]    | Not Started |
 Review        | [REVIEW_SW_ERRATA][]    | Not Started |
+Security      | [SEC_CM_IMPLEMENTED][]  | Not Started |
+Security      | [SEC_NON_RESET_FLOPS][] | Not Started |
+Security      | [SEC_SHADOW_REGS][]     | Not Started |
 Review        | Reviewer(s)             | Not Started |
 Review        | Signoff date            | Not Started |
 
@@ -103,6 +102,9 @@ Review        | Signoff date            | Not Started |
 [REVIEW_SW_FATAL_ERR]:  {{<relref "/doc/project/checklist.md#review_sw_fatal_err" >}}
 [REVIEW_SW_CHANGE]:     {{<relref "/doc/project/checklist.md#review_sw_change" >}}
 [REVIEW_SW_ERRATA]:     {{<relref "/doc/project/checklist.md#review_sw_errata" >}}
+[SEC_CM_IMPLEMENTED]:   {{<relref "/doc/project/checklist.md#sec_cm_implemented" >}}
+[SEC_NON_RESET_FLOPS]:  {{<relref "/doc/project/checklist.md#sec_non_reset_flops" >}}
+[SEC_SHADOW_REGS]:      {{<relref "/doc/project/checklist.md#sec_shadow_regs" >}}
 
 ## Verification Checklist
 
@@ -110,28 +112,28 @@ Review        | Signoff date            | Not Started |
 
  Type         | Item                                  | Resolution  | Note/Collaterals
 --------------|---------------------------------------|-------------|------------------
-Documentation | [DV_DOC_DRAFT_COMPLETED][]            | Not Started | [PWRMGR DV document]({{<relref "hw/top_earlgrey/doc/dv/index.md" >}})
-Documentation | [TESTPLAN_COMPLETED][]                | Not Started | [PWRMGR testplan]()
-Testbench     | [TB_TOP_CREATED][]                    | Not Started |
-Testbench     | [PRELIMINARY_ASSERTION_CHECKS_ADDED][]| Not Started |
-Testbench     | [SIM_TB_ENV_CREATED][]                | Not Started |
-Testbench     | [SIM_RAL_MODEL_GEN_AUTOMATED][]       | Not Started |
-Testbench     | [CSR_CHECK_GEN_AUTOMATED][]           | Not Started |
-Testbench     | [TB_GEN_AUTOMATED][]                  | Not Started |
-Tests         | [SIM_SMOKE_TEST_PASSING][]            | Not Started |
-Tests         | [SIM_CSR_MEM_TEST_SUITE_PASSING][]    | Not Started |
-Tests         | [FPV_MAIN_ASSERTIONS_PROVEN][]        | Not Started |
-Tool Setup    | [SIM_ALT_TOOL_SETUP][]                | Not Started |
-Regression    | [SIM_SMOKE_REGRESSION_SETUP][]        | Not Started |
-Regression    | [SIM_NIGHTLY_REGRESSION_SETUP][]      | Not Started |
-Regression    | [FPV_REGRESSION_SETUP][]              | Not Started |
-Coverage      | [SIM_COVERAGE_MODEL_ADDED][]          | Not Started |
-Code Quality  | [TB_LINT_SETUP][]                     | Not Started |
-Integration   | [PRE_VERIFIED_SUB_MODULES_V1][]       | Not Started |
-Review        | [DESIGN_SPEC_REVIEWED][]              | Not Started |
-Review        | [TESTPLAN_REVIEWED][]                 | Not Started |
-Review        | [STD_TEST_CATEGORIES_PLANNED][]       | Not Started | Exception (?)
-Review        | [V2_CHECKLIST_SCOPED][]               | Not Started |
+Documentation | [DV_DOC_DRAFT_COMPLETED][]            | Done        | [PWRMGR DV document]({{<relref "dv/index.md" >}})
+Documentation | [TESTPLAN_COMPLETED][]                | Done        | [PWRMGR testplan]({{< relref "dv/index.md#testplan" >}})
+Testbench     | [TB_TOP_CREATED][]                    | Done        |
+Testbench     | [PRELIMINARY_ASSERTION_CHECKS_ADDED][]| Done        |
+Testbench     | [SIM_TB_ENV_CREATED][]                | Done        |
+Testbench     | [SIM_RAL_MODEL_GEN_AUTOMATED][]       | Done        |
+Testbench     | [CSR_CHECK_GEN_AUTOMATED][]           | Done        |
+Testbench     | [TB_GEN_AUTOMATED][]                  | Done        |
+Tests         | [SIM_SMOKE_TEST_PASSING][]            | Done        |
+Tests         | [SIM_CSR_MEM_TEST_SUITE_PASSING][]    | Done        | Block has no mem
+Tests         | [FPV_MAIN_ASSERTIONS_PROVEN][]        | N/A         |
+Tool Setup    | [SIM_ALT_TOOL_SETUP][]                | Done        | Xcelium
+Regression    | [SIM_SMOKE_REGRESSION_SETUP][]        | Done        |
+Regression    | [SIM_NIGHTLY_REGRESSION_SETUP][]      | Done        |
+Regression    | [FPV_REGRESSION_SETUP][]              | N/A         |
+Coverage      | [SIM_COVERAGE_MODEL_ADDED][]          | Done        |
+Code Quality  | [TB_LINT_SETUP][]                     | Done        |
+Integration   | [PRE_VERIFIED_SUB_MODULES_V1][]       | Done        |
+Review        | [DESIGN_SPEC_REVIEWED][]              | Done        |
+Review        | [TESTPLAN_REVIEWED][]                 | Done        |
+Review        | [STD_TEST_CATEGORIES_PLANNED][]       | Done        | Exceptions: debug, power, performance
+Review        | [V2_CHECKLIST_SCOPED][]               | Done        |
 
 [DV_DOC_DRAFT_COMPLETED]:             {{<relref "/doc/project/checklist.md#dv_doc_draft_completed" >}}
 [TESTPLAN_COMPLETED]:                 {{<relref "/doc/project/checklist.md#testplan_completed" >}}

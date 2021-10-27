@@ -10,21 +10,26 @@
 #include "sw/device/lib/base/macros.h"
 #include "sw/device/lib/base/memory.h"
 #include "sw/device/lib/base/stdasm.h"
-#include "sw/device/lib/runtime/print.h"
 #include "sw/device/silicon_creator/lib/base/abs_mmio.h"
 #include "sw/device/silicon_creator/lib/drivers/alert.h"
 #include "sw/device/silicon_creator/lib/drivers/lifecycle.h"
+#include "sw/device/silicon_creator/lib/drivers/otp.h"
+#include "sw/device/silicon_creator/lib/log.h"
 
 #include "alert_handler_regs.h"
 #include "flash_ctrl_regs.h"
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"
 #include "keymgr_regs.h"
+#include "lc_ctrl_regs.h"
 #include "otp_ctrl_regs.h"
 #include "sram_ctrl_regs.h"
 
 static_assert(ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT <=
                   OTP_CTRL_PARAM_ROM_ALERT_CLASSIFICATION_SIZE / 4,
               "More alerts than alert classification OTP words!");
+static_assert(ALERT_HANDLER_LOC_ALERT_CLASS_SHADOWED_MULTIREG_COUNT <=
+                  OTP_CTRL_PARAM_ROM_LOCAL_ALERT_CLASSIFICATION_SIZE / 4,
+              "More local alerts than local alert classification OTP words!");
 
 #define NO_MODIFIERS
 
@@ -41,16 +46,6 @@ static_assert(ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT <=
 #else
 #define SHUTDOWN_FUNC(modifiers_, name_) \
   static ALWAYS_INLINE modifiers_ void name_
-#endif
-
-// TODO: use the real OTP driver after it's converted to abs_mmio.
-#ifdef OT_OFF_TARGET_TEST
-extern uint32_t otp_read32(uint32_t address);
-#else
-inline uint32_t otp_read32(uint32_t address) {
-  return abs_mmio_read32(TOP_EARLGREY_OTP_CTRL_CORE_BASE_ADDR +
-                         OTP_CTRL_SW_CFG_WINDOW_REG_OFFSET + address);
-}
 #endif
 
 // Convert the alert class to an index.
@@ -124,13 +119,13 @@ rom_error_t shutdown_init(lifecycle_state_t lc_state) {
     }
   }
 
-#if 0
-  // TODO(lowRISC/opentitan#7148): Bring local alerts back into the code path.
   // For each local alert, read its corresponding OTP word and extract the class
   // configuration for the current lifecycle state.
-  for (size_t i = 0; i < ALERT_HANDLER_LOC_ALERT_CLASS_MULTIREG_COUNT; ++i) {
-    uint32_t value = otp_read32(OTP_CTRL_PARAM_ROM_LOCAL_ALERT_CLASSIFICATION_OFFSET +
-                                i * sizeof(uint32_t));
+  for (size_t i = 0; i < ALERT_HANDLER_LOC_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
+    uint32_t value =
+        otp_read32(OTP_CTRL_PARAM_ROM_LOCAL_ALERT_CLASSIFICATION_OFFSET +
+                   i * sizeof(uint32_t));
     alert_class_t cls = (alert_class_t)bitfield_field32_read(
         value, (bitfield_field32_t){.mask = 0xff, .index = lc_shift});
     rom_error_t e = alert_local_configure(i, cls, enable[clsindex(cls)]);
@@ -140,7 +135,6 @@ rom_error_t shutdown_init(lifecycle_state_t lc_state) {
       error = e;
     }
   }
-#endif
 
   // For each alert class, configure the various escalation parameters.
   const alert_class_t kClasses[] = {
@@ -173,7 +167,13 @@ rom_error_t shutdown_init(lifecycle_state_t lc_state) {
   return error;
 }
 
-uint32_t shutdown_redact(rom_error_t reason, shutdown_error_redact_t severity) {
+/**
+ * Implementation of `shutdown_redact` that is guaranteed to be inlined.
+ *
+ * This function must be inlined because it is called from `shutdown_finalize`.
+ */
+static ALWAYS_INLINE uint32_t
+shutdown_redact_inline(rom_error_t reason, shutdown_error_redact_t severity) {
   uint32_t redacted = (uint32_t)reason;
   if (reason == kErrorOk) {
     return 0;
@@ -193,6 +193,70 @@ uint32_t shutdown_redact(rom_error_t reason, shutdown_error_redact_t severity) {
       redacted = kErrorUnknown;
   }
   return redacted;
+}
+
+uint32_t shutdown_redact(rom_error_t reason, shutdown_error_redact_t severity) {
+  return shutdown_redact_inline(reason, severity);
+}
+
+/**
+ * Implementation of `shutdown_redact_policy` that is guaranteed to be inlined.
+ *
+ * This function must be inlined because it is called from `shutdown_finalize`.
+ */
+static ALWAYS_INLINE shutdown_error_redact_t
+shutdown_redact_policy_inline(void) {
+  // Determine the error code redaction policy to apply according to the
+  // lifecycle state and OTP configuration.
+  //
+  // Note that we cannot use the lifecycle or OTP libraries since an error
+  // may trigger a call to `shutdown_finalize`.
+  lifecycle_state_t lc_state = (lifecycle_state_t)bitfield_field32_read(
+      abs_mmio_read32(TOP_EARLGREY_LC_CTRL_BASE_ADDR +
+                      LC_CTRL_LC_STATE_REG_OFFSET),
+      LC_CTRL_LC_STATE_STATE_FIELD);
+  switch (lc_state) {
+    case kLcStateRaw:
+    case kLcStateTestUnlocked0:
+    case kLcStateTestUnlocked1:
+    case kLcStateTestUnlocked2:
+    case kLcStateTestUnlocked3:
+    case kLcStateTestUnlocked4:
+    case kLcStateTestUnlocked5:
+    case kLcStateTestUnlocked6:
+    case kLcStateTestUnlocked7:
+    case kLcStateRma:
+      // No error redaction in RAW, TEST_UNLOCKED and RMA states.
+      return kShutdownErrorRedactNone;
+    case kLcStateProd:
+    case kLcStateProdEnd:
+    case kLcStateDev:
+      // In production states use the redaction level specified in OTP.
+      return (shutdown_error_redact_t)abs_mmio_read32(
+          TOP_EARLGREY_OTP_CTRL_CORE_BASE_ADDR +
+          OTP_CTRL_SW_CFG_WINDOW_REG_OFFSET +
+          OTP_CTRL_PARAM_ROM_ERROR_REPORTING_OFFSET);
+    default:
+      // Redact everything if in an unexpected lifecycle state.
+      return kShutdownErrorRedactAll;
+  }
+}
+
+shutdown_error_redact_t shutdown_redact_policy(void) {
+  return shutdown_redact_policy_inline();
+}
+
+SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_report_error(rom_error_t reason)) {
+  // Call the inline variant of `shutdown_redact_policy` because we want to
+  // guarantee that we won't jump to a different function.
+  shutdown_error_redact_t policy = shutdown_redact_policy_inline();
+
+  // Call the inline variant of `shutdown_redact` because we want to guarantee
+  // that we won't jump to a different function.
+  uint32_t redacted_error = shutdown_redact_inline(reason, policy);
+
+  // TODO(lowRISC/opentitan#8236): log_printf is in the .text section.
+  log_printf("boot_fault: 0x%x\n", (unsigned int)redacted_error);
 }
 
 SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_software_escalate(void)) {
@@ -217,8 +281,7 @@ SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_keymgr_kill(void)) {
 
 SHUTDOWN_FUNC(NO_MODIFIERS, shutdown_flash_kill(void)) {
   enum { kBase = TOP_EARLGREY_FLASH_CTRL_CORE_BASE_ADDR };
-  // TODO(lowRISC/opentitan#7148): Add flash disable when the hw is implemented.
-  // abs_mmio_write32(kBase + FLASH_CTRL_FLASH_DISABLE_REG_OFFSET, 1);
+  abs_mmio_write32(kBase + FLASH_CTRL_DIS_REG_OFFSET, 1);
 }
 
 SHUTDOWN_FUNC(noreturn, shutdown_hang(void)) {
@@ -257,10 +320,15 @@ SHUTDOWN_FUNC(noreturn, shutdown_hang(void)) {
 #endif
 }
 
+#ifndef OT_OFF_TARGET_TEST
+/**
+ * The shutdown_finalize function goes into the .shutdown section which is
+ * placed by the linker script after all other executable code.
+ */
+__attribute__((section(".shutdown")))
+#endif
 void shutdown_finalize(rom_error_t reason) {
-  uint32_t redacted_error = shutdown_redact(
-      reason, otp_read32(OTP_CTRL_PARAM_ROM_ERROR_REPORTING_OFFSET));
-  base_printf("boot_fault: 0x%08x\n", redacted_error);
+  shutdown_report_error(reason);
   shutdown_software_escalate();
   shutdown_keymgr_kill();
   shutdown_flash_kill();

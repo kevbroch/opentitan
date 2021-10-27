@@ -11,7 +11,6 @@ module pinmux_reg_top (
   input rst_ni,
   input clk_aon_i,
   input rst_aon_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -105,13 +104,16 @@ module pinmux_reg_top (
 
   // cdc oversampling signals
     logic sync_aon_update;
-  prim_pulse_sync u_aon_tgl (
+  prim_sync_reqack u_aon_tgl (
     .clk_src_i(clk_aon_i),
     .rst_src_ni(rst_aon_ni),
-    .src_pulse_i(1'b1),
     .clk_dst_i(clk_i),
     .rst_dst_ni(rst_ni),
-    .dst_pulse_o(sync_aon_update)
+    .req_chk_i(1'b1),
+    .src_req_i(1'b1),
+    .src_ack_o(),
+    .dst_req_o(sync_aon_update),
+    .dst_ack_i(sync_aon_update)
   );
 
   assign reg_rdata = reg_rdata_next ;
@@ -1403,148 +1405,76 @@ module pinmux_reg_top (
   logic wkup_detector_regwen_7_qs;
   logic wkup_detector_regwen_7_wd;
   logic wkup_detector_en_0_we;
-  logic wkup_detector_en_0_qs;
-  logic wkup_detector_en_0_wd;
+  logic [0:0] wkup_detector_en_0_qs;
   logic wkup_detector_en_0_busy;
   logic wkup_detector_en_1_we;
-  logic wkup_detector_en_1_qs;
-  logic wkup_detector_en_1_wd;
+  logic [0:0] wkup_detector_en_1_qs;
   logic wkup_detector_en_1_busy;
   logic wkup_detector_en_2_we;
-  logic wkup_detector_en_2_qs;
-  logic wkup_detector_en_2_wd;
+  logic [0:0] wkup_detector_en_2_qs;
   logic wkup_detector_en_2_busy;
   logic wkup_detector_en_3_we;
-  logic wkup_detector_en_3_qs;
-  logic wkup_detector_en_3_wd;
+  logic [0:0] wkup_detector_en_3_qs;
   logic wkup_detector_en_3_busy;
   logic wkup_detector_en_4_we;
-  logic wkup_detector_en_4_qs;
-  logic wkup_detector_en_4_wd;
+  logic [0:0] wkup_detector_en_4_qs;
   logic wkup_detector_en_4_busy;
   logic wkup_detector_en_5_we;
-  logic wkup_detector_en_5_qs;
-  logic wkup_detector_en_5_wd;
+  logic [0:0] wkup_detector_en_5_qs;
   logic wkup_detector_en_5_busy;
   logic wkup_detector_en_6_we;
-  logic wkup_detector_en_6_qs;
-  logic wkup_detector_en_6_wd;
+  logic [0:0] wkup_detector_en_6_qs;
   logic wkup_detector_en_6_busy;
   logic wkup_detector_en_7_we;
-  logic wkup_detector_en_7_qs;
-  logic wkup_detector_en_7_wd;
+  logic [0:0] wkup_detector_en_7_qs;
   logic wkup_detector_en_7_busy;
   logic wkup_detector_0_we;
-  logic [2:0] wkup_detector_0_mode_0_qs;
-  logic [2:0] wkup_detector_0_mode_0_wd;
-  logic wkup_detector_0_mode_0_busy;
-  logic wkup_detector_0_filter_0_qs;
-  logic wkup_detector_0_filter_0_wd;
-  logic wkup_detector_0_filter_0_busy;
-  logic wkup_detector_0_miodio_0_qs;
-  logic wkup_detector_0_miodio_0_wd;
-  logic wkup_detector_0_miodio_0_busy;
+  logic [4:0] wkup_detector_0_qs;
+  logic wkup_detector_0_busy;
   logic wkup_detector_1_we;
-  logic [2:0] wkup_detector_1_mode_1_qs;
-  logic [2:0] wkup_detector_1_mode_1_wd;
-  logic wkup_detector_1_mode_1_busy;
-  logic wkup_detector_1_filter_1_qs;
-  logic wkup_detector_1_filter_1_wd;
-  logic wkup_detector_1_filter_1_busy;
-  logic wkup_detector_1_miodio_1_qs;
-  logic wkup_detector_1_miodio_1_wd;
-  logic wkup_detector_1_miodio_1_busy;
+  logic [4:0] wkup_detector_1_qs;
+  logic wkup_detector_1_busy;
   logic wkup_detector_2_we;
-  logic [2:0] wkup_detector_2_mode_2_qs;
-  logic [2:0] wkup_detector_2_mode_2_wd;
-  logic wkup_detector_2_mode_2_busy;
-  logic wkup_detector_2_filter_2_qs;
-  logic wkup_detector_2_filter_2_wd;
-  logic wkup_detector_2_filter_2_busy;
-  logic wkup_detector_2_miodio_2_qs;
-  logic wkup_detector_2_miodio_2_wd;
-  logic wkup_detector_2_miodio_2_busy;
+  logic [4:0] wkup_detector_2_qs;
+  logic wkup_detector_2_busy;
   logic wkup_detector_3_we;
-  logic [2:0] wkup_detector_3_mode_3_qs;
-  logic [2:0] wkup_detector_3_mode_3_wd;
-  logic wkup_detector_3_mode_3_busy;
-  logic wkup_detector_3_filter_3_qs;
-  logic wkup_detector_3_filter_3_wd;
-  logic wkup_detector_3_filter_3_busy;
-  logic wkup_detector_3_miodio_3_qs;
-  logic wkup_detector_3_miodio_3_wd;
-  logic wkup_detector_3_miodio_3_busy;
+  logic [4:0] wkup_detector_3_qs;
+  logic wkup_detector_3_busy;
   logic wkup_detector_4_we;
-  logic [2:0] wkup_detector_4_mode_4_qs;
-  logic [2:0] wkup_detector_4_mode_4_wd;
-  logic wkup_detector_4_mode_4_busy;
-  logic wkup_detector_4_filter_4_qs;
-  logic wkup_detector_4_filter_4_wd;
-  logic wkup_detector_4_filter_4_busy;
-  logic wkup_detector_4_miodio_4_qs;
-  logic wkup_detector_4_miodio_4_wd;
-  logic wkup_detector_4_miodio_4_busy;
+  logic [4:0] wkup_detector_4_qs;
+  logic wkup_detector_4_busy;
   logic wkup_detector_5_we;
-  logic [2:0] wkup_detector_5_mode_5_qs;
-  logic [2:0] wkup_detector_5_mode_5_wd;
-  logic wkup_detector_5_mode_5_busy;
-  logic wkup_detector_5_filter_5_qs;
-  logic wkup_detector_5_filter_5_wd;
-  logic wkup_detector_5_filter_5_busy;
-  logic wkup_detector_5_miodio_5_qs;
-  logic wkup_detector_5_miodio_5_wd;
-  logic wkup_detector_5_miodio_5_busy;
+  logic [4:0] wkup_detector_5_qs;
+  logic wkup_detector_5_busy;
   logic wkup_detector_6_we;
-  logic [2:0] wkup_detector_6_mode_6_qs;
-  logic [2:0] wkup_detector_6_mode_6_wd;
-  logic wkup_detector_6_mode_6_busy;
-  logic wkup_detector_6_filter_6_qs;
-  logic wkup_detector_6_filter_6_wd;
-  logic wkup_detector_6_filter_6_busy;
-  logic wkup_detector_6_miodio_6_qs;
-  logic wkup_detector_6_miodio_6_wd;
-  logic wkup_detector_6_miodio_6_busy;
+  logic [4:0] wkup_detector_6_qs;
+  logic wkup_detector_6_busy;
   logic wkup_detector_7_we;
-  logic [2:0] wkup_detector_7_mode_7_qs;
-  logic [2:0] wkup_detector_7_mode_7_wd;
-  logic wkup_detector_7_mode_7_busy;
-  logic wkup_detector_7_filter_7_qs;
-  logic wkup_detector_7_filter_7_wd;
-  logic wkup_detector_7_filter_7_busy;
-  logic wkup_detector_7_miodio_7_qs;
-  logic wkup_detector_7_miodio_7_wd;
-  logic wkup_detector_7_miodio_7_busy;
+  logic [4:0] wkup_detector_7_qs;
+  logic wkup_detector_7_busy;
   logic wkup_detector_cnt_th_0_we;
   logic [7:0] wkup_detector_cnt_th_0_qs;
-  logic [7:0] wkup_detector_cnt_th_0_wd;
   logic wkup_detector_cnt_th_0_busy;
   logic wkup_detector_cnt_th_1_we;
   logic [7:0] wkup_detector_cnt_th_1_qs;
-  logic [7:0] wkup_detector_cnt_th_1_wd;
   logic wkup_detector_cnt_th_1_busy;
   logic wkup_detector_cnt_th_2_we;
   logic [7:0] wkup_detector_cnt_th_2_qs;
-  logic [7:0] wkup_detector_cnt_th_2_wd;
   logic wkup_detector_cnt_th_2_busy;
   logic wkup_detector_cnt_th_3_we;
   logic [7:0] wkup_detector_cnt_th_3_qs;
-  logic [7:0] wkup_detector_cnt_th_3_wd;
   logic wkup_detector_cnt_th_3_busy;
   logic wkup_detector_cnt_th_4_we;
   logic [7:0] wkup_detector_cnt_th_4_qs;
-  logic [7:0] wkup_detector_cnt_th_4_wd;
   logic wkup_detector_cnt_th_4_busy;
   logic wkup_detector_cnt_th_5_we;
   logic [7:0] wkup_detector_cnt_th_5_qs;
-  logic [7:0] wkup_detector_cnt_th_5_wd;
   logic wkup_detector_cnt_th_5_busy;
   logic wkup_detector_cnt_th_6_we;
   logic [7:0] wkup_detector_cnt_th_6_qs;
-  logic [7:0] wkup_detector_cnt_th_6_wd;
   logic wkup_detector_cnt_th_6_busy;
   logic wkup_detector_cnt_th_7_we;
   logic [7:0] wkup_detector_cnt_th_7_qs;
-  logic [7:0] wkup_detector_cnt_th_7_wd;
   logic wkup_detector_cnt_th_7_busy;
   logic wkup_detector_padsel_0_we;
   logic [5:0] wkup_detector_padsel_0_qs;
@@ -1571,34 +1501,958 @@ module pinmux_reg_top (
   logic [5:0] wkup_detector_padsel_7_qs;
   logic [5:0] wkup_detector_padsel_7_wd;
   logic wkup_cause_we;
-  logic wkup_cause_cause_0_qs;
-  logic wkup_cause_cause_0_wd;
-  logic wkup_cause_cause_0_busy;
-  logic wkup_cause_cause_1_qs;
-  logic wkup_cause_cause_1_wd;
-  logic wkup_cause_cause_1_busy;
-  logic wkup_cause_cause_2_qs;
-  logic wkup_cause_cause_2_wd;
-  logic wkup_cause_cause_2_busy;
-  logic wkup_cause_cause_3_qs;
-  logic wkup_cause_cause_3_wd;
-  logic wkup_cause_cause_3_busy;
-  logic wkup_cause_cause_4_qs;
-  logic wkup_cause_cause_4_wd;
-  logic wkup_cause_cause_4_busy;
-  logic wkup_cause_cause_5_qs;
-  logic wkup_cause_cause_5_wd;
-  logic wkup_cause_cause_5_busy;
-  logic wkup_cause_cause_6_qs;
-  logic wkup_cause_cause_6_wd;
-  logic wkup_cause_cause_6_busy;
-  logic wkup_cause_cause_7_qs;
-  logic wkup_cause_cause_7_wd;
-  logic wkup_cause_cause_7_busy;
+  logic [7:0] wkup_cause_qs;
+  logic wkup_cause_busy;
+  // Define register CDC handling.
+  // CDC handling is done on a per-reg instead of per-field boundary.
+
+  logic  aon_wkup_detector_en_0_qs_int;
+  logic [0:0] aon_wkup_detector_en_0_d;
+  logic [0:0] aon_wkup_detector_en_0_wdata;
+  logic aon_wkup_detector_en_0_we;
+  logic unused_aon_wkup_detector_en_0_wdata;
+  logic aon_wkup_detector_en_0_regwen;
+
+  always_comb begin
+    aon_wkup_detector_en_0_d = '0;
+    aon_wkup_detector_en_0_d = aon_wkup_detector_en_0_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(1),
+    .ResetVal(1'h0),
+    .BitMask(1'h1)
+  ) u_wkup_detector_en_0_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_0_qs),
+    .src_we_i     (wkup_detector_en_0_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[0:0]),
+    .src_busy_o   (wkup_detector_en_0_busy),
+    .src_qs_o     (wkup_detector_en_0_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_en_0_d),
+    .dst_we_o     (aon_wkup_detector_en_0_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_en_0_regwen),
+    .dst_wd_o     (aon_wkup_detector_en_0_wdata)
+  );
+  assign unused_aon_wkup_detector_en_0_wdata = ^aon_wkup_detector_en_0_wdata;
+
+  logic  aon_wkup_detector_en_1_qs_int;
+  logic [0:0] aon_wkup_detector_en_1_d;
+  logic [0:0] aon_wkup_detector_en_1_wdata;
+  logic aon_wkup_detector_en_1_we;
+  logic unused_aon_wkup_detector_en_1_wdata;
+  logic aon_wkup_detector_en_1_regwen;
+
+  always_comb begin
+    aon_wkup_detector_en_1_d = '0;
+    aon_wkup_detector_en_1_d = aon_wkup_detector_en_1_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(1),
+    .ResetVal(1'h0),
+    .BitMask(1'h1)
+  ) u_wkup_detector_en_1_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_1_qs),
+    .src_we_i     (wkup_detector_en_1_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[0:0]),
+    .src_busy_o   (wkup_detector_en_1_busy),
+    .src_qs_o     (wkup_detector_en_1_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_en_1_d),
+    .dst_we_o     (aon_wkup_detector_en_1_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_en_1_regwen),
+    .dst_wd_o     (aon_wkup_detector_en_1_wdata)
+  );
+  assign unused_aon_wkup_detector_en_1_wdata = ^aon_wkup_detector_en_1_wdata;
+
+  logic  aon_wkup_detector_en_2_qs_int;
+  logic [0:0] aon_wkup_detector_en_2_d;
+  logic [0:0] aon_wkup_detector_en_2_wdata;
+  logic aon_wkup_detector_en_2_we;
+  logic unused_aon_wkup_detector_en_2_wdata;
+  logic aon_wkup_detector_en_2_regwen;
+
+  always_comb begin
+    aon_wkup_detector_en_2_d = '0;
+    aon_wkup_detector_en_2_d = aon_wkup_detector_en_2_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(1),
+    .ResetVal(1'h0),
+    .BitMask(1'h1)
+  ) u_wkup_detector_en_2_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_2_qs),
+    .src_we_i     (wkup_detector_en_2_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[0:0]),
+    .src_busy_o   (wkup_detector_en_2_busy),
+    .src_qs_o     (wkup_detector_en_2_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_en_2_d),
+    .dst_we_o     (aon_wkup_detector_en_2_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_en_2_regwen),
+    .dst_wd_o     (aon_wkup_detector_en_2_wdata)
+  );
+  assign unused_aon_wkup_detector_en_2_wdata = ^aon_wkup_detector_en_2_wdata;
+
+  logic  aon_wkup_detector_en_3_qs_int;
+  logic [0:0] aon_wkup_detector_en_3_d;
+  logic [0:0] aon_wkup_detector_en_3_wdata;
+  logic aon_wkup_detector_en_3_we;
+  logic unused_aon_wkup_detector_en_3_wdata;
+  logic aon_wkup_detector_en_3_regwen;
+
+  always_comb begin
+    aon_wkup_detector_en_3_d = '0;
+    aon_wkup_detector_en_3_d = aon_wkup_detector_en_3_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(1),
+    .ResetVal(1'h0),
+    .BitMask(1'h1)
+  ) u_wkup_detector_en_3_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_3_qs),
+    .src_we_i     (wkup_detector_en_3_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[0:0]),
+    .src_busy_o   (wkup_detector_en_3_busy),
+    .src_qs_o     (wkup_detector_en_3_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_en_3_d),
+    .dst_we_o     (aon_wkup_detector_en_3_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_en_3_regwen),
+    .dst_wd_o     (aon_wkup_detector_en_3_wdata)
+  );
+  assign unused_aon_wkup_detector_en_3_wdata = ^aon_wkup_detector_en_3_wdata;
+
+  logic  aon_wkup_detector_en_4_qs_int;
+  logic [0:0] aon_wkup_detector_en_4_d;
+  logic [0:0] aon_wkup_detector_en_4_wdata;
+  logic aon_wkup_detector_en_4_we;
+  logic unused_aon_wkup_detector_en_4_wdata;
+  logic aon_wkup_detector_en_4_regwen;
+
+  always_comb begin
+    aon_wkup_detector_en_4_d = '0;
+    aon_wkup_detector_en_4_d = aon_wkup_detector_en_4_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(1),
+    .ResetVal(1'h0),
+    .BitMask(1'h1)
+  ) u_wkup_detector_en_4_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_4_qs),
+    .src_we_i     (wkup_detector_en_4_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[0:0]),
+    .src_busy_o   (wkup_detector_en_4_busy),
+    .src_qs_o     (wkup_detector_en_4_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_en_4_d),
+    .dst_we_o     (aon_wkup_detector_en_4_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_en_4_regwen),
+    .dst_wd_o     (aon_wkup_detector_en_4_wdata)
+  );
+  assign unused_aon_wkup_detector_en_4_wdata = ^aon_wkup_detector_en_4_wdata;
+
+  logic  aon_wkup_detector_en_5_qs_int;
+  logic [0:0] aon_wkup_detector_en_5_d;
+  logic [0:0] aon_wkup_detector_en_5_wdata;
+  logic aon_wkup_detector_en_5_we;
+  logic unused_aon_wkup_detector_en_5_wdata;
+  logic aon_wkup_detector_en_5_regwen;
+
+  always_comb begin
+    aon_wkup_detector_en_5_d = '0;
+    aon_wkup_detector_en_5_d = aon_wkup_detector_en_5_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(1),
+    .ResetVal(1'h0),
+    .BitMask(1'h1)
+  ) u_wkup_detector_en_5_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_5_qs),
+    .src_we_i     (wkup_detector_en_5_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[0:0]),
+    .src_busy_o   (wkup_detector_en_5_busy),
+    .src_qs_o     (wkup_detector_en_5_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_en_5_d),
+    .dst_we_o     (aon_wkup_detector_en_5_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_en_5_regwen),
+    .dst_wd_o     (aon_wkup_detector_en_5_wdata)
+  );
+  assign unused_aon_wkup_detector_en_5_wdata = ^aon_wkup_detector_en_5_wdata;
+
+  logic  aon_wkup_detector_en_6_qs_int;
+  logic [0:0] aon_wkup_detector_en_6_d;
+  logic [0:0] aon_wkup_detector_en_6_wdata;
+  logic aon_wkup_detector_en_6_we;
+  logic unused_aon_wkup_detector_en_6_wdata;
+  logic aon_wkup_detector_en_6_regwen;
+
+  always_comb begin
+    aon_wkup_detector_en_6_d = '0;
+    aon_wkup_detector_en_6_d = aon_wkup_detector_en_6_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(1),
+    .ResetVal(1'h0),
+    .BitMask(1'h1)
+  ) u_wkup_detector_en_6_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_6_qs),
+    .src_we_i     (wkup_detector_en_6_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[0:0]),
+    .src_busy_o   (wkup_detector_en_6_busy),
+    .src_qs_o     (wkup_detector_en_6_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_en_6_d),
+    .dst_we_o     (aon_wkup_detector_en_6_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_en_6_regwen),
+    .dst_wd_o     (aon_wkup_detector_en_6_wdata)
+  );
+  assign unused_aon_wkup_detector_en_6_wdata = ^aon_wkup_detector_en_6_wdata;
+
+  logic  aon_wkup_detector_en_7_qs_int;
+  logic [0:0] aon_wkup_detector_en_7_d;
+  logic [0:0] aon_wkup_detector_en_7_wdata;
+  logic aon_wkup_detector_en_7_we;
+  logic unused_aon_wkup_detector_en_7_wdata;
+  logic aon_wkup_detector_en_7_regwen;
+
+  always_comb begin
+    aon_wkup_detector_en_7_d = '0;
+    aon_wkup_detector_en_7_d = aon_wkup_detector_en_7_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(1),
+    .ResetVal(1'h0),
+    .BitMask(1'h1)
+  ) u_wkup_detector_en_7_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_7_qs),
+    .src_we_i     (wkup_detector_en_7_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[0:0]),
+    .src_busy_o   (wkup_detector_en_7_busy),
+    .src_qs_o     (wkup_detector_en_7_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_en_7_d),
+    .dst_we_o     (aon_wkup_detector_en_7_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_en_7_regwen),
+    .dst_wd_o     (aon_wkup_detector_en_7_wdata)
+  );
+  assign unused_aon_wkup_detector_en_7_wdata = ^aon_wkup_detector_en_7_wdata;
+
+  logic [2:0]  aon_wkup_detector_0_mode_0_qs_int;
+  logic  aon_wkup_detector_0_filter_0_qs_int;
+  logic  aon_wkup_detector_0_miodio_0_qs_int;
+  logic [4:0] aon_wkup_detector_0_d;
+  logic [4:0] aon_wkup_detector_0_wdata;
+  logic aon_wkup_detector_0_we;
+  logic unused_aon_wkup_detector_0_wdata;
+  logic aon_wkup_detector_0_regwen;
+
+  always_comb begin
+    aon_wkup_detector_0_d = '0;
+    aon_wkup_detector_0_d[2:0] = aon_wkup_detector_0_mode_0_qs_int;
+    aon_wkup_detector_0_d[3] = aon_wkup_detector_0_filter_0_qs_int;
+    aon_wkup_detector_0_d[4] = aon_wkup_detector_0_miodio_0_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(5),
+    .ResetVal(5'h0),
+    .BitMask(5'h1f)
+  ) u_wkup_detector_0_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_0_qs),
+    .src_we_i     (wkup_detector_0_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[4:0]),
+    .src_busy_o   (wkup_detector_0_busy),
+    .src_qs_o     (wkup_detector_0_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_0_d),
+    .dst_we_o     (aon_wkup_detector_0_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_0_regwen),
+    .dst_wd_o     (aon_wkup_detector_0_wdata)
+  );
+  assign unused_aon_wkup_detector_0_wdata = ^aon_wkup_detector_0_wdata;
+
+  logic [2:0]  aon_wkup_detector_1_mode_1_qs_int;
+  logic  aon_wkup_detector_1_filter_1_qs_int;
+  logic  aon_wkup_detector_1_miodio_1_qs_int;
+  logic [4:0] aon_wkup_detector_1_d;
+  logic [4:0] aon_wkup_detector_1_wdata;
+  logic aon_wkup_detector_1_we;
+  logic unused_aon_wkup_detector_1_wdata;
+  logic aon_wkup_detector_1_regwen;
+
+  always_comb begin
+    aon_wkup_detector_1_d = '0;
+    aon_wkup_detector_1_d[2:0] = aon_wkup_detector_1_mode_1_qs_int;
+    aon_wkup_detector_1_d[3] = aon_wkup_detector_1_filter_1_qs_int;
+    aon_wkup_detector_1_d[4] = aon_wkup_detector_1_miodio_1_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(5),
+    .ResetVal(5'h0),
+    .BitMask(5'h1f)
+  ) u_wkup_detector_1_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_1_qs),
+    .src_we_i     (wkup_detector_1_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[4:0]),
+    .src_busy_o   (wkup_detector_1_busy),
+    .src_qs_o     (wkup_detector_1_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_1_d),
+    .dst_we_o     (aon_wkup_detector_1_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_1_regwen),
+    .dst_wd_o     (aon_wkup_detector_1_wdata)
+  );
+  assign unused_aon_wkup_detector_1_wdata = ^aon_wkup_detector_1_wdata;
+
+  logic [2:0]  aon_wkup_detector_2_mode_2_qs_int;
+  logic  aon_wkup_detector_2_filter_2_qs_int;
+  logic  aon_wkup_detector_2_miodio_2_qs_int;
+  logic [4:0] aon_wkup_detector_2_d;
+  logic [4:0] aon_wkup_detector_2_wdata;
+  logic aon_wkup_detector_2_we;
+  logic unused_aon_wkup_detector_2_wdata;
+  logic aon_wkup_detector_2_regwen;
+
+  always_comb begin
+    aon_wkup_detector_2_d = '0;
+    aon_wkup_detector_2_d[2:0] = aon_wkup_detector_2_mode_2_qs_int;
+    aon_wkup_detector_2_d[3] = aon_wkup_detector_2_filter_2_qs_int;
+    aon_wkup_detector_2_d[4] = aon_wkup_detector_2_miodio_2_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(5),
+    .ResetVal(5'h0),
+    .BitMask(5'h1f)
+  ) u_wkup_detector_2_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_2_qs),
+    .src_we_i     (wkup_detector_2_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[4:0]),
+    .src_busy_o   (wkup_detector_2_busy),
+    .src_qs_o     (wkup_detector_2_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_2_d),
+    .dst_we_o     (aon_wkup_detector_2_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_2_regwen),
+    .dst_wd_o     (aon_wkup_detector_2_wdata)
+  );
+  assign unused_aon_wkup_detector_2_wdata = ^aon_wkup_detector_2_wdata;
+
+  logic [2:0]  aon_wkup_detector_3_mode_3_qs_int;
+  logic  aon_wkup_detector_3_filter_3_qs_int;
+  logic  aon_wkup_detector_3_miodio_3_qs_int;
+  logic [4:0] aon_wkup_detector_3_d;
+  logic [4:0] aon_wkup_detector_3_wdata;
+  logic aon_wkup_detector_3_we;
+  logic unused_aon_wkup_detector_3_wdata;
+  logic aon_wkup_detector_3_regwen;
+
+  always_comb begin
+    aon_wkup_detector_3_d = '0;
+    aon_wkup_detector_3_d[2:0] = aon_wkup_detector_3_mode_3_qs_int;
+    aon_wkup_detector_3_d[3] = aon_wkup_detector_3_filter_3_qs_int;
+    aon_wkup_detector_3_d[4] = aon_wkup_detector_3_miodio_3_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(5),
+    .ResetVal(5'h0),
+    .BitMask(5'h1f)
+  ) u_wkup_detector_3_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_3_qs),
+    .src_we_i     (wkup_detector_3_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[4:0]),
+    .src_busy_o   (wkup_detector_3_busy),
+    .src_qs_o     (wkup_detector_3_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_3_d),
+    .dst_we_o     (aon_wkup_detector_3_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_3_regwen),
+    .dst_wd_o     (aon_wkup_detector_3_wdata)
+  );
+  assign unused_aon_wkup_detector_3_wdata = ^aon_wkup_detector_3_wdata;
+
+  logic [2:0]  aon_wkup_detector_4_mode_4_qs_int;
+  logic  aon_wkup_detector_4_filter_4_qs_int;
+  logic  aon_wkup_detector_4_miodio_4_qs_int;
+  logic [4:0] aon_wkup_detector_4_d;
+  logic [4:0] aon_wkup_detector_4_wdata;
+  logic aon_wkup_detector_4_we;
+  logic unused_aon_wkup_detector_4_wdata;
+  logic aon_wkup_detector_4_regwen;
+
+  always_comb begin
+    aon_wkup_detector_4_d = '0;
+    aon_wkup_detector_4_d[2:0] = aon_wkup_detector_4_mode_4_qs_int;
+    aon_wkup_detector_4_d[3] = aon_wkup_detector_4_filter_4_qs_int;
+    aon_wkup_detector_4_d[4] = aon_wkup_detector_4_miodio_4_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(5),
+    .ResetVal(5'h0),
+    .BitMask(5'h1f)
+  ) u_wkup_detector_4_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_4_qs),
+    .src_we_i     (wkup_detector_4_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[4:0]),
+    .src_busy_o   (wkup_detector_4_busy),
+    .src_qs_o     (wkup_detector_4_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_4_d),
+    .dst_we_o     (aon_wkup_detector_4_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_4_regwen),
+    .dst_wd_o     (aon_wkup_detector_4_wdata)
+  );
+  assign unused_aon_wkup_detector_4_wdata = ^aon_wkup_detector_4_wdata;
+
+  logic [2:0]  aon_wkup_detector_5_mode_5_qs_int;
+  logic  aon_wkup_detector_5_filter_5_qs_int;
+  logic  aon_wkup_detector_5_miodio_5_qs_int;
+  logic [4:0] aon_wkup_detector_5_d;
+  logic [4:0] aon_wkup_detector_5_wdata;
+  logic aon_wkup_detector_5_we;
+  logic unused_aon_wkup_detector_5_wdata;
+  logic aon_wkup_detector_5_regwen;
+
+  always_comb begin
+    aon_wkup_detector_5_d = '0;
+    aon_wkup_detector_5_d[2:0] = aon_wkup_detector_5_mode_5_qs_int;
+    aon_wkup_detector_5_d[3] = aon_wkup_detector_5_filter_5_qs_int;
+    aon_wkup_detector_5_d[4] = aon_wkup_detector_5_miodio_5_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(5),
+    .ResetVal(5'h0),
+    .BitMask(5'h1f)
+  ) u_wkup_detector_5_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_5_qs),
+    .src_we_i     (wkup_detector_5_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[4:0]),
+    .src_busy_o   (wkup_detector_5_busy),
+    .src_qs_o     (wkup_detector_5_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_5_d),
+    .dst_we_o     (aon_wkup_detector_5_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_5_regwen),
+    .dst_wd_o     (aon_wkup_detector_5_wdata)
+  );
+  assign unused_aon_wkup_detector_5_wdata = ^aon_wkup_detector_5_wdata;
+
+  logic [2:0]  aon_wkup_detector_6_mode_6_qs_int;
+  logic  aon_wkup_detector_6_filter_6_qs_int;
+  logic  aon_wkup_detector_6_miodio_6_qs_int;
+  logic [4:0] aon_wkup_detector_6_d;
+  logic [4:0] aon_wkup_detector_6_wdata;
+  logic aon_wkup_detector_6_we;
+  logic unused_aon_wkup_detector_6_wdata;
+  logic aon_wkup_detector_6_regwen;
+
+  always_comb begin
+    aon_wkup_detector_6_d = '0;
+    aon_wkup_detector_6_d[2:0] = aon_wkup_detector_6_mode_6_qs_int;
+    aon_wkup_detector_6_d[3] = aon_wkup_detector_6_filter_6_qs_int;
+    aon_wkup_detector_6_d[4] = aon_wkup_detector_6_miodio_6_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(5),
+    .ResetVal(5'h0),
+    .BitMask(5'h1f)
+  ) u_wkup_detector_6_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_6_qs),
+    .src_we_i     (wkup_detector_6_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[4:0]),
+    .src_busy_o   (wkup_detector_6_busy),
+    .src_qs_o     (wkup_detector_6_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_6_d),
+    .dst_we_o     (aon_wkup_detector_6_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_6_regwen),
+    .dst_wd_o     (aon_wkup_detector_6_wdata)
+  );
+  assign unused_aon_wkup_detector_6_wdata = ^aon_wkup_detector_6_wdata;
+
+  logic [2:0]  aon_wkup_detector_7_mode_7_qs_int;
+  logic  aon_wkup_detector_7_filter_7_qs_int;
+  logic  aon_wkup_detector_7_miodio_7_qs_int;
+  logic [4:0] aon_wkup_detector_7_d;
+  logic [4:0] aon_wkup_detector_7_wdata;
+  logic aon_wkup_detector_7_we;
+  logic unused_aon_wkup_detector_7_wdata;
+  logic aon_wkup_detector_7_regwen;
+
+  always_comb begin
+    aon_wkup_detector_7_d = '0;
+    aon_wkup_detector_7_d[2:0] = aon_wkup_detector_7_mode_7_qs_int;
+    aon_wkup_detector_7_d[3] = aon_wkup_detector_7_filter_7_qs_int;
+    aon_wkup_detector_7_d[4] = aon_wkup_detector_7_miodio_7_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(5),
+    .ResetVal(5'h0),
+    .BitMask(5'h1f)
+  ) u_wkup_detector_7_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_7_qs),
+    .src_we_i     (wkup_detector_7_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[4:0]),
+    .src_busy_o   (wkup_detector_7_busy),
+    .src_qs_o     (wkup_detector_7_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_7_d),
+    .dst_we_o     (aon_wkup_detector_7_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_7_regwen),
+    .dst_wd_o     (aon_wkup_detector_7_wdata)
+  );
+  assign unused_aon_wkup_detector_7_wdata = ^aon_wkup_detector_7_wdata;
+
+  logic [7:0]  aon_wkup_detector_cnt_th_0_qs_int;
+  logic [7:0] aon_wkup_detector_cnt_th_0_d;
+  logic [7:0] aon_wkup_detector_cnt_th_0_wdata;
+  logic aon_wkup_detector_cnt_th_0_we;
+  logic unused_aon_wkup_detector_cnt_th_0_wdata;
+  logic aon_wkup_detector_cnt_th_0_regwen;
+
+  always_comb begin
+    aon_wkup_detector_cnt_th_0_d = '0;
+    aon_wkup_detector_cnt_th_0_d = aon_wkup_detector_cnt_th_0_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(8),
+    .ResetVal(8'h0),
+    .BitMask(8'hff)
+  ) u_wkup_detector_cnt_th_0_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_0_qs),
+    .src_we_i     (wkup_detector_cnt_th_0_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[7:0]),
+    .src_busy_o   (wkup_detector_cnt_th_0_busy),
+    .src_qs_o     (wkup_detector_cnt_th_0_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_cnt_th_0_d),
+    .dst_we_o     (aon_wkup_detector_cnt_th_0_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_cnt_th_0_regwen),
+    .dst_wd_o     (aon_wkup_detector_cnt_th_0_wdata)
+  );
+  assign unused_aon_wkup_detector_cnt_th_0_wdata = ^aon_wkup_detector_cnt_th_0_wdata;
+
+  logic [7:0]  aon_wkup_detector_cnt_th_1_qs_int;
+  logic [7:0] aon_wkup_detector_cnt_th_1_d;
+  logic [7:0] aon_wkup_detector_cnt_th_1_wdata;
+  logic aon_wkup_detector_cnt_th_1_we;
+  logic unused_aon_wkup_detector_cnt_th_1_wdata;
+  logic aon_wkup_detector_cnt_th_1_regwen;
+
+  always_comb begin
+    aon_wkup_detector_cnt_th_1_d = '0;
+    aon_wkup_detector_cnt_th_1_d = aon_wkup_detector_cnt_th_1_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(8),
+    .ResetVal(8'h0),
+    .BitMask(8'hff)
+  ) u_wkup_detector_cnt_th_1_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_1_qs),
+    .src_we_i     (wkup_detector_cnt_th_1_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[7:0]),
+    .src_busy_o   (wkup_detector_cnt_th_1_busy),
+    .src_qs_o     (wkup_detector_cnt_th_1_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_cnt_th_1_d),
+    .dst_we_o     (aon_wkup_detector_cnt_th_1_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_cnt_th_1_regwen),
+    .dst_wd_o     (aon_wkup_detector_cnt_th_1_wdata)
+  );
+  assign unused_aon_wkup_detector_cnt_th_1_wdata = ^aon_wkup_detector_cnt_th_1_wdata;
+
+  logic [7:0]  aon_wkup_detector_cnt_th_2_qs_int;
+  logic [7:0] aon_wkup_detector_cnt_th_2_d;
+  logic [7:0] aon_wkup_detector_cnt_th_2_wdata;
+  logic aon_wkup_detector_cnt_th_2_we;
+  logic unused_aon_wkup_detector_cnt_th_2_wdata;
+  logic aon_wkup_detector_cnt_th_2_regwen;
+
+  always_comb begin
+    aon_wkup_detector_cnt_th_2_d = '0;
+    aon_wkup_detector_cnt_th_2_d = aon_wkup_detector_cnt_th_2_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(8),
+    .ResetVal(8'h0),
+    .BitMask(8'hff)
+  ) u_wkup_detector_cnt_th_2_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_2_qs),
+    .src_we_i     (wkup_detector_cnt_th_2_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[7:0]),
+    .src_busy_o   (wkup_detector_cnt_th_2_busy),
+    .src_qs_o     (wkup_detector_cnt_th_2_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_cnt_th_2_d),
+    .dst_we_o     (aon_wkup_detector_cnt_th_2_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_cnt_th_2_regwen),
+    .dst_wd_o     (aon_wkup_detector_cnt_th_2_wdata)
+  );
+  assign unused_aon_wkup_detector_cnt_th_2_wdata = ^aon_wkup_detector_cnt_th_2_wdata;
+
+  logic [7:0]  aon_wkup_detector_cnt_th_3_qs_int;
+  logic [7:0] aon_wkup_detector_cnt_th_3_d;
+  logic [7:0] aon_wkup_detector_cnt_th_3_wdata;
+  logic aon_wkup_detector_cnt_th_3_we;
+  logic unused_aon_wkup_detector_cnt_th_3_wdata;
+  logic aon_wkup_detector_cnt_th_3_regwen;
+
+  always_comb begin
+    aon_wkup_detector_cnt_th_3_d = '0;
+    aon_wkup_detector_cnt_th_3_d = aon_wkup_detector_cnt_th_3_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(8),
+    .ResetVal(8'h0),
+    .BitMask(8'hff)
+  ) u_wkup_detector_cnt_th_3_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_3_qs),
+    .src_we_i     (wkup_detector_cnt_th_3_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[7:0]),
+    .src_busy_o   (wkup_detector_cnt_th_3_busy),
+    .src_qs_o     (wkup_detector_cnt_th_3_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_cnt_th_3_d),
+    .dst_we_o     (aon_wkup_detector_cnt_th_3_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_cnt_th_3_regwen),
+    .dst_wd_o     (aon_wkup_detector_cnt_th_3_wdata)
+  );
+  assign unused_aon_wkup_detector_cnt_th_3_wdata = ^aon_wkup_detector_cnt_th_3_wdata;
+
+  logic [7:0]  aon_wkup_detector_cnt_th_4_qs_int;
+  logic [7:0] aon_wkup_detector_cnt_th_4_d;
+  logic [7:0] aon_wkup_detector_cnt_th_4_wdata;
+  logic aon_wkup_detector_cnt_th_4_we;
+  logic unused_aon_wkup_detector_cnt_th_4_wdata;
+  logic aon_wkup_detector_cnt_th_4_regwen;
+
+  always_comb begin
+    aon_wkup_detector_cnt_th_4_d = '0;
+    aon_wkup_detector_cnt_th_4_d = aon_wkup_detector_cnt_th_4_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(8),
+    .ResetVal(8'h0),
+    .BitMask(8'hff)
+  ) u_wkup_detector_cnt_th_4_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_4_qs),
+    .src_we_i     (wkup_detector_cnt_th_4_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[7:0]),
+    .src_busy_o   (wkup_detector_cnt_th_4_busy),
+    .src_qs_o     (wkup_detector_cnt_th_4_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_cnt_th_4_d),
+    .dst_we_o     (aon_wkup_detector_cnt_th_4_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_cnt_th_4_regwen),
+    .dst_wd_o     (aon_wkup_detector_cnt_th_4_wdata)
+  );
+  assign unused_aon_wkup_detector_cnt_th_4_wdata = ^aon_wkup_detector_cnt_th_4_wdata;
+
+  logic [7:0]  aon_wkup_detector_cnt_th_5_qs_int;
+  logic [7:0] aon_wkup_detector_cnt_th_5_d;
+  logic [7:0] aon_wkup_detector_cnt_th_5_wdata;
+  logic aon_wkup_detector_cnt_th_5_we;
+  logic unused_aon_wkup_detector_cnt_th_5_wdata;
+  logic aon_wkup_detector_cnt_th_5_regwen;
+
+  always_comb begin
+    aon_wkup_detector_cnt_th_5_d = '0;
+    aon_wkup_detector_cnt_th_5_d = aon_wkup_detector_cnt_th_5_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(8),
+    .ResetVal(8'h0),
+    .BitMask(8'hff)
+  ) u_wkup_detector_cnt_th_5_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_5_qs),
+    .src_we_i     (wkup_detector_cnt_th_5_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[7:0]),
+    .src_busy_o   (wkup_detector_cnt_th_5_busy),
+    .src_qs_o     (wkup_detector_cnt_th_5_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_cnt_th_5_d),
+    .dst_we_o     (aon_wkup_detector_cnt_th_5_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_cnt_th_5_regwen),
+    .dst_wd_o     (aon_wkup_detector_cnt_th_5_wdata)
+  );
+  assign unused_aon_wkup_detector_cnt_th_5_wdata = ^aon_wkup_detector_cnt_th_5_wdata;
+
+  logic [7:0]  aon_wkup_detector_cnt_th_6_qs_int;
+  logic [7:0] aon_wkup_detector_cnt_th_6_d;
+  logic [7:0] aon_wkup_detector_cnt_th_6_wdata;
+  logic aon_wkup_detector_cnt_th_6_we;
+  logic unused_aon_wkup_detector_cnt_th_6_wdata;
+  logic aon_wkup_detector_cnt_th_6_regwen;
+
+  always_comb begin
+    aon_wkup_detector_cnt_th_6_d = '0;
+    aon_wkup_detector_cnt_th_6_d = aon_wkup_detector_cnt_th_6_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(8),
+    .ResetVal(8'h0),
+    .BitMask(8'hff)
+  ) u_wkup_detector_cnt_th_6_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_6_qs),
+    .src_we_i     (wkup_detector_cnt_th_6_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[7:0]),
+    .src_busy_o   (wkup_detector_cnt_th_6_busy),
+    .src_qs_o     (wkup_detector_cnt_th_6_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_cnt_th_6_d),
+    .dst_we_o     (aon_wkup_detector_cnt_th_6_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_cnt_th_6_regwen),
+    .dst_wd_o     (aon_wkup_detector_cnt_th_6_wdata)
+  );
+  assign unused_aon_wkup_detector_cnt_th_6_wdata = ^aon_wkup_detector_cnt_th_6_wdata;
+
+  logic [7:0]  aon_wkup_detector_cnt_th_7_qs_int;
+  logic [7:0] aon_wkup_detector_cnt_th_7_d;
+  logic [7:0] aon_wkup_detector_cnt_th_7_wdata;
+  logic aon_wkup_detector_cnt_th_7_we;
+  logic unused_aon_wkup_detector_cnt_th_7_wdata;
+  logic aon_wkup_detector_cnt_th_7_regwen;
+
+  always_comb begin
+    aon_wkup_detector_cnt_th_7_d = '0;
+    aon_wkup_detector_cnt_th_7_d = aon_wkup_detector_cnt_th_7_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(8),
+    .ResetVal(8'h0),
+    .BitMask(8'hff)
+  ) u_wkup_detector_cnt_th_7_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i (wkup_detector_regwen_7_qs),
+    .src_we_i     (wkup_detector_cnt_th_7_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[7:0]),
+    .src_busy_o   (wkup_detector_cnt_th_7_busy),
+    .src_qs_o     (wkup_detector_cnt_th_7_qs), // for software read back
+    .dst_d_i      (aon_wkup_detector_cnt_th_7_d),
+    .dst_we_o     (aon_wkup_detector_cnt_th_7_we),
+    .dst_re_o     (),
+    .dst_regwen_o (aon_wkup_detector_cnt_th_7_regwen),
+    .dst_wd_o     (aon_wkup_detector_cnt_th_7_wdata)
+  );
+  assign unused_aon_wkup_detector_cnt_th_7_wdata = ^aon_wkup_detector_cnt_th_7_wdata;
+
+  logic  aon_wkup_cause_cause_0_qs_int;
+  logic  aon_wkup_cause_cause_1_qs_int;
+  logic  aon_wkup_cause_cause_2_qs_int;
+  logic  aon_wkup_cause_cause_3_qs_int;
+  logic  aon_wkup_cause_cause_4_qs_int;
+  logic  aon_wkup_cause_cause_5_qs_int;
+  logic  aon_wkup_cause_cause_6_qs_int;
+  logic  aon_wkup_cause_cause_7_qs_int;
+  logic [7:0] aon_wkup_cause_d;
+  logic [7:0] aon_wkup_cause_wdata;
+  logic aon_wkup_cause_we;
+  logic unused_aon_wkup_cause_wdata;
+
+  always_comb begin
+    aon_wkup_cause_d = '0;
+    aon_wkup_cause_d[0] = aon_wkup_cause_cause_0_qs_int;
+    aon_wkup_cause_d[1] = aon_wkup_cause_cause_1_qs_int;
+    aon_wkup_cause_d[2] = aon_wkup_cause_cause_2_qs_int;
+    aon_wkup_cause_d[3] = aon_wkup_cause_cause_3_qs_int;
+    aon_wkup_cause_d[4] = aon_wkup_cause_cause_4_qs_int;
+    aon_wkup_cause_d[5] = aon_wkup_cause_cause_5_qs_int;
+    aon_wkup_cause_d[6] = aon_wkup_cause_cause_6_qs_int;
+    aon_wkup_cause_d[7] = aon_wkup_cause_cause_7_qs_int;
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(8),
+    .ResetVal(8'h0),
+    .BitMask(8'hff)
+  ) u_wkup_cause_cdc (
+    .clk_src_i    (clk_i),
+    .rst_src_ni   (rst_ni),
+    .clk_dst_i    (clk_aon_i),
+    .rst_dst_ni   (rst_aon_ni),
+    .src_update_i (sync_aon_update),
+    .src_regwen_i ('0),
+    .src_we_i     (wkup_cause_we),
+    .src_re_i     ('0),
+    .src_wd_i     (reg_wdata[7:0]),
+    .src_busy_o   (wkup_cause_busy),
+    .src_qs_o     (wkup_cause_qs), // for software read back
+    .dst_d_i      (aon_wkup_cause_d),
+    .dst_we_o     (aon_wkup_cause_we),
+    .dst_re_o     (),
+    .dst_regwen_o (),
+    .dst_wd_o     (aon_wkup_cause_wdata)
+  );
+  assign unused_aon_wkup_cause_wdata = ^aon_wkup_cause_wdata;
 
   // Register instances
   // R[alert_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_alert_test (
@@ -1613,10 +2467,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1641,9 +2493,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1668,9 +2520,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_1_qs)
   );
 
+
   // Subregister 2 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_2]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1695,9 +2547,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_2_qs)
   );
 
+
   // Subregister 3 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_3]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1722,9 +2574,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_3_qs)
   );
 
+
   // Subregister 4 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_4]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1749,9 +2601,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_4_qs)
   );
 
+
   // Subregister 5 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_5]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1776,9 +2628,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_5_qs)
   );
 
+
   // Subregister 6 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_6]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1803,9 +2655,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_6_qs)
   );
 
+
   // Subregister 7 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_7]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1830,9 +2682,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_7_qs)
   );
 
+
   // Subregister 8 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_8]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1857,9 +2709,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_8_qs)
   );
 
+
   // Subregister 9 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_9]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1884,9 +2736,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_9_qs)
   );
 
+
   // Subregister 10 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_10]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1911,9 +2763,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_10_qs)
   );
 
+
   // Subregister 11 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_11]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1938,9 +2790,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_11_qs)
   );
 
+
   // Subregister 12 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_12]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1965,9 +2817,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_12_qs)
   );
 
+
   // Subregister 13 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_13]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -1992,9 +2844,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_13_qs)
   );
 
+
   // Subregister 14 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_14]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2019,9 +2871,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_14_qs)
   );
 
+
   // Subregister 15 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_15]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2046,9 +2898,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_15_qs)
   );
 
+
   // Subregister 16 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_16]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2073,9 +2925,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_16_qs)
   );
 
+
   // Subregister 17 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_17]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2100,9 +2952,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_17_qs)
   );
 
+
   // Subregister 18 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_18]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2127,9 +2979,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_18_qs)
   );
 
+
   // Subregister 19 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_19]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2154,9 +3006,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_19_qs)
   );
 
+
   // Subregister 20 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_20]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2181,9 +3033,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_20_qs)
   );
 
+
   // Subregister 21 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_21]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2208,9 +3060,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_21_qs)
   );
 
+
   // Subregister 22 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_22]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2235,9 +3087,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_22_qs)
   );
 
+
   // Subregister 23 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_23]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2262,9 +3114,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_23_qs)
   );
 
+
   // Subregister 24 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_24]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2289,9 +3141,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_24_qs)
   );
 
+
   // Subregister 25 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_25]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2316,9 +3168,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_25_qs)
   );
 
+
   // Subregister 26 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_26]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2343,9 +3195,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_26_qs)
   );
 
+
   // Subregister 27 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_27]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2370,9 +3222,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_27_qs)
   );
 
+
   // Subregister 28 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_28]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2397,9 +3249,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_28_qs)
   );
 
+
   // Subregister 29 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_29]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2424,9 +3276,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_29_qs)
   );
 
+
   // Subregister 30 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_30]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2451,9 +3303,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_30_qs)
   );
 
+
   // Subregister 31 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_31]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2478,9 +3330,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_regwen_31_qs)
   );
 
+
   // Subregister 32 of Multireg mio_periph_insel_regwen
   // R[mio_periph_insel_regwen_32]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -2506,10 +3358,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg mio_periph_insel
   // R[mio_periph_insel_0]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2534,9 +3384,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_0_qs)
   );
 
+
   // Subregister 1 of Multireg mio_periph_insel
   // R[mio_periph_insel_1]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2561,9 +3411,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_1_qs)
   );
 
+
   // Subregister 2 of Multireg mio_periph_insel
   // R[mio_periph_insel_2]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2588,9 +3438,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_2_qs)
   );
 
+
   // Subregister 3 of Multireg mio_periph_insel
   // R[mio_periph_insel_3]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2615,9 +3465,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_3_qs)
   );
 
+
   // Subregister 4 of Multireg mio_periph_insel
   // R[mio_periph_insel_4]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2642,9 +3492,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_4_qs)
   );
 
+
   // Subregister 5 of Multireg mio_periph_insel
   // R[mio_periph_insel_5]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2669,9 +3519,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_5_qs)
   );
 
+
   // Subregister 6 of Multireg mio_periph_insel
   // R[mio_periph_insel_6]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2696,9 +3546,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_6_qs)
   );
 
+
   // Subregister 7 of Multireg mio_periph_insel
   // R[mio_periph_insel_7]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2723,9 +3573,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_7_qs)
   );
 
+
   // Subregister 8 of Multireg mio_periph_insel
   // R[mio_periph_insel_8]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2750,9 +3600,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_8_qs)
   );
 
+
   // Subregister 9 of Multireg mio_periph_insel
   // R[mio_periph_insel_9]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2777,9 +3627,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_9_qs)
   );
 
+
   // Subregister 10 of Multireg mio_periph_insel
   // R[mio_periph_insel_10]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2804,9 +3654,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_10_qs)
   );
 
+
   // Subregister 11 of Multireg mio_periph_insel
   // R[mio_periph_insel_11]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2831,9 +3681,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_11_qs)
   );
 
+
   // Subregister 12 of Multireg mio_periph_insel
   // R[mio_periph_insel_12]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2858,9 +3708,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_12_qs)
   );
 
+
   // Subregister 13 of Multireg mio_periph_insel
   // R[mio_periph_insel_13]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2885,9 +3735,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_13_qs)
   );
 
+
   // Subregister 14 of Multireg mio_periph_insel
   // R[mio_periph_insel_14]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2912,9 +3762,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_14_qs)
   );
 
+
   // Subregister 15 of Multireg mio_periph_insel
   // R[mio_periph_insel_15]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2939,9 +3789,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_15_qs)
   );
 
+
   // Subregister 16 of Multireg mio_periph_insel
   // R[mio_periph_insel_16]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2966,9 +3816,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_16_qs)
   );
 
+
   // Subregister 17 of Multireg mio_periph_insel
   // R[mio_periph_insel_17]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2993,9 +3843,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_17_qs)
   );
 
+
   // Subregister 18 of Multireg mio_periph_insel
   // R[mio_periph_insel_18]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3020,9 +3870,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_18_qs)
   );
 
+
   // Subregister 19 of Multireg mio_periph_insel
   // R[mio_periph_insel_19]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3047,9 +3897,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_19_qs)
   );
 
+
   // Subregister 20 of Multireg mio_periph_insel
   // R[mio_periph_insel_20]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3074,9 +3924,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_20_qs)
   );
 
+
   // Subregister 21 of Multireg mio_periph_insel
   // R[mio_periph_insel_21]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3101,9 +3951,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_21_qs)
   );
 
+
   // Subregister 22 of Multireg mio_periph_insel
   // R[mio_periph_insel_22]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3128,9 +3978,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_22_qs)
   );
 
+
   // Subregister 23 of Multireg mio_periph_insel
   // R[mio_periph_insel_23]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3155,9 +4005,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_23_qs)
   );
 
+
   // Subregister 24 of Multireg mio_periph_insel
   // R[mio_periph_insel_24]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3182,9 +4032,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_24_qs)
   );
 
+
   // Subregister 25 of Multireg mio_periph_insel
   // R[mio_periph_insel_25]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3209,9 +4059,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_25_qs)
   );
 
+
   // Subregister 26 of Multireg mio_periph_insel
   // R[mio_periph_insel_26]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3236,9 +4086,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_26_qs)
   );
 
+
   // Subregister 27 of Multireg mio_periph_insel
   // R[mio_periph_insel_27]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3263,9 +4113,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_27_qs)
   );
 
+
   // Subregister 28 of Multireg mio_periph_insel
   // R[mio_periph_insel_28]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3290,9 +4140,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_28_qs)
   );
 
+
   // Subregister 29 of Multireg mio_periph_insel
   // R[mio_periph_insel_29]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3317,9 +4167,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_29_qs)
   );
 
+
   // Subregister 30 of Multireg mio_periph_insel
   // R[mio_periph_insel_30]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3344,9 +4194,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_30_qs)
   );
 
+
   // Subregister 31 of Multireg mio_periph_insel
   // R[mio_periph_insel_31]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3371,9 +4221,9 @@ module pinmux_reg_top (
     .qs     (mio_periph_insel_31_qs)
   );
 
+
   // Subregister 32 of Multireg mio_periph_insel
   // R[mio_periph_insel_32]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3399,10 +4249,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3427,9 +4275,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3454,9 +4302,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_1_qs)
   );
 
+
   // Subregister 2 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_2]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3481,9 +4329,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_2_qs)
   );
 
+
   // Subregister 3 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_3]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3508,9 +4356,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_3_qs)
   );
 
+
   // Subregister 4 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_4]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3535,9 +4383,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_4_qs)
   );
 
+
   // Subregister 5 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_5]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3562,9 +4410,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_5_qs)
   );
 
+
   // Subregister 6 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_6]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3589,9 +4437,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_6_qs)
   );
 
+
   // Subregister 7 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_7]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3616,9 +4464,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_7_qs)
   );
 
+
   // Subregister 8 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_8]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3643,9 +4491,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_8_qs)
   );
 
+
   // Subregister 9 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_9]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3670,9 +4518,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_9_qs)
   );
 
+
   // Subregister 10 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_10]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3697,9 +4545,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_10_qs)
   );
 
+
   // Subregister 11 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_11]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3724,9 +4572,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_11_qs)
   );
 
+
   // Subregister 12 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_12]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3751,9 +4599,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_12_qs)
   );
 
+
   // Subregister 13 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_13]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3778,9 +4626,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_13_qs)
   );
 
+
   // Subregister 14 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_14]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3805,9 +4653,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_14_qs)
   );
 
+
   // Subregister 15 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_15]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3832,9 +4680,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_15_qs)
   );
 
+
   // Subregister 16 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_16]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3859,9 +4707,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_16_qs)
   );
 
+
   // Subregister 17 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_17]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3886,9 +4734,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_17_qs)
   );
 
+
   // Subregister 18 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_18]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3913,9 +4761,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_18_qs)
   );
 
+
   // Subregister 19 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_19]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3940,9 +4788,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_19_qs)
   );
 
+
   // Subregister 20 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_20]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3967,9 +4815,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_20_qs)
   );
 
+
   // Subregister 21 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_21]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -3994,9 +4842,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_21_qs)
   );
 
+
   // Subregister 22 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_22]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4021,9 +4869,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_22_qs)
   );
 
+
   // Subregister 23 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_23]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4048,9 +4896,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_23_qs)
   );
 
+
   // Subregister 24 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_24]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4075,9 +4923,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_24_qs)
   );
 
+
   // Subregister 25 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_25]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4102,9 +4950,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_25_qs)
   );
 
+
   // Subregister 26 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_26]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4129,9 +4977,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_26_qs)
   );
 
+
   // Subregister 27 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_27]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4156,9 +5004,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_27_qs)
   );
 
+
   // Subregister 28 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_28]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4183,9 +5031,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_28_qs)
   );
 
+
   // Subregister 29 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_29]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4210,9 +5058,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_29_qs)
   );
 
+
   // Subregister 30 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_30]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4237,9 +5085,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_regwen_30_qs)
   );
 
+
   // Subregister 31 of Multireg mio_outsel_regwen
   // R[mio_outsel_regwen_31]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -4265,10 +5113,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg mio_outsel
   // R[mio_outsel_0]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4293,9 +5139,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_0_qs)
   );
 
+
   // Subregister 1 of Multireg mio_outsel
   // R[mio_outsel_1]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4320,9 +5166,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_1_qs)
   );
 
+
   // Subregister 2 of Multireg mio_outsel
   // R[mio_outsel_2]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4347,9 +5193,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_2_qs)
   );
 
+
   // Subregister 3 of Multireg mio_outsel
   // R[mio_outsel_3]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4374,9 +5220,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_3_qs)
   );
 
+
   // Subregister 4 of Multireg mio_outsel
   // R[mio_outsel_4]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4401,9 +5247,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_4_qs)
   );
 
+
   // Subregister 5 of Multireg mio_outsel
   // R[mio_outsel_5]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4428,9 +5274,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_5_qs)
   );
 
+
   // Subregister 6 of Multireg mio_outsel
   // R[mio_outsel_6]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4455,9 +5301,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_6_qs)
   );
 
+
   // Subregister 7 of Multireg mio_outsel
   // R[mio_outsel_7]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4482,9 +5328,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_7_qs)
   );
 
+
   // Subregister 8 of Multireg mio_outsel
   // R[mio_outsel_8]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4509,9 +5355,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_8_qs)
   );
 
+
   // Subregister 9 of Multireg mio_outsel
   // R[mio_outsel_9]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4536,9 +5382,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_9_qs)
   );
 
+
   // Subregister 10 of Multireg mio_outsel
   // R[mio_outsel_10]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4563,9 +5409,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_10_qs)
   );
 
+
   // Subregister 11 of Multireg mio_outsel
   // R[mio_outsel_11]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4590,9 +5436,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_11_qs)
   );
 
+
   // Subregister 12 of Multireg mio_outsel
   // R[mio_outsel_12]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4617,9 +5463,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_12_qs)
   );
 
+
   // Subregister 13 of Multireg mio_outsel
   // R[mio_outsel_13]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4644,9 +5490,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_13_qs)
   );
 
+
   // Subregister 14 of Multireg mio_outsel
   // R[mio_outsel_14]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4671,9 +5517,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_14_qs)
   );
 
+
   // Subregister 15 of Multireg mio_outsel
   // R[mio_outsel_15]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4698,9 +5544,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_15_qs)
   );
 
+
   // Subregister 16 of Multireg mio_outsel
   // R[mio_outsel_16]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4725,9 +5571,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_16_qs)
   );
 
+
   // Subregister 17 of Multireg mio_outsel
   // R[mio_outsel_17]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4752,9 +5598,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_17_qs)
   );
 
+
   // Subregister 18 of Multireg mio_outsel
   // R[mio_outsel_18]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4779,9 +5625,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_18_qs)
   );
 
+
   // Subregister 19 of Multireg mio_outsel
   // R[mio_outsel_19]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4806,9 +5652,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_19_qs)
   );
 
+
   // Subregister 20 of Multireg mio_outsel
   // R[mio_outsel_20]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4833,9 +5679,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_20_qs)
   );
 
+
   // Subregister 21 of Multireg mio_outsel
   // R[mio_outsel_21]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4860,9 +5706,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_21_qs)
   );
 
+
   // Subregister 22 of Multireg mio_outsel
   // R[mio_outsel_22]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4887,9 +5733,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_22_qs)
   );
 
+
   // Subregister 23 of Multireg mio_outsel
   // R[mio_outsel_23]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4914,9 +5760,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_23_qs)
   );
 
+
   // Subregister 24 of Multireg mio_outsel
   // R[mio_outsel_24]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4941,9 +5787,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_24_qs)
   );
 
+
   // Subregister 25 of Multireg mio_outsel
   // R[mio_outsel_25]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4968,9 +5814,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_25_qs)
   );
 
+
   // Subregister 26 of Multireg mio_outsel
   // R[mio_outsel_26]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4995,9 +5841,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_26_qs)
   );
 
+
   // Subregister 27 of Multireg mio_outsel
   // R[mio_outsel_27]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5022,9 +5868,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_27_qs)
   );
 
+
   // Subregister 28 of Multireg mio_outsel
   // R[mio_outsel_28]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5049,9 +5895,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_28_qs)
   );
 
+
   // Subregister 29 of Multireg mio_outsel
   // R[mio_outsel_29]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5076,9 +5922,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_29_qs)
   );
 
+
   // Subregister 30 of Multireg mio_outsel
   // R[mio_outsel_30]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5103,9 +5949,9 @@ module pinmux_reg_top (
     .qs     (mio_outsel_30_qs)
   );
 
+
   // Subregister 31 of Multireg mio_outsel
   // R[mio_outsel_31]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5131,10 +5977,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5159,9 +6003,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5186,9 +6030,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_1_qs)
   );
 
+
   // Subregister 2 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_2]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5213,9 +6057,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_2_qs)
   );
 
+
   // Subregister 3 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_3]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5240,9 +6084,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_3_qs)
   );
 
+
   // Subregister 4 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_4]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5267,9 +6111,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_4_qs)
   );
 
+
   // Subregister 5 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_5]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5294,9 +6138,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_5_qs)
   );
 
+
   // Subregister 6 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_6]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5321,9 +6165,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_6_qs)
   );
 
+
   // Subregister 7 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_7]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5348,9 +6192,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_7_qs)
   );
 
+
   // Subregister 8 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_8]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5375,9 +6219,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_8_qs)
   );
 
+
   // Subregister 9 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_9]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5402,9 +6246,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_9_qs)
   );
 
+
   // Subregister 10 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_10]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5429,9 +6273,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_10_qs)
   );
 
+
   // Subregister 11 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_11]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5456,9 +6300,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_11_qs)
   );
 
+
   // Subregister 12 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_12]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5483,9 +6327,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_12_qs)
   );
 
+
   // Subregister 13 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_13]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5510,9 +6354,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_13_qs)
   );
 
+
   // Subregister 14 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_14]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5537,9 +6381,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_14_qs)
   );
 
+
   // Subregister 15 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_15]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5564,9 +6408,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_15_qs)
   );
 
+
   // Subregister 16 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_16]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5591,9 +6435,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_16_qs)
   );
 
+
   // Subregister 17 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_17]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5618,9 +6462,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_17_qs)
   );
 
+
   // Subregister 18 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_18]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5645,9 +6489,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_18_qs)
   );
 
+
   // Subregister 19 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_19]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5672,9 +6516,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_19_qs)
   );
 
+
   // Subregister 20 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_20]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5699,9 +6543,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_20_qs)
   );
 
+
   // Subregister 21 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_21]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5726,9 +6570,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_21_qs)
   );
 
+
   // Subregister 22 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_22]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5753,9 +6597,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_22_qs)
   );
 
+
   // Subregister 23 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_23]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5780,9 +6624,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_23_qs)
   );
 
+
   // Subregister 24 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_24]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5807,9 +6651,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_24_qs)
   );
 
+
   // Subregister 25 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_25]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5834,9 +6678,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_25_qs)
   );
 
+
   // Subregister 26 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_26]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5861,9 +6705,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_26_qs)
   );
 
+
   // Subregister 27 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_27]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5888,9 +6732,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_27_qs)
   );
 
+
   // Subregister 28 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_28]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5915,9 +6759,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_28_qs)
   );
 
+
   // Subregister 29 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_29]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5942,9 +6786,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_29_qs)
   );
 
+
   // Subregister 30 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_30]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5969,9 +6813,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_regwen_30_qs)
   );
 
+
   // Subregister 31 of Multireg mio_pad_attr_regwen
   // R[mio_pad_attr_regwen_31]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -5997,10 +6841,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg mio_pad_attr
   // R[mio_pad_attr_0]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_0 (
@@ -6014,9 +6856,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_0_qs)
   );
 
+
   // Subregister 1 of Multireg mio_pad_attr
   // R[mio_pad_attr_1]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_1 (
@@ -6030,9 +6872,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_1_qs)
   );
 
+
   // Subregister 2 of Multireg mio_pad_attr
   // R[mio_pad_attr_2]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_2 (
@@ -6046,9 +6888,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_2_qs)
   );
 
+
   // Subregister 3 of Multireg mio_pad_attr
   // R[mio_pad_attr_3]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_3 (
@@ -6062,9 +6904,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_3_qs)
   );
 
+
   // Subregister 4 of Multireg mio_pad_attr
   // R[mio_pad_attr_4]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_4 (
@@ -6078,9 +6920,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_4_qs)
   );
 
+
   // Subregister 5 of Multireg mio_pad_attr
   // R[mio_pad_attr_5]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_5 (
@@ -6094,9 +6936,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_5_qs)
   );
 
+
   // Subregister 6 of Multireg mio_pad_attr
   // R[mio_pad_attr_6]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_6 (
@@ -6110,9 +6952,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_6_qs)
   );
 
+
   // Subregister 7 of Multireg mio_pad_attr
   // R[mio_pad_attr_7]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_7 (
@@ -6126,9 +6968,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_7_qs)
   );
 
+
   // Subregister 8 of Multireg mio_pad_attr
   // R[mio_pad_attr_8]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_8 (
@@ -6142,9 +6984,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_8_qs)
   );
 
+
   // Subregister 9 of Multireg mio_pad_attr
   // R[mio_pad_attr_9]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_9 (
@@ -6158,9 +7000,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_9_qs)
   );
 
+
   // Subregister 10 of Multireg mio_pad_attr
   // R[mio_pad_attr_10]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_10 (
@@ -6174,9 +7016,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_10_qs)
   );
 
+
   // Subregister 11 of Multireg mio_pad_attr
   // R[mio_pad_attr_11]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_11 (
@@ -6190,9 +7032,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_11_qs)
   );
 
+
   // Subregister 12 of Multireg mio_pad_attr
   // R[mio_pad_attr_12]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_12 (
@@ -6206,9 +7048,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_12_qs)
   );
 
+
   // Subregister 13 of Multireg mio_pad_attr
   // R[mio_pad_attr_13]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_13 (
@@ -6222,9 +7064,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_13_qs)
   );
 
+
   // Subregister 14 of Multireg mio_pad_attr
   // R[mio_pad_attr_14]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_14 (
@@ -6238,9 +7080,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_14_qs)
   );
 
+
   // Subregister 15 of Multireg mio_pad_attr
   // R[mio_pad_attr_15]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_15 (
@@ -6254,9 +7096,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_15_qs)
   );
 
+
   // Subregister 16 of Multireg mio_pad_attr
   // R[mio_pad_attr_16]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_16 (
@@ -6270,9 +7112,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_16_qs)
   );
 
+
   // Subregister 17 of Multireg mio_pad_attr
   // R[mio_pad_attr_17]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_17 (
@@ -6286,9 +7128,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_17_qs)
   );
 
+
   // Subregister 18 of Multireg mio_pad_attr
   // R[mio_pad_attr_18]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_18 (
@@ -6302,9 +7144,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_18_qs)
   );
 
+
   // Subregister 19 of Multireg mio_pad_attr
   // R[mio_pad_attr_19]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_19 (
@@ -6318,9 +7160,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_19_qs)
   );
 
+
   // Subregister 20 of Multireg mio_pad_attr
   // R[mio_pad_attr_20]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_20 (
@@ -6334,9 +7176,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_20_qs)
   );
 
+
   // Subregister 21 of Multireg mio_pad_attr
   // R[mio_pad_attr_21]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_21 (
@@ -6350,9 +7192,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_21_qs)
   );
 
+
   // Subregister 22 of Multireg mio_pad_attr
   // R[mio_pad_attr_22]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_22 (
@@ -6366,9 +7208,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_22_qs)
   );
 
+
   // Subregister 23 of Multireg mio_pad_attr
   // R[mio_pad_attr_23]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_23 (
@@ -6382,9 +7224,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_23_qs)
   );
 
+
   // Subregister 24 of Multireg mio_pad_attr
   // R[mio_pad_attr_24]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_24 (
@@ -6398,9 +7240,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_24_qs)
   );
 
+
   // Subregister 25 of Multireg mio_pad_attr
   // R[mio_pad_attr_25]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_25 (
@@ -6414,9 +7256,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_25_qs)
   );
 
+
   // Subregister 26 of Multireg mio_pad_attr
   // R[mio_pad_attr_26]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_26 (
@@ -6430,9 +7272,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_26_qs)
   );
 
+
   // Subregister 27 of Multireg mio_pad_attr
   // R[mio_pad_attr_27]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_27 (
@@ -6446,9 +7288,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_27_qs)
   );
 
+
   // Subregister 28 of Multireg mio_pad_attr
   // R[mio_pad_attr_28]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_28 (
@@ -6462,9 +7304,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_28_qs)
   );
 
+
   // Subregister 29 of Multireg mio_pad_attr
   // R[mio_pad_attr_29]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_29 (
@@ -6478,9 +7320,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_29_qs)
   );
 
+
   // Subregister 30 of Multireg mio_pad_attr
   // R[mio_pad_attr_30]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_30 (
@@ -6494,9 +7336,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_attr_30_qs)
   );
 
+
   // Subregister 31 of Multireg mio_pad_attr
   // R[mio_pad_attr_31]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_mio_pad_attr_31 (
@@ -6511,10 +7353,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6539,9 +7379,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6566,9 +7406,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_1_qs)
   );
 
+
   // Subregister 2 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_2]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6593,9 +7433,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_2_qs)
   );
 
+
   // Subregister 3 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_3]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6620,9 +7460,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_3_qs)
   );
 
+
   // Subregister 4 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_4]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6647,9 +7487,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_4_qs)
   );
 
+
   // Subregister 5 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_5]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6674,9 +7514,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_5_qs)
   );
 
+
   // Subregister 6 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_6]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6701,9 +7541,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_6_qs)
   );
 
+
   // Subregister 7 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_7]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6728,9 +7568,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_7_qs)
   );
 
+
   // Subregister 8 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_8]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6755,9 +7595,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_8_qs)
   );
 
+
   // Subregister 9 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_9]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6782,9 +7622,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_9_qs)
   );
 
+
   // Subregister 10 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_10]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6809,9 +7649,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_10_qs)
   );
 
+
   // Subregister 11 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_11]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6836,9 +7676,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_11_qs)
   );
 
+
   // Subregister 12 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_12]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6863,9 +7703,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_12_qs)
   );
 
+
   // Subregister 13 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_13]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6890,9 +7730,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_13_qs)
   );
 
+
   // Subregister 14 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_14]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6917,9 +7757,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_regwen_14_qs)
   );
 
+
   // Subregister 15 of Multireg dio_pad_attr_regwen
   // R[dio_pad_attr_regwen_15]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -6945,10 +7785,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg dio_pad_attr
   // R[dio_pad_attr_0]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_0 (
@@ -6962,9 +7800,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_0_qs)
   );
 
+
   // Subregister 1 of Multireg dio_pad_attr
   // R[dio_pad_attr_1]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_1 (
@@ -6978,9 +7816,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_1_qs)
   );
 
+
   // Subregister 2 of Multireg dio_pad_attr
   // R[dio_pad_attr_2]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_2 (
@@ -6994,9 +7832,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_2_qs)
   );
 
+
   // Subregister 3 of Multireg dio_pad_attr
   // R[dio_pad_attr_3]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_3 (
@@ -7010,9 +7848,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_3_qs)
   );
 
+
   // Subregister 4 of Multireg dio_pad_attr
   // R[dio_pad_attr_4]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_4 (
@@ -7026,9 +7864,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_4_qs)
   );
 
+
   // Subregister 5 of Multireg dio_pad_attr
   // R[dio_pad_attr_5]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_5 (
@@ -7042,9 +7880,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_5_qs)
   );
 
+
   // Subregister 6 of Multireg dio_pad_attr
   // R[dio_pad_attr_6]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_6 (
@@ -7058,9 +7896,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_6_qs)
   );
 
+
   // Subregister 7 of Multireg dio_pad_attr
   // R[dio_pad_attr_7]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_7 (
@@ -7074,9 +7912,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_7_qs)
   );
 
+
   // Subregister 8 of Multireg dio_pad_attr
   // R[dio_pad_attr_8]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_8 (
@@ -7090,9 +7928,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_8_qs)
   );
 
+
   // Subregister 9 of Multireg dio_pad_attr
   // R[dio_pad_attr_9]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_9 (
@@ -7106,9 +7944,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_9_qs)
   );
 
+
   // Subregister 10 of Multireg dio_pad_attr
   // R[dio_pad_attr_10]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_10 (
@@ -7122,9 +7960,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_10_qs)
   );
 
+
   // Subregister 11 of Multireg dio_pad_attr
   // R[dio_pad_attr_11]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_11 (
@@ -7138,9 +7976,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_11_qs)
   );
 
+
   // Subregister 12 of Multireg dio_pad_attr
   // R[dio_pad_attr_12]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_12 (
@@ -7154,9 +7992,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_12_qs)
   );
 
+
   // Subregister 13 of Multireg dio_pad_attr
   // R[dio_pad_attr_13]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_13 (
@@ -7170,9 +8008,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_13_qs)
   );
 
+
   // Subregister 14 of Multireg dio_pad_attr
   // R[dio_pad_attr_14]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_14 (
@@ -7186,9 +8024,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_attr_14_qs)
   );
 
+
   // Subregister 15 of Multireg dio_pad_attr
   // R[dio_pad_attr_15]: V(True)
-
   prim_subreg_ext #(
     .DW    (13)
   ) u_dio_pad_attr_15 (
@@ -7203,11 +8041,9 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg mio_pad_sleep_status
   // R[mio_pad_sleep_status]: V(False)
-
-  // F[en_0]: 0:0
+  //   F[en_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7232,8 +8068,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_0_qs)
   );
 
-
-  // F[en_1]: 1:1
+  //   F[en_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7258,8 +8093,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_1_qs)
   );
 
-
-  // F[en_2]: 2:2
+  //   F[en_2]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7284,8 +8118,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_2_qs)
   );
 
-
-  // F[en_3]: 3:3
+  //   F[en_3]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7310,8 +8143,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_3_qs)
   );
 
-
-  // F[en_4]: 4:4
+  //   F[en_4]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7336,8 +8168,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_4_qs)
   );
 
-
-  // F[en_5]: 5:5
+  //   F[en_5]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7362,8 +8193,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_5_qs)
   );
 
-
-  // F[en_6]: 6:6
+  //   F[en_6]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7388,8 +8218,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_6_qs)
   );
 
-
-  // F[en_7]: 7:7
+  //   F[en_7]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7414,8 +8243,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_7_qs)
   );
 
-
-  // F[en_8]: 8:8
+  //   F[en_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7440,8 +8268,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_8_qs)
   );
 
-
-  // F[en_9]: 9:9
+  //   F[en_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7466,8 +8293,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_9_qs)
   );
 
-
-  // F[en_10]: 10:10
+  //   F[en_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7492,8 +8318,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_10_qs)
   );
 
-
-  // F[en_11]: 11:11
+  //   F[en_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7518,8 +8343,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_11_qs)
   );
 
-
-  // F[en_12]: 12:12
+  //   F[en_12]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7544,8 +8368,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_12_qs)
   );
 
-
-  // F[en_13]: 13:13
+  //   F[en_13]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7570,8 +8393,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_13_qs)
   );
 
-
-  // F[en_14]: 14:14
+  //   F[en_14]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7596,8 +8418,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_14_qs)
   );
 
-
-  // F[en_15]: 15:15
+  //   F[en_15]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7622,8 +8443,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_15_qs)
   );
 
-
-  // F[en_16]: 16:16
+  //   F[en_16]: 16:16
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7648,8 +8468,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_16_qs)
   );
 
-
-  // F[en_17]: 17:17
+  //   F[en_17]: 17:17
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7674,8 +8493,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_17_qs)
   );
 
-
-  // F[en_18]: 18:18
+  //   F[en_18]: 18:18
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7700,8 +8518,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_18_qs)
   );
 
-
-  // F[en_19]: 19:19
+  //   F[en_19]: 19:19
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7726,8 +8543,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_19_qs)
   );
 
-
-  // F[en_20]: 20:20
+  //   F[en_20]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7752,8 +8568,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_20_qs)
   );
 
-
-  // F[en_21]: 21:21
+  //   F[en_21]: 21:21
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7778,8 +8593,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_21_qs)
   );
 
-
-  // F[en_22]: 22:22
+  //   F[en_22]: 22:22
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7804,8 +8618,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_22_qs)
   );
 
-
-  // F[en_23]: 23:23
+  //   F[en_23]: 23:23
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7830,8 +8643,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_23_qs)
   );
 
-
-  // F[en_24]: 24:24
+  //   F[en_24]: 24:24
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7856,8 +8668,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_24_qs)
   );
 
-
-  // F[en_25]: 25:25
+  //   F[en_25]: 25:25
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7882,8 +8693,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_25_qs)
   );
 
-
-  // F[en_26]: 26:26
+  //   F[en_26]: 26:26
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7908,8 +8718,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_26_qs)
   );
 
-
-  // F[en_27]: 27:27
+  //   F[en_27]: 27:27
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7934,8 +8743,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_27_qs)
   );
 
-
-  // F[en_28]: 28:28
+  //   F[en_28]: 28:28
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7960,8 +8768,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_28_qs)
   );
 
-
-  // F[en_29]: 29:29
+  //   F[en_29]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -7986,8 +8793,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_29_qs)
   );
 
-
-  // F[en_30]: 30:30
+  //   F[en_30]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8012,8 +8818,7 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_status_en_30_qs)
   );
 
-
-  // F[en_31]: 31:31
+  //   F[en_31]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8039,11 +8844,8 @@ module pinmux_reg_top (
   );
 
 
-
-
   // Subregister 0 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8068,9 +8870,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8095,9 +8897,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_1_qs)
   );
 
+
   // Subregister 2 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_2]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8122,9 +8924,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_2_qs)
   );
 
+
   // Subregister 3 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_3]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8149,9 +8951,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_3_qs)
   );
 
+
   // Subregister 4 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_4]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8176,9 +8978,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_4_qs)
   );
 
+
   // Subregister 5 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_5]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8203,9 +9005,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_5_qs)
   );
 
+
   // Subregister 6 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_6]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8230,9 +9032,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_6_qs)
   );
 
+
   // Subregister 7 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_7]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8257,9 +9059,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_7_qs)
   );
 
+
   // Subregister 8 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_8]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8284,9 +9086,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_8_qs)
   );
 
+
   // Subregister 9 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_9]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8311,9 +9113,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_9_qs)
   );
 
+
   // Subregister 10 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_10]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8338,9 +9140,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_10_qs)
   );
 
+
   // Subregister 11 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_11]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8365,9 +9167,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_11_qs)
   );
 
+
   // Subregister 12 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_12]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8392,9 +9194,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_12_qs)
   );
 
+
   // Subregister 13 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_13]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8419,9 +9221,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_13_qs)
   );
 
+
   // Subregister 14 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_14]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8446,9 +9248,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_14_qs)
   );
 
+
   // Subregister 15 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_15]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8473,9 +9275,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_15_qs)
   );
 
+
   // Subregister 16 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_16]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8500,9 +9302,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_16_qs)
   );
 
+
   // Subregister 17 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_17]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8527,9 +9329,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_17_qs)
   );
 
+
   // Subregister 18 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_18]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8554,9 +9356,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_18_qs)
   );
 
+
   // Subregister 19 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_19]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8581,9 +9383,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_19_qs)
   );
 
+
   // Subregister 20 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_20]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8608,9 +9410,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_20_qs)
   );
 
+
   // Subregister 21 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_21]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8635,9 +9437,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_21_qs)
   );
 
+
   // Subregister 22 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_22]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8662,9 +9464,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_22_qs)
   );
 
+
   // Subregister 23 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_23]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8689,9 +9491,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_23_qs)
   );
 
+
   // Subregister 24 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_24]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8716,9 +9518,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_24_qs)
   );
 
+
   // Subregister 25 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_25]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8743,9 +9545,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_25_qs)
   );
 
+
   // Subregister 26 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_26]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8770,9 +9572,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_26_qs)
   );
 
+
   // Subregister 27 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_27]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8797,9 +9599,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_27_qs)
   );
 
+
   // Subregister 28 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_28]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8824,9 +9626,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_28_qs)
   );
 
+
   // Subregister 29 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_29]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8851,9 +9653,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_29_qs)
   );
 
+
   // Subregister 30 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_30]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8878,9 +9680,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_regwen_30_qs)
   );
 
+
   // Subregister 31 of Multireg mio_pad_sleep_regwen
   // R[mio_pad_sleep_regwen_31]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -8906,10 +9708,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8934,9 +9734,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_0_qs)
   );
 
+
   // Subregister 1 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8961,9 +9761,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_1_qs)
   );
 
+
   // Subregister 2 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_2]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8988,9 +9788,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_2_qs)
   );
 
+
   // Subregister 3 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_3]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9015,9 +9815,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_3_qs)
   );
 
+
   // Subregister 4 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_4]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9042,9 +9842,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_4_qs)
   );
 
+
   // Subregister 5 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_5]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9069,9 +9869,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_5_qs)
   );
 
+
   // Subregister 6 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_6]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9096,9 +9896,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_6_qs)
   );
 
+
   // Subregister 7 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_7]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9123,9 +9923,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_7_qs)
   );
 
+
   // Subregister 8 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_8]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9150,9 +9950,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_8_qs)
   );
 
+
   // Subregister 9 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_9]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9177,9 +9977,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_9_qs)
   );
 
+
   // Subregister 10 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_10]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9204,9 +10004,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_10_qs)
   );
 
+
   // Subregister 11 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_11]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9231,9 +10031,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_11_qs)
   );
 
+
   // Subregister 12 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_12]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9258,9 +10058,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_12_qs)
   );
 
+
   // Subregister 13 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_13]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9285,9 +10085,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_13_qs)
   );
 
+
   // Subregister 14 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_14]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9312,9 +10112,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_14_qs)
   );
 
+
   // Subregister 15 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_15]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9339,9 +10139,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_15_qs)
   );
 
+
   // Subregister 16 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_16]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9366,9 +10166,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_16_qs)
   );
 
+
   // Subregister 17 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_17]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9393,9 +10193,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_17_qs)
   );
 
+
   // Subregister 18 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_18]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9420,9 +10220,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_18_qs)
   );
 
+
   // Subregister 19 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_19]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9447,9 +10247,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_19_qs)
   );
 
+
   // Subregister 20 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_20]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9474,9 +10274,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_20_qs)
   );
 
+
   // Subregister 21 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_21]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9501,9 +10301,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_21_qs)
   );
 
+
   // Subregister 22 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_22]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9528,9 +10328,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_22_qs)
   );
 
+
   // Subregister 23 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_23]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9555,9 +10355,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_23_qs)
   );
 
+
   // Subregister 24 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_24]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9582,9 +10382,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_24_qs)
   );
 
+
   // Subregister 25 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_25]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9609,9 +10409,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_25_qs)
   );
 
+
   // Subregister 26 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_26]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9636,9 +10436,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_26_qs)
   );
 
+
   // Subregister 27 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_27]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9663,9 +10463,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_27_qs)
   );
 
+
   // Subregister 28 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_28]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9690,9 +10490,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_28_qs)
   );
 
+
   // Subregister 29 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_29]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9717,9 +10517,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_29_qs)
   );
 
+
   // Subregister 30 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_30]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9744,9 +10544,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_en_30_qs)
   );
 
+
   // Subregister 31 of Multireg mio_pad_sleep_en
   // R[mio_pad_sleep_en_31]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9772,10 +10572,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_0]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9800,9 +10598,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_0_qs)
   );
 
+
   // Subregister 1 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_1]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9827,9 +10625,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_1_qs)
   );
 
+
   // Subregister 2 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_2]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9854,9 +10652,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_2_qs)
   );
 
+
   // Subregister 3 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_3]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9881,9 +10679,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_3_qs)
   );
 
+
   // Subregister 4 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_4]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9908,9 +10706,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_4_qs)
   );
 
+
   // Subregister 5 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_5]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9935,9 +10733,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_5_qs)
   );
 
+
   // Subregister 6 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_6]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9962,9 +10760,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_6_qs)
   );
 
+
   // Subregister 7 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_7]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9989,9 +10787,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_7_qs)
   );
 
+
   // Subregister 8 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_8]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10016,9 +10814,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_8_qs)
   );
 
+
   // Subregister 9 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_9]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10043,9 +10841,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_9_qs)
   );
 
+
   // Subregister 10 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_10]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10070,9 +10868,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_10_qs)
   );
 
+
   // Subregister 11 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_11]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10097,9 +10895,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_11_qs)
   );
 
+
   // Subregister 12 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_12]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10124,9 +10922,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_12_qs)
   );
 
+
   // Subregister 13 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_13]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10151,9 +10949,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_13_qs)
   );
 
+
   // Subregister 14 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_14]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10178,9 +10976,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_14_qs)
   );
 
+
   // Subregister 15 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_15]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10205,9 +11003,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_15_qs)
   );
 
+
   // Subregister 16 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_16]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10232,9 +11030,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_16_qs)
   );
 
+
   // Subregister 17 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_17]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10259,9 +11057,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_17_qs)
   );
 
+
   // Subregister 18 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_18]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10286,9 +11084,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_18_qs)
   );
 
+
   // Subregister 19 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_19]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10313,9 +11111,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_19_qs)
   );
 
+
   // Subregister 20 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_20]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10340,9 +11138,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_20_qs)
   );
 
+
   // Subregister 21 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_21]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10367,9 +11165,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_21_qs)
   );
 
+
   // Subregister 22 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_22]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10394,9 +11192,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_22_qs)
   );
 
+
   // Subregister 23 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_23]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10421,9 +11219,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_23_qs)
   );
 
+
   // Subregister 24 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_24]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10448,9 +11246,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_24_qs)
   );
 
+
   // Subregister 25 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_25]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10475,9 +11273,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_25_qs)
   );
 
+
   // Subregister 26 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_26]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10502,9 +11300,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_26_qs)
   );
 
+
   // Subregister 27 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_27]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10529,9 +11327,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_27_qs)
   );
 
+
   // Subregister 28 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_28]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10556,9 +11354,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_28_qs)
   );
 
+
   // Subregister 29 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_29]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10583,9 +11381,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_29_qs)
   );
 
+
   // Subregister 30 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_30]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10610,9 +11408,9 @@ module pinmux_reg_top (
     .qs     (mio_pad_sleep_mode_30_qs)
   );
 
+
   // Subregister 31 of Multireg mio_pad_sleep_mode
   // R[mio_pad_sleep_mode_31]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10638,11 +11436,9 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg dio_pad_sleep_status
   // R[dio_pad_sleep_status]: V(False)
-
-  // F[en_0]: 0:0
+  //   F[en_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10667,8 +11463,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_0_qs)
   );
 
-
-  // F[en_1]: 1:1
+  //   F[en_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10693,8 +11488,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_1_qs)
   );
 
-
-  // F[en_2]: 2:2
+  //   F[en_2]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10719,8 +11513,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_2_qs)
   );
 
-
-  // F[en_3]: 3:3
+  //   F[en_3]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10745,8 +11538,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_3_qs)
   );
 
-
-  // F[en_4]: 4:4
+  //   F[en_4]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10771,8 +11563,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_4_qs)
   );
 
-
-  // F[en_5]: 5:5
+  //   F[en_5]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10797,8 +11588,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_5_qs)
   );
 
-
-  // F[en_6]: 6:6
+  //   F[en_6]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10823,8 +11613,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_6_qs)
   );
 
-
-  // F[en_7]: 7:7
+  //   F[en_7]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10849,8 +11638,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_7_qs)
   );
 
-
-  // F[en_8]: 8:8
+  //   F[en_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10875,8 +11663,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_8_qs)
   );
 
-
-  // F[en_9]: 9:9
+  //   F[en_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10901,8 +11688,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_9_qs)
   );
 
-
-  // F[en_10]: 10:10
+  //   F[en_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10927,8 +11713,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_10_qs)
   );
 
-
-  // F[en_11]: 11:11
+  //   F[en_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10953,8 +11738,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_11_qs)
   );
 
-
-  // F[en_12]: 12:12
+  //   F[en_12]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -10979,8 +11763,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_12_qs)
   );
 
-
-  // F[en_13]: 13:13
+  //   F[en_13]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11005,8 +11788,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_13_qs)
   );
 
-
-  // F[en_14]: 14:14
+  //   F[en_14]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11031,8 +11813,7 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_status_en_14_qs)
   );
 
-
-  // F[en_15]: 15:15
+  //   F[en_15]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11058,11 +11839,8 @@ module pinmux_reg_top (
   );
 
 
-
-
   // Subregister 0 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11087,9 +11865,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11114,9 +11892,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_1_qs)
   );
 
+
   // Subregister 2 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_2]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11141,9 +11919,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_2_qs)
   );
 
+
   // Subregister 3 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_3]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11168,9 +11946,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_3_qs)
   );
 
+
   // Subregister 4 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_4]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11195,9 +11973,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_4_qs)
   );
 
+
   // Subregister 5 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_5]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11222,9 +12000,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_5_qs)
   );
 
+
   // Subregister 6 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_6]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11249,9 +12027,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_6_qs)
   );
 
+
   // Subregister 7 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_7]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11276,9 +12054,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_7_qs)
   );
 
+
   // Subregister 8 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_8]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11303,9 +12081,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_8_qs)
   );
 
+
   // Subregister 9 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_9]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11330,9 +12108,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_9_qs)
   );
 
+
   // Subregister 10 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_10]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11357,9 +12135,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_10_qs)
   );
 
+
   // Subregister 11 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_11]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11384,9 +12162,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_11_qs)
   );
 
+
   // Subregister 12 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_12]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11411,9 +12189,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_12_qs)
   );
 
+
   // Subregister 13 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_13]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11438,9 +12216,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_13_qs)
   );
 
+
   // Subregister 14 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_14]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11465,9 +12243,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_regwen_14_qs)
   );
 
+
   // Subregister 15 of Multireg dio_pad_sleep_regwen
   // R[dio_pad_sleep_regwen_15]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -11493,10 +12271,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11521,9 +12297,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_0_qs)
   );
 
+
   // Subregister 1 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11548,9 +12324,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_1_qs)
   );
 
+
   // Subregister 2 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_2]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11575,9 +12351,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_2_qs)
   );
 
+
   // Subregister 3 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_3]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11602,9 +12378,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_3_qs)
   );
 
+
   // Subregister 4 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_4]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11629,9 +12405,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_4_qs)
   );
 
+
   // Subregister 5 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_5]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11656,9 +12432,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_5_qs)
   );
 
+
   // Subregister 6 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_6]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11683,9 +12459,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_6_qs)
   );
 
+
   // Subregister 7 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_7]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11710,9 +12486,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_7_qs)
   );
 
+
   // Subregister 8 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_8]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11737,9 +12513,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_8_qs)
   );
 
+
   // Subregister 9 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_9]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11764,9 +12540,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_9_qs)
   );
 
+
   // Subregister 10 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_10]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11791,9 +12567,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_10_qs)
   );
 
+
   // Subregister 11 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_11]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11818,9 +12594,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_11_qs)
   );
 
+
   // Subregister 12 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_12]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11845,9 +12621,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_12_qs)
   );
 
+
   // Subregister 13 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_13]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11872,9 +12648,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_13_qs)
   );
 
+
   // Subregister 14 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_14]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11899,9 +12675,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_en_14_qs)
   );
 
+
   // Subregister 15 of Multireg dio_pad_sleep_en
   // R[dio_pad_sleep_en_15]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11927,10 +12703,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_0]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11955,9 +12729,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_0_qs)
   );
 
+
   // Subregister 1 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_1]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11982,9 +12756,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_1_qs)
   );
 
+
   // Subregister 2 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_2]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12009,9 +12783,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_2_qs)
   );
 
+
   // Subregister 3 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_3]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12036,9 +12810,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_3_qs)
   );
 
+
   // Subregister 4 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_4]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12063,9 +12837,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_4_qs)
   );
 
+
   // Subregister 5 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_5]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12090,9 +12864,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_5_qs)
   );
 
+
   // Subregister 6 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_6]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12117,9 +12891,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_6_qs)
   );
 
+
   // Subregister 7 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_7]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12144,9 +12918,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_7_qs)
   );
 
+
   // Subregister 8 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_8]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12171,9 +12945,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_8_qs)
   );
 
+
   // Subregister 9 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_9]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12198,9 +12972,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_9_qs)
   );
 
+
   // Subregister 10 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_10]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12225,9 +12999,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_10_qs)
   );
 
+
   // Subregister 11 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_11]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12252,9 +13026,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_11_qs)
   );
 
+
   // Subregister 12 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_12]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12279,9 +13053,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_12_qs)
   );
 
+
   // Subregister 13 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_13]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12306,9 +13080,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_13_qs)
   );
 
+
   // Subregister 14 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_14]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12333,9 +13107,9 @@ module pinmux_reg_top (
     .qs     (dio_pad_sleep_mode_14_qs)
   );
 
+
   // Subregister 15 of Multireg dio_pad_sleep_mode
   // R[dio_pad_sleep_mode_15]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12361,10 +13135,8 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg wkup_detector_regwen
   // R[wkup_detector_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -12389,9 +13161,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg wkup_detector_regwen
   // R[wkup_detector_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -12416,9 +13188,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_regwen_1_qs)
   );
 
+
   // Subregister 2 of Multireg wkup_detector_regwen
   // R[wkup_detector_regwen_2]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -12443,9 +13215,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_regwen_2_qs)
   );
 
+
   // Subregister 3 of Multireg wkup_detector_regwen
   // R[wkup_detector_regwen_3]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -12470,9 +13242,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_regwen_3_qs)
   );
 
+
   // Subregister 4 of Multireg wkup_detector_regwen
   // R[wkup_detector_regwen_4]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -12497,9 +13269,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_regwen_4_qs)
   );
 
+
   // Subregister 5 of Multireg wkup_detector_regwen
   // R[wkup_detector_regwen_5]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -12524,9 +13296,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_regwen_5_qs)
   );
 
+
   // Subregister 6 of Multireg wkup_detector_regwen
   // R[wkup_detector_regwen_6]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -12551,9 +13323,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_regwen_6_qs)
   );
 
+
   // Subregister 7 of Multireg wkup_detector_regwen
   // R[wkup_detector_regwen_7]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -12579,936 +13351,1064 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg wkup_detector_en
   // R[wkup_detector_en_0]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_en_0 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_en_0_we & wkup_detector_regwen_0_qs),
-    .src_wd_i     (wkup_detector_en_0_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_en_0_busy),
-    .src_qs_o     (wkup_detector_en_0_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_en[0].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_en_0_we & aon_wkup_detector_en_0_regwen),
+    .wd     (aon_wkup_detector_en_0_wdata[0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_en[0].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_en_0_qs_int)
   );
+
 
   // Subregister 1 of Multireg wkup_detector_en
   // R[wkup_detector_en_1]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_en_1 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_en_1_we & wkup_detector_regwen_1_qs),
-    .src_wd_i     (wkup_detector_en_1_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_en_1_busy),
-    .src_qs_o     (wkup_detector_en_1_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_en[1].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_en_1_we & aon_wkup_detector_en_1_regwen),
+    .wd     (aon_wkup_detector_en_1_wdata[0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_en[1].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_en_1_qs_int)
   );
+
 
   // Subregister 2 of Multireg wkup_detector_en
   // R[wkup_detector_en_2]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_en_2 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_en_2_we & wkup_detector_regwen_2_qs),
-    .src_wd_i     (wkup_detector_en_2_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_en_2_busy),
-    .src_qs_o     (wkup_detector_en_2_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_en[2].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_en_2_we & aon_wkup_detector_en_2_regwen),
+    .wd     (aon_wkup_detector_en_2_wdata[0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_en[2].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_en_2_qs_int)
   );
+
 
   // Subregister 3 of Multireg wkup_detector_en
   // R[wkup_detector_en_3]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_en_3 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_en_3_we & wkup_detector_regwen_3_qs),
-    .src_wd_i     (wkup_detector_en_3_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_en_3_busy),
-    .src_qs_o     (wkup_detector_en_3_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_en[3].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_en_3_we & aon_wkup_detector_en_3_regwen),
+    .wd     (aon_wkup_detector_en_3_wdata[0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_en[3].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_en_3_qs_int)
   );
+
 
   // Subregister 4 of Multireg wkup_detector_en
   // R[wkup_detector_en_4]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_en_4 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_en_4_we & wkup_detector_regwen_4_qs),
-    .src_wd_i     (wkup_detector_en_4_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_en_4_busy),
-    .src_qs_o     (wkup_detector_en_4_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_en[4].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_en_4_we & aon_wkup_detector_en_4_regwen),
+    .wd     (aon_wkup_detector_en_4_wdata[0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_en[4].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_en_4_qs_int)
   );
+
 
   // Subregister 5 of Multireg wkup_detector_en
   // R[wkup_detector_en_5]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_en_5 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_en_5_we & wkup_detector_regwen_5_qs),
-    .src_wd_i     (wkup_detector_en_5_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_en_5_busy),
-    .src_qs_o     (wkup_detector_en_5_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_en[5].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_en_5_we & aon_wkup_detector_en_5_regwen),
+    .wd     (aon_wkup_detector_en_5_wdata[0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_en[5].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_en_5_qs_int)
   );
+
 
   // Subregister 6 of Multireg wkup_detector_en
   // R[wkup_detector_en_6]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_en_6 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_en_6_we & wkup_detector_regwen_6_qs),
-    .src_wd_i     (wkup_detector_en_6_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_en_6_busy),
-    .src_qs_o     (wkup_detector_en_6_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_en[6].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_en_6_we & aon_wkup_detector_en_6_regwen),
+    .wd     (aon_wkup_detector_en_6_wdata[0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_en[6].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_en_6_qs_int)
   );
+
 
   // Subregister 7 of Multireg wkup_detector_en
   // R[wkup_detector_en_7]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_en_7 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_en_7_we & wkup_detector_regwen_7_qs),
-    .src_wd_i     (wkup_detector_en_7_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_en_7_busy),
-    .src_qs_o     (wkup_detector_en_7_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_en[7].q)
-  );
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
 
+    // from register interface
+    .we     (aon_wkup_detector_en_7_we & aon_wkup_detector_en_7_regwen),
+    .wd     (aon_wkup_detector_en_7_wdata[0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_en[7].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_en_7_qs_int)
+  );
 
 
   // Subregister 0 of Multireg wkup_detector
   // R[wkup_detector_0]: V(False)
-
-  // F[mode_0]: 2:0
-  prim_subreg_async #(
+  //   F[mode_0]: 2:0
+  prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (3'h0)
   ) u_wkup_detector_0_mode_0 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_0_we & wkup_detector_regwen_0_qs),
-    .src_wd_i     (wkup_detector_0_mode_0_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_0_mode_0_busy),
-    .src_qs_o     (wkup_detector_0_mode_0_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[0].mode.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_0_we & aon_wkup_detector_0_regwen),
+    .wd     (aon_wkup_detector_0_wdata[2:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[0].mode.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_0_mode_0_qs_int)
   );
 
-
-  // F[filter_0]: 3:3
-  prim_subreg_async #(
+  //   F[filter_0]: 3:3
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_0_filter_0 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_0_we & wkup_detector_regwen_0_qs),
-    .src_wd_i     (wkup_detector_0_filter_0_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_0_filter_0_busy),
-    .src_qs_o     (wkup_detector_0_filter_0_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[0].filter.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_0_we & aon_wkup_detector_0_regwen),
+    .wd     (aon_wkup_detector_0_wdata[3]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[0].filter.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_0_filter_0_qs_int)
   );
 
-
-  // F[miodio_0]: 4:4
-  prim_subreg_async #(
+  //   F[miodio_0]: 4:4
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_0_miodio_0 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_0_we & wkup_detector_regwen_0_qs),
-    .src_wd_i     (wkup_detector_0_miodio_0_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_0_miodio_0_busy),
-    .src_qs_o     (wkup_detector_0_miodio_0_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[0].miodio.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_0_we & aon_wkup_detector_0_regwen),
+    .wd     (aon_wkup_detector_0_wdata[4]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[0].miodio.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_0_miodio_0_qs_int)
   );
 
 
   // Subregister 1 of Multireg wkup_detector
   // R[wkup_detector_1]: V(False)
-
-  // F[mode_1]: 2:0
-  prim_subreg_async #(
+  //   F[mode_1]: 2:0
+  prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (3'h0)
   ) u_wkup_detector_1_mode_1 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_1_we & wkup_detector_regwen_1_qs),
-    .src_wd_i     (wkup_detector_1_mode_1_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_1_mode_1_busy),
-    .src_qs_o     (wkup_detector_1_mode_1_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[1].mode.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_1_we & aon_wkup_detector_1_regwen),
+    .wd     (aon_wkup_detector_1_wdata[2:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[1].mode.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_1_mode_1_qs_int)
   );
 
-
-  // F[filter_1]: 3:3
-  prim_subreg_async #(
+  //   F[filter_1]: 3:3
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_1_filter_1 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_1_we & wkup_detector_regwen_1_qs),
-    .src_wd_i     (wkup_detector_1_filter_1_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_1_filter_1_busy),
-    .src_qs_o     (wkup_detector_1_filter_1_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[1].filter.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_1_we & aon_wkup_detector_1_regwen),
+    .wd     (aon_wkup_detector_1_wdata[3]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[1].filter.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_1_filter_1_qs_int)
   );
 
-
-  // F[miodio_1]: 4:4
-  prim_subreg_async #(
+  //   F[miodio_1]: 4:4
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_1_miodio_1 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_1_we & wkup_detector_regwen_1_qs),
-    .src_wd_i     (wkup_detector_1_miodio_1_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_1_miodio_1_busy),
-    .src_qs_o     (wkup_detector_1_miodio_1_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[1].miodio.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_1_we & aon_wkup_detector_1_regwen),
+    .wd     (aon_wkup_detector_1_wdata[4]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[1].miodio.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_1_miodio_1_qs_int)
   );
 
 
   // Subregister 2 of Multireg wkup_detector
   // R[wkup_detector_2]: V(False)
-
-  // F[mode_2]: 2:0
-  prim_subreg_async #(
+  //   F[mode_2]: 2:0
+  prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (3'h0)
   ) u_wkup_detector_2_mode_2 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_2_we & wkup_detector_regwen_2_qs),
-    .src_wd_i     (wkup_detector_2_mode_2_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_2_mode_2_busy),
-    .src_qs_o     (wkup_detector_2_mode_2_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[2].mode.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_2_we & aon_wkup_detector_2_regwen),
+    .wd     (aon_wkup_detector_2_wdata[2:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[2].mode.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_2_mode_2_qs_int)
   );
 
-
-  // F[filter_2]: 3:3
-  prim_subreg_async #(
+  //   F[filter_2]: 3:3
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_2_filter_2 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_2_we & wkup_detector_regwen_2_qs),
-    .src_wd_i     (wkup_detector_2_filter_2_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_2_filter_2_busy),
-    .src_qs_o     (wkup_detector_2_filter_2_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[2].filter.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_2_we & aon_wkup_detector_2_regwen),
+    .wd     (aon_wkup_detector_2_wdata[3]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[2].filter.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_2_filter_2_qs_int)
   );
 
-
-  // F[miodio_2]: 4:4
-  prim_subreg_async #(
+  //   F[miodio_2]: 4:4
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_2_miodio_2 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_2_we & wkup_detector_regwen_2_qs),
-    .src_wd_i     (wkup_detector_2_miodio_2_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_2_miodio_2_busy),
-    .src_qs_o     (wkup_detector_2_miodio_2_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[2].miodio.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_2_we & aon_wkup_detector_2_regwen),
+    .wd     (aon_wkup_detector_2_wdata[4]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[2].miodio.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_2_miodio_2_qs_int)
   );
 
 
   // Subregister 3 of Multireg wkup_detector
   // R[wkup_detector_3]: V(False)
-
-  // F[mode_3]: 2:0
-  prim_subreg_async #(
+  //   F[mode_3]: 2:0
+  prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (3'h0)
   ) u_wkup_detector_3_mode_3 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_3_we & wkup_detector_regwen_3_qs),
-    .src_wd_i     (wkup_detector_3_mode_3_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_3_mode_3_busy),
-    .src_qs_o     (wkup_detector_3_mode_3_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[3].mode.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_3_we & aon_wkup_detector_3_regwen),
+    .wd     (aon_wkup_detector_3_wdata[2:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[3].mode.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_3_mode_3_qs_int)
   );
 
-
-  // F[filter_3]: 3:3
-  prim_subreg_async #(
+  //   F[filter_3]: 3:3
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_3_filter_3 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_3_we & wkup_detector_regwen_3_qs),
-    .src_wd_i     (wkup_detector_3_filter_3_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_3_filter_3_busy),
-    .src_qs_o     (wkup_detector_3_filter_3_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[3].filter.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_3_we & aon_wkup_detector_3_regwen),
+    .wd     (aon_wkup_detector_3_wdata[3]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[3].filter.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_3_filter_3_qs_int)
   );
 
-
-  // F[miodio_3]: 4:4
-  prim_subreg_async #(
+  //   F[miodio_3]: 4:4
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_3_miodio_3 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_3_we & wkup_detector_regwen_3_qs),
-    .src_wd_i     (wkup_detector_3_miodio_3_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_3_miodio_3_busy),
-    .src_qs_o     (wkup_detector_3_miodio_3_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[3].miodio.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_3_we & aon_wkup_detector_3_regwen),
+    .wd     (aon_wkup_detector_3_wdata[4]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[3].miodio.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_3_miodio_3_qs_int)
   );
 
 
   // Subregister 4 of Multireg wkup_detector
   // R[wkup_detector_4]: V(False)
-
-  // F[mode_4]: 2:0
-  prim_subreg_async #(
+  //   F[mode_4]: 2:0
+  prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (3'h0)
   ) u_wkup_detector_4_mode_4 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_4_we & wkup_detector_regwen_4_qs),
-    .src_wd_i     (wkup_detector_4_mode_4_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_4_mode_4_busy),
-    .src_qs_o     (wkup_detector_4_mode_4_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[4].mode.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_4_we & aon_wkup_detector_4_regwen),
+    .wd     (aon_wkup_detector_4_wdata[2:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[4].mode.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_4_mode_4_qs_int)
   );
 
-
-  // F[filter_4]: 3:3
-  prim_subreg_async #(
+  //   F[filter_4]: 3:3
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_4_filter_4 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_4_we & wkup_detector_regwen_4_qs),
-    .src_wd_i     (wkup_detector_4_filter_4_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_4_filter_4_busy),
-    .src_qs_o     (wkup_detector_4_filter_4_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[4].filter.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_4_we & aon_wkup_detector_4_regwen),
+    .wd     (aon_wkup_detector_4_wdata[3]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[4].filter.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_4_filter_4_qs_int)
   );
 
-
-  // F[miodio_4]: 4:4
-  prim_subreg_async #(
+  //   F[miodio_4]: 4:4
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_4_miodio_4 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_4_we & wkup_detector_regwen_4_qs),
-    .src_wd_i     (wkup_detector_4_miodio_4_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_4_miodio_4_busy),
-    .src_qs_o     (wkup_detector_4_miodio_4_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[4].miodio.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_4_we & aon_wkup_detector_4_regwen),
+    .wd     (aon_wkup_detector_4_wdata[4]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[4].miodio.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_4_miodio_4_qs_int)
   );
 
 
   // Subregister 5 of Multireg wkup_detector
   // R[wkup_detector_5]: V(False)
-
-  // F[mode_5]: 2:0
-  prim_subreg_async #(
+  //   F[mode_5]: 2:0
+  prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (3'h0)
   ) u_wkup_detector_5_mode_5 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_5_we & wkup_detector_regwen_5_qs),
-    .src_wd_i     (wkup_detector_5_mode_5_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_5_mode_5_busy),
-    .src_qs_o     (wkup_detector_5_mode_5_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[5].mode.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_5_we & aon_wkup_detector_5_regwen),
+    .wd     (aon_wkup_detector_5_wdata[2:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[5].mode.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_5_mode_5_qs_int)
   );
 
-
-  // F[filter_5]: 3:3
-  prim_subreg_async #(
+  //   F[filter_5]: 3:3
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_5_filter_5 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_5_we & wkup_detector_regwen_5_qs),
-    .src_wd_i     (wkup_detector_5_filter_5_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_5_filter_5_busy),
-    .src_qs_o     (wkup_detector_5_filter_5_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[5].filter.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_5_we & aon_wkup_detector_5_regwen),
+    .wd     (aon_wkup_detector_5_wdata[3]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[5].filter.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_5_filter_5_qs_int)
   );
 
-
-  // F[miodio_5]: 4:4
-  prim_subreg_async #(
+  //   F[miodio_5]: 4:4
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_5_miodio_5 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_5_we & wkup_detector_regwen_5_qs),
-    .src_wd_i     (wkup_detector_5_miodio_5_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_5_miodio_5_busy),
-    .src_qs_o     (wkup_detector_5_miodio_5_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[5].miodio.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_5_we & aon_wkup_detector_5_regwen),
+    .wd     (aon_wkup_detector_5_wdata[4]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[5].miodio.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_5_miodio_5_qs_int)
   );
 
 
   // Subregister 6 of Multireg wkup_detector
   // R[wkup_detector_6]: V(False)
-
-  // F[mode_6]: 2:0
-  prim_subreg_async #(
+  //   F[mode_6]: 2:0
+  prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (3'h0)
   ) u_wkup_detector_6_mode_6 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_6_we & wkup_detector_regwen_6_qs),
-    .src_wd_i     (wkup_detector_6_mode_6_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_6_mode_6_busy),
-    .src_qs_o     (wkup_detector_6_mode_6_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[6].mode.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_6_we & aon_wkup_detector_6_regwen),
+    .wd     (aon_wkup_detector_6_wdata[2:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[6].mode.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_6_mode_6_qs_int)
   );
 
-
-  // F[filter_6]: 3:3
-  prim_subreg_async #(
+  //   F[filter_6]: 3:3
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_6_filter_6 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_6_we & wkup_detector_regwen_6_qs),
-    .src_wd_i     (wkup_detector_6_filter_6_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_6_filter_6_busy),
-    .src_qs_o     (wkup_detector_6_filter_6_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[6].filter.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_6_we & aon_wkup_detector_6_regwen),
+    .wd     (aon_wkup_detector_6_wdata[3]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[6].filter.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_6_filter_6_qs_int)
   );
 
-
-  // F[miodio_6]: 4:4
-  prim_subreg_async #(
+  //   F[miodio_6]: 4:4
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_6_miodio_6 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_6_we & wkup_detector_regwen_6_qs),
-    .src_wd_i     (wkup_detector_6_miodio_6_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_6_miodio_6_busy),
-    .src_qs_o     (wkup_detector_6_miodio_6_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[6].miodio.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_6_we & aon_wkup_detector_6_regwen),
+    .wd     (aon_wkup_detector_6_wdata[4]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[6].miodio.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_6_miodio_6_qs_int)
   );
 
 
   // Subregister 7 of Multireg wkup_detector
   // R[wkup_detector_7]: V(False)
-
-  // F[mode_7]: 2:0
-  prim_subreg_async #(
+  //   F[mode_7]: 2:0
+  prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (3'h0)
   ) u_wkup_detector_7_mode_7 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_7_we & wkup_detector_regwen_7_qs),
-    .src_wd_i     (wkup_detector_7_mode_7_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_7_mode_7_busy),
-    .src_qs_o     (wkup_detector_7_mode_7_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[7].mode.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_7_we & aon_wkup_detector_7_regwen),
+    .wd     (aon_wkup_detector_7_wdata[2:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[7].mode.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_7_mode_7_qs_int)
   );
 
-
-  // F[filter_7]: 3:3
-  prim_subreg_async #(
+  //   F[filter_7]: 3:3
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_7_filter_7 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_7_we & wkup_detector_regwen_7_qs),
-    .src_wd_i     (wkup_detector_7_filter_7_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_7_filter_7_busy),
-    .src_qs_o     (wkup_detector_7_filter_7_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[7].filter.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_7_we & aon_wkup_detector_7_regwen),
+    .wd     (aon_wkup_detector_7_wdata[3]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[7].filter.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_7_filter_7_qs_int)
   );
 
-
-  // F[miodio_7]: 4:4
-  prim_subreg_async #(
+  //   F[miodio_7]: 4:4
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
   ) u_wkup_detector_7_miodio_7 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_7_we & wkup_detector_regwen_7_qs),
-    .src_wd_i     (wkup_detector_7_miodio_7_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_7_miodio_7_busy),
-    .src_qs_o     (wkup_detector_7_miodio_7_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector[7].miodio.q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_7_we & aon_wkup_detector_7_regwen),
+    .wd     (aon_wkup_detector_7_wdata[4]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector[7].miodio.q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_7_miodio_7_qs_int)
   );
-
-
 
 
   // Subregister 0 of Multireg wkup_detector_cnt_th
   // R[wkup_detector_cnt_th_0]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (8'h0)
   ) u_wkup_detector_cnt_th_0 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_cnt_th_0_we & wkup_detector_regwen_0_qs),
-    .src_wd_i     (wkup_detector_cnt_th_0_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_cnt_th_0_busy),
-    .src_qs_o     (wkup_detector_cnt_th_0_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_cnt_th[0].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_cnt_th_0_we & aon_wkup_detector_cnt_th_0_regwen),
+    .wd     (aon_wkup_detector_cnt_th_0_wdata[7:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_cnt_th[0].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_cnt_th_0_qs_int)
   );
+
 
   // Subregister 1 of Multireg wkup_detector_cnt_th
   // R[wkup_detector_cnt_th_1]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (8'h0)
   ) u_wkup_detector_cnt_th_1 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_cnt_th_1_we & wkup_detector_regwen_1_qs),
-    .src_wd_i     (wkup_detector_cnt_th_1_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_cnt_th_1_busy),
-    .src_qs_o     (wkup_detector_cnt_th_1_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_cnt_th[1].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_cnt_th_1_we & aon_wkup_detector_cnt_th_1_regwen),
+    .wd     (aon_wkup_detector_cnt_th_1_wdata[7:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_cnt_th[1].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_cnt_th_1_qs_int)
   );
+
 
   // Subregister 2 of Multireg wkup_detector_cnt_th
   // R[wkup_detector_cnt_th_2]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (8'h0)
   ) u_wkup_detector_cnt_th_2 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_cnt_th_2_we & wkup_detector_regwen_2_qs),
-    .src_wd_i     (wkup_detector_cnt_th_2_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_cnt_th_2_busy),
-    .src_qs_o     (wkup_detector_cnt_th_2_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_cnt_th[2].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_cnt_th_2_we & aon_wkup_detector_cnt_th_2_regwen),
+    .wd     (aon_wkup_detector_cnt_th_2_wdata[7:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_cnt_th[2].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_cnt_th_2_qs_int)
   );
+
 
   // Subregister 3 of Multireg wkup_detector_cnt_th
   // R[wkup_detector_cnt_th_3]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (8'h0)
   ) u_wkup_detector_cnt_th_3 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_cnt_th_3_we & wkup_detector_regwen_3_qs),
-    .src_wd_i     (wkup_detector_cnt_th_3_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_cnt_th_3_busy),
-    .src_qs_o     (wkup_detector_cnt_th_3_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_cnt_th[3].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_cnt_th_3_we & aon_wkup_detector_cnt_th_3_regwen),
+    .wd     (aon_wkup_detector_cnt_th_3_wdata[7:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_cnt_th[3].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_cnt_th_3_qs_int)
   );
+
 
   // Subregister 4 of Multireg wkup_detector_cnt_th
   // R[wkup_detector_cnt_th_4]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (8'h0)
   ) u_wkup_detector_cnt_th_4 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_cnt_th_4_we & wkup_detector_regwen_4_qs),
-    .src_wd_i     (wkup_detector_cnt_th_4_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_cnt_th_4_busy),
-    .src_qs_o     (wkup_detector_cnt_th_4_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_cnt_th[4].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_cnt_th_4_we & aon_wkup_detector_cnt_th_4_regwen),
+    .wd     (aon_wkup_detector_cnt_th_4_wdata[7:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_cnt_th[4].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_cnt_th_4_qs_int)
   );
+
 
   // Subregister 5 of Multireg wkup_detector_cnt_th
   // R[wkup_detector_cnt_th_5]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (8'h0)
   ) u_wkup_detector_cnt_th_5 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_cnt_th_5_we & wkup_detector_regwen_5_qs),
-    .src_wd_i     (wkup_detector_cnt_th_5_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_cnt_th_5_busy),
-    .src_qs_o     (wkup_detector_cnt_th_5_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_cnt_th[5].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_cnt_th_5_we & aon_wkup_detector_cnt_th_5_regwen),
+    .wd     (aon_wkup_detector_cnt_th_5_wdata[7:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_cnt_th[5].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_cnt_th_5_qs_int)
   );
+
 
   // Subregister 6 of Multireg wkup_detector_cnt_th
   // R[wkup_detector_cnt_th_6]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (8'h0)
   ) u_wkup_detector_cnt_th_6 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_cnt_th_6_we & wkup_detector_regwen_6_qs),
-    .src_wd_i     (wkup_detector_cnt_th_6_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_cnt_th_6_busy),
-    .src_qs_o     (wkup_detector_cnt_th_6_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_cnt_th[6].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_detector_cnt_th_6_we & aon_wkup_detector_cnt_th_6_regwen),
+    .wd     (aon_wkup_detector_cnt_th_6_wdata[7:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_cnt_th[6].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_cnt_th_6_qs_int)
   );
+
 
   // Subregister 7 of Multireg wkup_detector_cnt_th
   // R[wkup_detector_cnt_th_7]: V(False)
-
-  prim_subreg_async #(
+  prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (8'h0)
   ) u_wkup_detector_cnt_th_7 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_detector_cnt_th_7_we & wkup_detector_regwen_7_qs),
-    .src_wd_i     (wkup_detector_cnt_th_7_wd),
-    .dst_de_i     (1'b0),
-    .dst_d_i      ('0),
-    .src_busy_o   (wkup_detector_cnt_th_7_busy),
-    .src_qs_o     (wkup_detector_cnt_th_7_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_detector_cnt_th[7].q)
-  );
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
 
+    // from register interface
+    .we     (aon_wkup_detector_cnt_th_7_we & aon_wkup_detector_cnt_th_7_regwen),
+    .wd     (aon_wkup_detector_cnt_th_7_wdata[7:0]),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_detector_cnt_th[7].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_detector_cnt_th_7_qs_int)
+  );
 
 
   // Subregister 0 of Multireg wkup_detector_padsel
   // R[wkup_detector_padsel_0]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -13533,9 +14433,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_padsel_0_qs)
   );
 
+
   // Subregister 1 of Multireg wkup_detector_padsel
   // R[wkup_detector_padsel_1]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -13560,9 +14460,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_padsel_1_qs)
   );
 
+
   // Subregister 2 of Multireg wkup_detector_padsel
   // R[wkup_detector_padsel_2]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -13587,9 +14487,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_padsel_2_qs)
   );
 
+
   // Subregister 3 of Multireg wkup_detector_padsel
   // R[wkup_detector_padsel_3]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -13614,9 +14514,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_padsel_3_qs)
   );
 
+
   // Subregister 4 of Multireg wkup_detector_padsel
   // R[wkup_detector_padsel_4]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -13641,9 +14541,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_padsel_4_qs)
   );
 
+
   // Subregister 5 of Multireg wkup_detector_padsel
   // R[wkup_detector_padsel_5]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -13668,9 +14568,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_padsel_5_qs)
   );
 
+
   // Subregister 6 of Multireg wkup_detector_padsel
   // R[wkup_detector_padsel_6]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -13695,9 +14595,9 @@ module pinmux_reg_top (
     .qs     (wkup_detector_padsel_6_qs)
   );
 
+
   // Subregister 7 of Multireg wkup_detector_padsel
   // R[wkup_detector_padsel_7]: V(False)
-
   prim_subreg #(
     .DW      (6),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -13723,186 +14623,207 @@ module pinmux_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg wkup_cause
   // R[wkup_cause]: V(False)
-
-  // F[cause_0]: 0:0
-  prim_subreg_async #(
+  //   F[cause_0]: 0:0
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h0)
   ) u_wkup_cause_cause_0 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_cause_we),
-    .src_wd_i     (wkup_cause_cause_0_wd),
-    .dst_de_i     (hw2reg.wkup_cause[0].de),
-    .dst_d_i      (hw2reg.wkup_cause[0].d),
-    .src_busy_o   (wkup_cause_cause_0_busy),
-    .src_qs_o     (wkup_cause_cause_0_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_cause[0].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_cause_we),
+    .wd     (aon_wkup_cause_wdata[0]),
+
+    // from internal hardware
+    .de     (hw2reg.wkup_cause[0].de),
+    .d      (hw2reg.wkup_cause[0].d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_cause[0].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_cause_cause_0_qs_int)
   );
 
-
-  // F[cause_1]: 1:1
-  prim_subreg_async #(
+  //   F[cause_1]: 1:1
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h0)
   ) u_wkup_cause_cause_1 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_cause_we),
-    .src_wd_i     (wkup_cause_cause_1_wd),
-    .dst_de_i     (hw2reg.wkup_cause[1].de),
-    .dst_d_i      (hw2reg.wkup_cause[1].d),
-    .src_busy_o   (wkup_cause_cause_1_busy),
-    .src_qs_o     (wkup_cause_cause_1_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_cause[1].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_cause_we),
+    .wd     (aon_wkup_cause_wdata[1]),
+
+    // from internal hardware
+    .de     (hw2reg.wkup_cause[1].de),
+    .d      (hw2reg.wkup_cause[1].d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_cause[1].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_cause_cause_1_qs_int)
   );
 
-
-  // F[cause_2]: 2:2
-  prim_subreg_async #(
+  //   F[cause_2]: 2:2
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h0)
   ) u_wkup_cause_cause_2 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_cause_we),
-    .src_wd_i     (wkup_cause_cause_2_wd),
-    .dst_de_i     (hw2reg.wkup_cause[2].de),
-    .dst_d_i      (hw2reg.wkup_cause[2].d),
-    .src_busy_o   (wkup_cause_cause_2_busy),
-    .src_qs_o     (wkup_cause_cause_2_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_cause[2].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_cause_we),
+    .wd     (aon_wkup_cause_wdata[2]),
+
+    // from internal hardware
+    .de     (hw2reg.wkup_cause[2].de),
+    .d      (hw2reg.wkup_cause[2].d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_cause[2].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_cause_cause_2_qs_int)
   );
 
-
-  // F[cause_3]: 3:3
-  prim_subreg_async #(
+  //   F[cause_3]: 3:3
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h0)
   ) u_wkup_cause_cause_3 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_cause_we),
-    .src_wd_i     (wkup_cause_cause_3_wd),
-    .dst_de_i     (hw2reg.wkup_cause[3].de),
-    .dst_d_i      (hw2reg.wkup_cause[3].d),
-    .src_busy_o   (wkup_cause_cause_3_busy),
-    .src_qs_o     (wkup_cause_cause_3_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_cause[3].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_cause_we),
+    .wd     (aon_wkup_cause_wdata[3]),
+
+    // from internal hardware
+    .de     (hw2reg.wkup_cause[3].de),
+    .d      (hw2reg.wkup_cause[3].d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_cause[3].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_cause_cause_3_qs_int)
   );
 
-
-  // F[cause_4]: 4:4
-  prim_subreg_async #(
+  //   F[cause_4]: 4:4
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h0)
   ) u_wkup_cause_cause_4 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_cause_we),
-    .src_wd_i     (wkup_cause_cause_4_wd),
-    .dst_de_i     (hw2reg.wkup_cause[4].de),
-    .dst_d_i      (hw2reg.wkup_cause[4].d),
-    .src_busy_o   (wkup_cause_cause_4_busy),
-    .src_qs_o     (wkup_cause_cause_4_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_cause[4].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_cause_we),
+    .wd     (aon_wkup_cause_wdata[4]),
+
+    // from internal hardware
+    .de     (hw2reg.wkup_cause[4].de),
+    .d      (hw2reg.wkup_cause[4].d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_cause[4].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_cause_cause_4_qs_int)
   );
 
-
-  // F[cause_5]: 5:5
-  prim_subreg_async #(
+  //   F[cause_5]: 5:5
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h0)
   ) u_wkup_cause_cause_5 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_cause_we),
-    .src_wd_i     (wkup_cause_cause_5_wd),
-    .dst_de_i     (hw2reg.wkup_cause[5].de),
-    .dst_d_i      (hw2reg.wkup_cause[5].d),
-    .src_busy_o   (wkup_cause_cause_5_busy),
-    .src_qs_o     (wkup_cause_cause_5_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_cause[5].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_cause_we),
+    .wd     (aon_wkup_cause_wdata[5]),
+
+    // from internal hardware
+    .de     (hw2reg.wkup_cause[5].de),
+    .d      (hw2reg.wkup_cause[5].d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_cause[5].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_cause_cause_5_qs_int)
   );
 
-
-  // F[cause_6]: 6:6
-  prim_subreg_async #(
+  //   F[cause_6]: 6:6
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h0)
   ) u_wkup_cause_cause_6 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_cause_we),
-    .src_wd_i     (wkup_cause_cause_6_wd),
-    .dst_de_i     (hw2reg.wkup_cause[6].de),
-    .dst_d_i      (hw2reg.wkup_cause[6].d),
-    .src_busy_o   (wkup_cause_cause_6_busy),
-    .src_qs_o     (wkup_cause_cause_6_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_cause[6].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_cause_we),
+    .wd     (aon_wkup_cause_wdata[6]),
+
+    // from internal hardware
+    .de     (hw2reg.wkup_cause[6].de),
+    .d      (hw2reg.wkup_cause[6].d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_cause[6].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_cause_cause_6_qs_int)
   );
 
-
-  // F[cause_7]: 7:7
-  prim_subreg_async #(
+  //   F[cause_7]: 7:7
+  prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h0)
   ) u_wkup_cause_cause_7 (
-    .clk_src_i    (clk_i),
-    .rst_src_ni   (rst_ni),
-    .clk_dst_i    (clk_aon_i),
-    .rst_dst_ni   (rst_aon_ni),
-    .src_update_i (sync_aon_update),
-    .src_we_i     (wkup_cause_we),
-    .src_wd_i     (wkup_cause_cause_7_wd),
-    .dst_de_i     (hw2reg.wkup_cause[7].de),
-    .dst_d_i      (hw2reg.wkup_cause[7].d),
-    .src_busy_o   (wkup_cause_cause_7_busy),
-    .src_qs_o     (wkup_cause_cause_7_qs),
-    .dst_qe_o     (),
-    .q            (reg2hw.wkup_cause[7].q)
+    .clk_i   (clk_aon_i),
+    .rst_ni  (rst_aon_ni),
+
+    // from register interface
+    .we     (aon_wkup_cause_we),
+    .wd     (aon_wkup_cause_wdata[7]),
+
+    // from internal hardware
+    .de     (hw2reg.wkup_cause[7].de),
+    .d      (hw2reg.wkup_cause[7].d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.wkup_cause[7].q),
+
+    // to register interface (read)
+    .qs     (aon_wkup_cause_cause_7_qs_int)
   );
-
-
 
 
 
@@ -16030,108 +16951,68 @@ module pinmux_reg_top (
   assign wkup_detector_regwen_7_wd = reg_wdata[0];
   assign wkup_detector_en_0_we = addr_hit[381] & reg_we & !reg_error;
 
-  assign wkup_detector_en_0_wd = reg_wdata[0];
   assign wkup_detector_en_1_we = addr_hit[382] & reg_we & !reg_error;
 
-  assign wkup_detector_en_1_wd = reg_wdata[0];
   assign wkup_detector_en_2_we = addr_hit[383] & reg_we & !reg_error;
 
-  assign wkup_detector_en_2_wd = reg_wdata[0];
   assign wkup_detector_en_3_we = addr_hit[384] & reg_we & !reg_error;
 
-  assign wkup_detector_en_3_wd = reg_wdata[0];
   assign wkup_detector_en_4_we = addr_hit[385] & reg_we & !reg_error;
 
-  assign wkup_detector_en_4_wd = reg_wdata[0];
   assign wkup_detector_en_5_we = addr_hit[386] & reg_we & !reg_error;
 
-  assign wkup_detector_en_5_wd = reg_wdata[0];
   assign wkup_detector_en_6_we = addr_hit[387] & reg_we & !reg_error;
 
-  assign wkup_detector_en_6_wd = reg_wdata[0];
   assign wkup_detector_en_7_we = addr_hit[388] & reg_we & !reg_error;
 
-  assign wkup_detector_en_7_wd = reg_wdata[0];
   assign wkup_detector_0_we = addr_hit[389] & reg_we & !reg_error;
 
-  assign wkup_detector_0_mode_0_wd = reg_wdata[2:0];
 
-  assign wkup_detector_0_filter_0_wd = reg_wdata[3];
 
-  assign wkup_detector_0_miodio_0_wd = reg_wdata[4];
   assign wkup_detector_1_we = addr_hit[390] & reg_we & !reg_error;
 
-  assign wkup_detector_1_mode_1_wd = reg_wdata[2:0];
 
-  assign wkup_detector_1_filter_1_wd = reg_wdata[3];
 
-  assign wkup_detector_1_miodio_1_wd = reg_wdata[4];
   assign wkup_detector_2_we = addr_hit[391] & reg_we & !reg_error;
 
-  assign wkup_detector_2_mode_2_wd = reg_wdata[2:0];
 
-  assign wkup_detector_2_filter_2_wd = reg_wdata[3];
 
-  assign wkup_detector_2_miodio_2_wd = reg_wdata[4];
   assign wkup_detector_3_we = addr_hit[392] & reg_we & !reg_error;
 
-  assign wkup_detector_3_mode_3_wd = reg_wdata[2:0];
 
-  assign wkup_detector_3_filter_3_wd = reg_wdata[3];
 
-  assign wkup_detector_3_miodio_3_wd = reg_wdata[4];
   assign wkup_detector_4_we = addr_hit[393] & reg_we & !reg_error;
 
-  assign wkup_detector_4_mode_4_wd = reg_wdata[2:0];
 
-  assign wkup_detector_4_filter_4_wd = reg_wdata[3];
 
-  assign wkup_detector_4_miodio_4_wd = reg_wdata[4];
   assign wkup_detector_5_we = addr_hit[394] & reg_we & !reg_error;
 
-  assign wkup_detector_5_mode_5_wd = reg_wdata[2:0];
 
-  assign wkup_detector_5_filter_5_wd = reg_wdata[3];
 
-  assign wkup_detector_5_miodio_5_wd = reg_wdata[4];
   assign wkup_detector_6_we = addr_hit[395] & reg_we & !reg_error;
 
-  assign wkup_detector_6_mode_6_wd = reg_wdata[2:0];
 
-  assign wkup_detector_6_filter_6_wd = reg_wdata[3];
 
-  assign wkup_detector_6_miodio_6_wd = reg_wdata[4];
   assign wkup_detector_7_we = addr_hit[396] & reg_we & !reg_error;
 
-  assign wkup_detector_7_mode_7_wd = reg_wdata[2:0];
 
-  assign wkup_detector_7_filter_7_wd = reg_wdata[3];
 
-  assign wkup_detector_7_miodio_7_wd = reg_wdata[4];
   assign wkup_detector_cnt_th_0_we = addr_hit[397] & reg_we & !reg_error;
 
-  assign wkup_detector_cnt_th_0_wd = reg_wdata[7:0];
   assign wkup_detector_cnt_th_1_we = addr_hit[398] & reg_we & !reg_error;
 
-  assign wkup_detector_cnt_th_1_wd = reg_wdata[7:0];
   assign wkup_detector_cnt_th_2_we = addr_hit[399] & reg_we & !reg_error;
 
-  assign wkup_detector_cnt_th_2_wd = reg_wdata[7:0];
   assign wkup_detector_cnt_th_3_we = addr_hit[400] & reg_we & !reg_error;
 
-  assign wkup_detector_cnt_th_3_wd = reg_wdata[7:0];
   assign wkup_detector_cnt_th_4_we = addr_hit[401] & reg_we & !reg_error;
 
-  assign wkup_detector_cnt_th_4_wd = reg_wdata[7:0];
   assign wkup_detector_cnt_th_5_we = addr_hit[402] & reg_we & !reg_error;
 
-  assign wkup_detector_cnt_th_5_wd = reg_wdata[7:0];
   assign wkup_detector_cnt_th_6_we = addr_hit[403] & reg_we & !reg_error;
 
-  assign wkup_detector_cnt_th_6_wd = reg_wdata[7:0];
   assign wkup_detector_cnt_th_7_we = addr_hit[404] & reg_we & !reg_error;
 
-  assign wkup_detector_cnt_th_7_wd = reg_wdata[7:0];
   assign wkup_detector_padsel_0_we = addr_hit[405] & reg_we & !reg_error;
 
   assign wkup_detector_padsel_0_wd = reg_wdata[5:0];
@@ -16158,21 +17039,13 @@ module pinmux_reg_top (
   assign wkup_detector_padsel_7_wd = reg_wdata[5:0];
   assign wkup_cause_we = addr_hit[413] & reg_we & !reg_error;
 
-  assign wkup_cause_cause_0_wd = reg_wdata[0];
 
-  assign wkup_cause_cause_1_wd = reg_wdata[1];
 
-  assign wkup_cause_cause_2_wd = reg_wdata[2];
 
-  assign wkup_cause_cause_3_wd = reg_wdata[3];
 
-  assign wkup_cause_cause_4_wd = reg_wdata[4];
 
-  assign wkup_cause_cause_5_wd = reg_wdata[5];
 
-  assign wkup_cause_cause_6_wd = reg_wdata[6];
 
-  assign wkup_cause_cause_7_wd = reg_wdata[7];
 
   // Read data return
   always_comb begin
@@ -17749,117 +18622,77 @@ module pinmux_reg_top (
       end
 
       addr_hit[381]: begin
-        reg_rdata_next[0] = wkup_detector_en_0_qs;
+        reg_rdata_next = DW'(wkup_detector_en_0_qs);
       end
-
       addr_hit[382]: begin
-        reg_rdata_next[0] = wkup_detector_en_1_qs;
+        reg_rdata_next = DW'(wkup_detector_en_1_qs);
       end
-
       addr_hit[383]: begin
-        reg_rdata_next[0] = wkup_detector_en_2_qs;
+        reg_rdata_next = DW'(wkup_detector_en_2_qs);
       end
-
       addr_hit[384]: begin
-        reg_rdata_next[0] = wkup_detector_en_3_qs;
+        reg_rdata_next = DW'(wkup_detector_en_3_qs);
       end
-
       addr_hit[385]: begin
-        reg_rdata_next[0] = wkup_detector_en_4_qs;
+        reg_rdata_next = DW'(wkup_detector_en_4_qs);
       end
-
       addr_hit[386]: begin
-        reg_rdata_next[0] = wkup_detector_en_5_qs;
+        reg_rdata_next = DW'(wkup_detector_en_5_qs);
       end
-
       addr_hit[387]: begin
-        reg_rdata_next[0] = wkup_detector_en_6_qs;
+        reg_rdata_next = DW'(wkup_detector_en_6_qs);
       end
-
       addr_hit[388]: begin
-        reg_rdata_next[0] = wkup_detector_en_7_qs;
+        reg_rdata_next = DW'(wkup_detector_en_7_qs);
       end
-
       addr_hit[389]: begin
-        reg_rdata_next[2:0] = wkup_detector_0_mode_0_qs;
-        reg_rdata_next[3] = wkup_detector_0_filter_0_qs;
-        reg_rdata_next[4] = wkup_detector_0_miodio_0_qs;
+        reg_rdata_next = DW'(wkup_detector_0_qs);
       end
-
       addr_hit[390]: begin
-        reg_rdata_next[2:0] = wkup_detector_1_mode_1_qs;
-        reg_rdata_next[3] = wkup_detector_1_filter_1_qs;
-        reg_rdata_next[4] = wkup_detector_1_miodio_1_qs;
+        reg_rdata_next = DW'(wkup_detector_1_qs);
       end
-
       addr_hit[391]: begin
-        reg_rdata_next[2:0] = wkup_detector_2_mode_2_qs;
-        reg_rdata_next[3] = wkup_detector_2_filter_2_qs;
-        reg_rdata_next[4] = wkup_detector_2_miodio_2_qs;
+        reg_rdata_next = DW'(wkup_detector_2_qs);
       end
-
       addr_hit[392]: begin
-        reg_rdata_next[2:0] = wkup_detector_3_mode_3_qs;
-        reg_rdata_next[3] = wkup_detector_3_filter_3_qs;
-        reg_rdata_next[4] = wkup_detector_3_miodio_3_qs;
+        reg_rdata_next = DW'(wkup_detector_3_qs);
       end
-
       addr_hit[393]: begin
-        reg_rdata_next[2:0] = wkup_detector_4_mode_4_qs;
-        reg_rdata_next[3] = wkup_detector_4_filter_4_qs;
-        reg_rdata_next[4] = wkup_detector_4_miodio_4_qs;
+        reg_rdata_next = DW'(wkup_detector_4_qs);
       end
-
       addr_hit[394]: begin
-        reg_rdata_next[2:0] = wkup_detector_5_mode_5_qs;
-        reg_rdata_next[3] = wkup_detector_5_filter_5_qs;
-        reg_rdata_next[4] = wkup_detector_5_miodio_5_qs;
+        reg_rdata_next = DW'(wkup_detector_5_qs);
       end
-
       addr_hit[395]: begin
-        reg_rdata_next[2:0] = wkup_detector_6_mode_6_qs;
-        reg_rdata_next[3] = wkup_detector_6_filter_6_qs;
-        reg_rdata_next[4] = wkup_detector_6_miodio_6_qs;
+        reg_rdata_next = DW'(wkup_detector_6_qs);
       end
-
       addr_hit[396]: begin
-        reg_rdata_next[2:0] = wkup_detector_7_mode_7_qs;
-        reg_rdata_next[3] = wkup_detector_7_filter_7_qs;
-        reg_rdata_next[4] = wkup_detector_7_miodio_7_qs;
+        reg_rdata_next = DW'(wkup_detector_7_qs);
       end
-
       addr_hit[397]: begin
-        reg_rdata_next[7:0] = wkup_detector_cnt_th_0_qs;
+        reg_rdata_next = DW'(wkup_detector_cnt_th_0_qs);
       end
-
       addr_hit[398]: begin
-        reg_rdata_next[7:0] = wkup_detector_cnt_th_1_qs;
+        reg_rdata_next = DW'(wkup_detector_cnt_th_1_qs);
       end
-
       addr_hit[399]: begin
-        reg_rdata_next[7:0] = wkup_detector_cnt_th_2_qs;
+        reg_rdata_next = DW'(wkup_detector_cnt_th_2_qs);
       end
-
       addr_hit[400]: begin
-        reg_rdata_next[7:0] = wkup_detector_cnt_th_3_qs;
+        reg_rdata_next = DW'(wkup_detector_cnt_th_3_qs);
       end
-
       addr_hit[401]: begin
-        reg_rdata_next[7:0] = wkup_detector_cnt_th_4_qs;
+        reg_rdata_next = DW'(wkup_detector_cnt_th_4_qs);
       end
-
       addr_hit[402]: begin
-        reg_rdata_next[7:0] = wkup_detector_cnt_th_5_qs;
+        reg_rdata_next = DW'(wkup_detector_cnt_th_5_qs);
       end
-
       addr_hit[403]: begin
-        reg_rdata_next[7:0] = wkup_detector_cnt_th_6_qs;
+        reg_rdata_next = DW'(wkup_detector_cnt_th_6_qs);
       end
-
       addr_hit[404]: begin
-        reg_rdata_next[7:0] = wkup_detector_cnt_th_7_qs;
+        reg_rdata_next = DW'(wkup_detector_cnt_th_7_qs);
       end
-
       addr_hit[405]: begin
         reg_rdata_next[5:0] = wkup_detector_padsel_0_qs;
       end
@@ -17893,135 +18726,101 @@ module pinmux_reg_top (
       end
 
       addr_hit[413]: begin
-        reg_rdata_next[0] = wkup_cause_cause_0_qs;
-        reg_rdata_next[1] = wkup_cause_cause_1_qs;
-        reg_rdata_next[2] = wkup_cause_cause_2_qs;
-        reg_rdata_next[3] = wkup_cause_cause_3_qs;
-        reg_rdata_next[4] = wkup_cause_cause_4_qs;
-        reg_rdata_next[5] = wkup_cause_cause_5_qs;
-        reg_rdata_next[6] = wkup_cause_cause_6_qs;
-        reg_rdata_next[7] = wkup_cause_cause_7_qs;
+        reg_rdata_next = DW'(wkup_cause_qs);
       end
-
       default: begin
         reg_rdata_next = '1;
       end
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       addr_hit[381]: begin
-        reg_busy = wkup_detector_en_0_busy;
+        reg_busy_sel = wkup_detector_en_0_busy;
       end
       addr_hit[382]: begin
-        reg_busy = wkup_detector_en_1_busy;
+        reg_busy_sel = wkup_detector_en_1_busy;
       end
       addr_hit[383]: begin
-        reg_busy = wkup_detector_en_2_busy;
+        reg_busy_sel = wkup_detector_en_2_busy;
       end
       addr_hit[384]: begin
-        reg_busy = wkup_detector_en_3_busy;
+        reg_busy_sel = wkup_detector_en_3_busy;
       end
       addr_hit[385]: begin
-        reg_busy = wkup_detector_en_4_busy;
+        reg_busy_sel = wkup_detector_en_4_busy;
       end
       addr_hit[386]: begin
-        reg_busy = wkup_detector_en_5_busy;
+        reg_busy_sel = wkup_detector_en_5_busy;
       end
       addr_hit[387]: begin
-        reg_busy = wkup_detector_en_6_busy;
+        reg_busy_sel = wkup_detector_en_6_busy;
       end
       addr_hit[388]: begin
-        reg_busy = wkup_detector_en_7_busy;
+        reg_busy_sel = wkup_detector_en_7_busy;
       end
       addr_hit[389]: begin
-        reg_busy =
-          wkup_detector_0_mode_0_busy |
-          wkup_detector_0_filter_0_busy |
-          wkup_detector_0_miodio_0_busy;
+        reg_busy_sel = wkup_detector_0_busy;
       end
       addr_hit[390]: begin
-        reg_busy =
-          wkup_detector_1_mode_1_busy |
-          wkup_detector_1_filter_1_busy |
-          wkup_detector_1_miodio_1_busy;
+        reg_busy_sel = wkup_detector_1_busy;
       end
       addr_hit[391]: begin
-        reg_busy =
-          wkup_detector_2_mode_2_busy |
-          wkup_detector_2_filter_2_busy |
-          wkup_detector_2_miodio_2_busy;
+        reg_busy_sel = wkup_detector_2_busy;
       end
       addr_hit[392]: begin
-        reg_busy =
-          wkup_detector_3_mode_3_busy |
-          wkup_detector_3_filter_3_busy |
-          wkup_detector_3_miodio_3_busy;
+        reg_busy_sel = wkup_detector_3_busy;
       end
       addr_hit[393]: begin
-        reg_busy =
-          wkup_detector_4_mode_4_busy |
-          wkup_detector_4_filter_4_busy |
-          wkup_detector_4_miodio_4_busy;
+        reg_busy_sel = wkup_detector_4_busy;
       end
       addr_hit[394]: begin
-        reg_busy =
-          wkup_detector_5_mode_5_busy |
-          wkup_detector_5_filter_5_busy |
-          wkup_detector_5_miodio_5_busy;
+        reg_busy_sel = wkup_detector_5_busy;
       end
       addr_hit[395]: begin
-        reg_busy =
-          wkup_detector_6_mode_6_busy |
-          wkup_detector_6_filter_6_busy |
-          wkup_detector_6_miodio_6_busy;
+        reg_busy_sel = wkup_detector_6_busy;
       end
       addr_hit[396]: begin
-        reg_busy =
-          wkup_detector_7_mode_7_busy |
-          wkup_detector_7_filter_7_busy |
-          wkup_detector_7_miodio_7_busy;
+        reg_busy_sel = wkup_detector_7_busy;
       end
       addr_hit[397]: begin
-        reg_busy = wkup_detector_cnt_th_0_busy;
+        reg_busy_sel = wkup_detector_cnt_th_0_busy;
       end
       addr_hit[398]: begin
-        reg_busy = wkup_detector_cnt_th_1_busy;
+        reg_busy_sel = wkup_detector_cnt_th_1_busy;
       end
       addr_hit[399]: begin
-        reg_busy = wkup_detector_cnt_th_2_busy;
+        reg_busy_sel = wkup_detector_cnt_th_2_busy;
       end
       addr_hit[400]: begin
-        reg_busy = wkup_detector_cnt_th_3_busy;
+        reg_busy_sel = wkup_detector_cnt_th_3_busy;
       end
       addr_hit[401]: begin
-        reg_busy = wkup_detector_cnt_th_4_busy;
+        reg_busy_sel = wkup_detector_cnt_th_4_busy;
       end
       addr_hit[402]: begin
-        reg_busy = wkup_detector_cnt_th_5_busy;
+        reg_busy_sel = wkup_detector_cnt_th_5_busy;
       end
       addr_hit[403]: begin
-        reg_busy = wkup_detector_cnt_th_6_busy;
+        reg_busy_sel = wkup_detector_cnt_th_6_busy;
       end
       addr_hit[404]: begin
-        reg_busy = wkup_detector_cnt_th_7_busy;
+        reg_busy_sel = wkup_detector_cnt_th_7_busy;
       end
       addr_hit[413]: begin
-        reg_busy =
-          wkup_cause_cause_0_busy |
-          wkup_cause_cause_1_busy |
-          wkup_cause_cause_2_busy |
-          wkup_cause_cause_3_busy |
-          wkup_cause_cause_4_busy |
-          wkup_cause_cause_5_busy |
-          wkup_cause_cause_6_busy |
-          wkup_cause_cause_7_busy;
+        reg_busy_sel = wkup_cause_busy;
       end
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

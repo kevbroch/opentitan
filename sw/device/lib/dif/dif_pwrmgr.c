@@ -8,6 +8,7 @@
 
 #include "sw/device/lib/base/bitfield.h"
 #include "sw/device/lib/base/mmio.h"
+#include "sw/device/lib/dif/dif_base.h"
 
 #include "pwrmgr_regs.h"  // Generated.
 
@@ -69,19 +70,22 @@ static_assert(kDifPwrmgrWakeupRequestSourceOne ==
                   (1u << PWRMGR_WAKEUP_EN_EN_0_BIT),
               "Layout of WAKEUP_EN register changed.");
 static_assert(kDifPwrmgrWakeupRequestSourceOne ==
-                  (1u << PWRMGR_PARAM_GSC_WK_IDX),
+                  (1u << PWRMGR_PARAM_SYSRST_CTRL_AON_WKUP_REQ_IDX),
               "Layout of WAKE_INFO register changed.");
 static_assert(kDifPwrmgrWakeupRequestSourceTwo ==
-                  (1u << PWRMGR_PARAM_DEBUG_CABLE_WAKEUP_IDX),
+                  (1u << PWRMGR_PARAM_ADC_CTRL_AON_WKUP_REQ_IDX),
               "Layout of WAKE_INFO register changed.");
 static_assert(kDifPwrmgrWakeupRequestSourceThree ==
-                  (1u << PWRMGR_PARAM_AON_WKUP_REQ_IDX),
+                  (1u << PWRMGR_PARAM_PINMUX_AON_PIN_WKUP_REQ_IDX),
               "Layout of WAKE_INFO register changed.");
 static_assert(kDifPwrmgrWakeupRequestSourceFour ==
-                  (1u << PWRMGR_PARAM_USB_WKUP_REQ_IDX),
+                  (1u << PWRMGR_PARAM_PINMUX_AON_USB_WKUP_REQ_IDX),
               "Layout of WAKE_INFO register changed.");
 static_assert(kDifPwrmgrWakeupRequestSourceFive ==
-                  (1u << PWRMGR_PARAM_AON_TIMER_WKUP_REQ_IDX),
+                  (1u << PWRMGR_PARAM_AON_TIMER_AON_WKUP_REQ_IDX),
+              "Layout of WAKE_INFO register changed.");
+static_assert(kDifPwrmgrWakeupRequestSourceSix ==
+                  (1u << PWRMGR_PARAM_SENSOR_CTRL_WKUP_REQ_IDX),
               "Layout of WAKE_INFO register changed.");
 
 /**
@@ -90,6 +94,9 @@ static_assert(kDifPwrmgrWakeupRequestSourceFive ==
  */
 static_assert(kDifPwrmgrResetRequestSourceOne ==
                   (1u << PWRMGR_RESET_EN_EN_0_BIT),
+              "Layout of RESET_EN register changed.");
+static_assert(kDifPwrmgrResetRequestSourceTwo ==
+                  (1u << PWRMGR_RESET_EN_EN_1_BIT),
               "Layout of RESET_EN register changed.");
 
 /**
@@ -129,7 +136,8 @@ static const request_reg_info_t request_reg_infos[2] = {
                             kDifPwrmgrWakeupRequestSourceTwo |
                             kDifPwrmgrWakeupRequestSourceThree |
                             kDifPwrmgrWakeupRequestSourceFour |
-                            kDifPwrmgrWakeupRequestSourceFive,
+                            kDifPwrmgrWakeupRequestSourceFive |
+                            kDifPwrmgrWakeupRequestSourceSix,
                     .index = 0,
                 },
         },
@@ -141,22 +149,23 @@ static const request_reg_info_t request_reg_infos[2] = {
             .cur_req_sources_reg_offset = PWRMGR_RESET_STATUS_REG_OFFSET,
             .bitfield =
                 {
-                    .mask = kDifPwrmgrResetRequestSourceOne,
+                    .mask = kDifPwrmgrResetRequestSourceOne |
+                            kDifPwrmgrResetRequestSourceTwo,
                     .index = 0,
                 },
         },
 };
 
 /**
- * Checks if a value is a valid `dif_pwrmgr_toggle_t` and converts it to `bool`.
+ * Checks if a value is a valid `dif_toggle_t` and converts it to `bool`.
  */
-DIF_WARN_UNUSED_RESULT
-static bool toggle_to_bool(dif_pwrmgr_toggle_t val, bool *val_bool) {
+OT_WARN_UNUSED_RESULT
+static bool toggle_to_bool(dif_toggle_t val, bool *val_bool) {
   switch (val) {
-    case kDifPwrmgrToggleEnabled:
+    case kDifToggleEnabled:
       *val_bool = true;
       break;
-    case kDifPwrmgrToggleDisabled:
+    case kDifToggleDisabled:
       *val_bool = false;
       break;
     default:
@@ -166,33 +175,25 @@ static bool toggle_to_bool(dif_pwrmgr_toggle_t val, bool *val_bool) {
 }
 
 /**
- * Converts a `bool` to `dif_pwrmgr_toggle_t`.
+ * Converts a `bool` to `dif_toggle_t`.
  */
-static dif_pwrmgr_toggle_t bool_to_toggle(bool val) {
-  return val ? kDifPwrmgrToggleEnabled : kDifPwrmgrToggleDisabled;
+static dif_toggle_t bool_to_toggle(bool val) {
+  return val ? kDifToggleEnabled : kDifToggleDisabled;
 }
 
 /**
  * Checks if a value is a valid `dif_pwrmgr_req_type_t`.
  */
-DIF_WARN_UNUSED_RESULT
+OT_WARN_UNUSED_RESULT
 static bool is_valid_req_type(dif_pwrmgr_req_type_t val) {
   return val == kDifPwrmgrReqTypeWakeup || val == kDifPwrmgrReqTypeReset;
-}
-
-/**
- * Checks if a value is a valid `dif_pwrmgr_irq_t`.
- */
-DIF_WARN_UNUSED_RESULT
-static bool is_valid_irq(dif_pwrmgr_irq_t val) {
-  return val >= 0 && val <= kDifPwrmgrIrqLast;
 }
 
 /**
  * Checks if a value is valid for, i.e. fits in the mask of, a
  * `bitfield_field32_t`.
  */
-DIF_WARN_UNUSED_RESULT
+OT_WARN_UNUSED_RESULT
 static bool is_valid_for_bitfield(uint32_t val, bitfield_field32_t bitfield) {
   return (val & bitfield.mask) == val;
 }
@@ -203,12 +204,11 @@ static bool is_valid_for_bitfield(uint32_t val, bitfield_field32_t bitfield) {
  * Control register is locked when low power is enabled and WFI occurs. It is
  * unlocked when the chip transitions back to active power state.
  */
-DIF_WARN_UNUSED_RESULT
+OT_WARN_UNUSED_RESULT
 static bool control_register_is_locked(const dif_pwrmgr_t *pwrmgr) {
   // Control register is locked when `PWRMGR_CTRL_CFG_REGWEN_EN_BIT` bit is 0.
   return !bitfield_bit32_read(
-      mmio_region_read32(pwrmgr->params.base_addr,
-                         PWRMGR_CTRL_CFG_REGWEN_REG_OFFSET),
+      mmio_region_read32(pwrmgr->base_addr, PWRMGR_CTRL_CFG_REGWEN_REG_OFFSET),
       PWRMGR_CTRL_CFG_REGWEN_EN_BIT);
 }
 
@@ -221,208 +221,195 @@ static bool control_register_is_locked(const dif_pwrmgr_t *pwrmgr) {
 static void sync_slow_clock_domain_polled(const dif_pwrmgr_t *pwrmgr) {
   // Start sync and wait for it to finish.
   mmio_region_write32(
-      pwrmgr->params.base_addr, PWRMGR_CFG_CDC_SYNC_REG_OFFSET,
+      pwrmgr->base_addr, PWRMGR_CFG_CDC_SYNC_REG_OFFSET,
       bitfield_bit32_write(0, PWRMGR_CFG_CDC_SYNC_SYNC_BIT, true));
-  while (bitfield_bit32_read(mmio_region_read32(pwrmgr->params.base_addr,
-                                                PWRMGR_CFG_CDC_SYNC_REG_OFFSET),
-                             PWRMGR_CFG_CDC_SYNC_SYNC_BIT)) {
+  while (bitfield_bit32_read(
+      mmio_region_read32(pwrmgr->base_addr, PWRMGR_CFG_CDC_SYNC_REG_OFFSET),
+      PWRMGR_CFG_CDC_SYNC_SYNC_BIT)) {
   }
 }
 
 /**
  * Checks if sources of a request type are locked.
  */
-DIF_WARN_UNUSED_RESULT
+OT_WARN_UNUSED_RESULT
 static bool request_sources_is_locked(const dif_pwrmgr_t *pwrmgr,
                                       dif_pwrmgr_req_type_t req_type) {
   request_reg_info_t reg_info = request_reg_infos[req_type];
-  uint32_t reg_val = mmio_region_read32(pwrmgr->params.base_addr,
-                                        reg_info.write_enable_reg_offset);
+  uint32_t reg_val =
+      mmio_region_read32(pwrmgr->base_addr, reg_info.write_enable_reg_offset);
   // Locked if write enable bit is set to 0.
   return !bitfield_bit32_read(reg_val, reg_info.write_enable_bit_index);
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_init(dif_pwrmgr_params_t params,
-                                    dif_pwrmgr_t *pwrmgr) {
+dif_result_t dif_pwrmgr_low_power_set_enabled(const dif_pwrmgr_t *pwrmgr,
+                                              dif_toggle_t new_state) {
   if (pwrmgr == NULL) {
-    return kDifPwrmgrBadArg;
-  }
-
-  *pwrmgr = (dif_pwrmgr_t){.params = params};
-
-  return kDifPwrmgrOk;
-}
-
-dif_pwrmgr_config_result_t dif_pwrmgr_low_power_set_enabled(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_toggle_t new_state) {
-  if (pwrmgr == NULL) {
-    return kDifPwrmgrConfigBadArg;
+    return kDifBadArg;
   }
 
   bool enable = false;
   if (!toggle_to_bool(new_state, &enable)) {
-    return kDifPwrmgrConfigBadArg;
+    return kDifBadArg;
   }
 
   if (control_register_is_locked(pwrmgr)) {
-    return kDifPwrMgrConfigLocked;
+    return kDifLocked;
   }
 
   uint32_t reg_val =
-      mmio_region_read32(pwrmgr->params.base_addr, PWRMGR_CONTROL_REG_OFFSET);
+      mmio_region_read32(pwrmgr->base_addr, PWRMGR_CONTROL_REG_OFFSET);
   reg_val =
       bitfield_bit32_write(reg_val, PWRMGR_CONTROL_LOW_POWER_HINT_BIT, enable);
-  mmio_region_write32(pwrmgr->params.base_addr, PWRMGR_CONTROL_REG_OFFSET,
-                      reg_val);
+  mmio_region_write32(pwrmgr->base_addr, PWRMGR_CONTROL_REG_OFFSET, reg_val);
 
   // Slow clock domain must be synced for changes to take effect.
   sync_slow_clock_domain_polled(pwrmgr);
 
-  return kDifPwrmgrConfigOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_low_power_get_enabled(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_toggle_t *cur_state) {
+dif_result_t dif_pwrmgr_low_power_get_enabled(const dif_pwrmgr_t *pwrmgr,
+                                              dif_toggle_t *cur_state) {
   if (pwrmgr == NULL || cur_state == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   uint32_t reg_val =
-      mmio_region_read32(pwrmgr->params.base_addr, PWRMGR_CONTROL_REG_OFFSET);
+      mmio_region_read32(pwrmgr->base_addr, PWRMGR_CONTROL_REG_OFFSET);
   *cur_state = bool_to_toggle(
       bitfield_bit32_read(reg_val, PWRMGR_CONTROL_LOW_POWER_HINT_BIT));
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_config_result_t dif_pwrmgr_set_domain_config(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_domain_config_t config) {
+dif_result_t dif_pwrmgr_set_domain_config(const dif_pwrmgr_t *pwrmgr,
+                                          dif_pwrmgr_domain_config_t config) {
   if (pwrmgr == NULL || !is_valid_for_bitfield(config, kDomainConfigBitfield)) {
-    return kDifPwrmgrConfigBadArg;
+    return kDifBadArg;
   }
 
   if (control_register_is_locked(pwrmgr)) {
-    return kDifPwrMgrConfigLocked;
+    return kDifLocked;
   }
 
   uint32_t reg_val =
-      mmio_region_read32(pwrmgr->params.base_addr, PWRMGR_CONTROL_REG_OFFSET);
+      mmio_region_read32(pwrmgr->base_addr, PWRMGR_CONTROL_REG_OFFSET);
   reg_val = bitfield_field32_write(reg_val, kDomainConfigBitfield, config);
-  mmio_region_write32(pwrmgr->params.base_addr, PWRMGR_CONTROL_REG_OFFSET,
-                      reg_val);
+  mmio_region_write32(pwrmgr->base_addr, PWRMGR_CONTROL_REG_OFFSET, reg_val);
 
   // Slow clock domain must be synced for changes to take effect.
   sync_slow_clock_domain_polled(pwrmgr);
 
-  return kDifPwrmgrConfigOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_get_domain_config(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_domain_config_t *config) {
+dif_result_t dif_pwrmgr_get_domain_config(const dif_pwrmgr_t *pwrmgr,
+                                          dif_pwrmgr_domain_config_t *config) {
   if (pwrmgr == NULL || config == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   uint32_t reg_val =
-      mmio_region_read32(pwrmgr->params.base_addr, PWRMGR_CONTROL_REG_OFFSET);
+      mmio_region_read32(pwrmgr->base_addr, PWRMGR_CONTROL_REG_OFFSET);
   *config = bitfield_field32_read(reg_val, kDomainConfigBitfield);
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_config_result_t dif_pwrmgr_set_request_sources(
+dif_result_t dif_pwrmgr_set_request_sources(
     const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_req_type_t req_type,
     dif_pwrmgr_request_sources_t sources) {
   if (pwrmgr == NULL || !is_valid_req_type(req_type)) {
-    return kDifPwrmgrConfigBadArg;
+    return kDifBadArg;
   }
 
   request_reg_info_t reg_info = request_reg_infos[req_type];
 
   if (!is_valid_for_bitfield(sources, reg_info.bitfield)) {
-    return kDifPwrmgrConfigBadArg;
+    return kDifBadArg;
   }
 
   // Return early if locked.
   if (request_sources_is_locked(pwrmgr, req_type)) {
-    return kDifPwrMgrConfigLocked;
+    return kDifLocked;
   }
 
   // Write new value
   uint32_t reg_val = bitfield_field32_write(0, reg_info.bitfield, sources);
-  mmio_region_write32(pwrmgr->params.base_addr,
-                      reg_info.sources_enable_reg_offset, reg_val);
+  mmio_region_write32(pwrmgr->base_addr, reg_info.sources_enable_reg_offset,
+                      reg_val);
   // Slow clock domain must be synced for changes to take effect.
   sync_slow_clock_domain_polled(pwrmgr);
 
-  return kDifPwrmgrConfigOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_get_request_sources(
+dif_result_t dif_pwrmgr_get_request_sources(
     const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_req_type_t req_type,
     dif_pwrmgr_request_sources_t *sources) {
   if (pwrmgr == NULL || !is_valid_req_type(req_type) || sources == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   request_reg_info_t reg_info = request_reg_infos[req_type];
-  uint32_t reg_val = mmio_region_read32(pwrmgr->params.base_addr,
-                                        reg_info.sources_enable_reg_offset);
+  uint32_t reg_val =
+      mmio_region_read32(pwrmgr->base_addr, reg_info.sources_enable_reg_offset);
   *sources = bitfield_field32_read(reg_val, reg_info.bitfield);
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_get_current_request_sources(
+dif_result_t dif_pwrmgr_get_current_request_sources(
     const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_req_type_t req_type,
     dif_pwrmgr_request_sources_t *sources) {
   if (pwrmgr == NULL || !is_valid_req_type(req_type) || sources == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   request_reg_info_t reg_info = request_reg_infos[req_type];
-  uint32_t reg_val = mmio_region_read32(pwrmgr->params.base_addr,
+  uint32_t reg_val = mmio_region_read32(pwrmgr->base_addr,
                                         reg_info.cur_req_sources_reg_offset);
   *sources = bitfield_field32_read(reg_val, reg_info.bitfield);
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_request_sources_lock(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_req_type_t req_type) {
+dif_result_t dif_pwrmgr_request_sources_lock(const dif_pwrmgr_t *pwrmgr,
+                                             dif_pwrmgr_req_type_t req_type) {
   if (pwrmgr == NULL || !is_valid_req_type(req_type)) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   // Only a single bit of this register is significant, thus we don't perform a
   // read-modify-write. Setting this bit to 0 locks sources.
-  mmio_region_write32(pwrmgr->params.base_addr,
+  mmio_region_write32(pwrmgr->base_addr,
                       request_reg_infos[req_type].write_enable_reg_offset, 0);
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_request_sources_is_locked(
+dif_result_t dif_pwrmgr_request_sources_is_locked(
     const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_req_type_t req_type,
     bool *is_locked) {
   if (pwrmgr == NULL || !is_valid_req_type(req_type) || is_locked == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   *is_locked = request_sources_is_locked(pwrmgr, req_type);
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_wakeup_request_recording_set_enabled(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_toggle_t new_state) {
+dif_result_t dif_pwrmgr_wakeup_request_recording_set_enabled(
+    const dif_pwrmgr_t *pwrmgr, dif_toggle_t new_state) {
   if (pwrmgr == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   bool enable = false;
   if (!toggle_to_bool(new_state, &enable)) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   // Only a single bit of this register is significant, thus we don't perform a
@@ -430,35 +417,35 @@ dif_pwrmgr_result_t dif_pwrmgr_wakeup_request_recording_set_enabled(
   uint32_t reg_val =
       bitfield_bit32_write(0, PWRMGR_WAKE_INFO_CAPTURE_DIS_VAL_BIT, !enable);
 
-  mmio_region_write32(pwrmgr->params.base_addr,
+  mmio_region_write32(pwrmgr->base_addr,
                       PWRMGR_WAKE_INFO_CAPTURE_DIS_REG_OFFSET, reg_val);
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_wakeup_request_recording_get_enabled(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_toggle_t *cur_state) {
+dif_result_t dif_pwrmgr_wakeup_request_recording_get_enabled(
+    const dif_pwrmgr_t *pwrmgr, dif_toggle_t *cur_state) {
   if (pwrmgr == NULL || cur_state == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   uint32_t reg_val = mmio_region_read32(
-      pwrmgr->params.base_addr, PWRMGR_WAKE_INFO_CAPTURE_DIS_REG_OFFSET);
+      pwrmgr->base_addr, PWRMGR_WAKE_INFO_CAPTURE_DIS_REG_OFFSET);
   // Recording is disabled if this bit is set to 1.
   *cur_state = bool_to_toggle(
       !bitfield_bit32_read(reg_val, PWRMGR_WAKE_INFO_CAPTURE_DIS_VAL_BIT));
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_wakeup_reason_get(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_wakeup_reason_t *reason) {
+dif_result_t dif_pwrmgr_wakeup_reason_get(const dif_pwrmgr_t *pwrmgr,
+                                          dif_pwrmgr_wakeup_reason_t *reason) {
   if (pwrmgr == NULL || reason == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   uint32_t reg_val =
-      mmio_region_read32(pwrmgr->params.base_addr, PWRMGR_WAKE_INFO_REG_OFFSET);
+      mmio_region_read32(pwrmgr->base_addr, PWRMGR_WAKE_INFO_REG_OFFSET);
 
   dif_pwrmgr_wakeup_types_t types = 0;
   if (bitfield_bit32_read(reg_val, PWRMGR_WAKE_INFO_FALL_THROUGH_BIT)) {
@@ -479,126 +466,24 @@ dif_pwrmgr_result_t dif_pwrmgr_wakeup_reason_get(
       .request_sources = request_sources,
   };
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_wakeup_reason_clear(const dif_pwrmgr_t *pwrmgr) {
+dif_result_t dif_pwrmgr_wakeup_reason_clear(const dif_pwrmgr_t *pwrmgr) {
   if (pwrmgr == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
-  mmio_region_write32(pwrmgr->params.base_addr, PWRMGR_WAKE_INFO_REG_OFFSET,
+  mmio_region_write32(pwrmgr->base_addr, PWRMGR_WAKE_INFO_REG_OFFSET,
                       UINT32_MAX);
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }
 
-dif_pwrmgr_result_t dif_pwrmgr_irq_is_pending(const dif_pwrmgr_t *pwrmgr,
-                                              dif_pwrmgr_irq_t irq,
-                                              bool *is_pending) {
-  if (pwrmgr == NULL || !is_valid_irq(irq) || is_pending == NULL) {
-    return kDifPwrmgrBadArg;
-  }
-
-  uint32_t reg_val = mmio_region_read32(pwrmgr->params.base_addr,
-                                        PWRMGR_INTR_STATE_REG_OFFSET);
-  *is_pending = bitfield_bit32_read(reg_val, irq);
-
-  return kDifPwrmgrOk;
-}
-
-dif_pwrmgr_result_t dif_pwrmgr_irq_acknowledge(const dif_pwrmgr_t *pwrmgr,
-                                               dif_pwrmgr_irq_t irq) {
-  if (pwrmgr == NULL || !is_valid_irq(irq)) {
-    return kDifPwrmgrBadArg;
-  }
-
-  uint32_t reg_val = bitfield_bit32_write(0, irq, true);
-  mmio_region_write32(pwrmgr->params.base_addr, PWRMGR_INTR_STATE_REG_OFFSET,
-                      reg_val);
-
-  return kDifPwrmgrOk;
-}
-
-dif_pwrmgr_result_t dif_pwrmgr_irq_get_enabled(const dif_pwrmgr_t *pwrmgr,
-                                               dif_pwrmgr_irq_t irq,
-                                               dif_pwrmgr_toggle_t *state) {
-  if (pwrmgr == NULL || !is_valid_irq(irq) || state == NULL) {
-    return kDifPwrmgrBadArg;
-  }
-
-  uint32_t reg_val = mmio_region_read32(pwrmgr->params.base_addr,
-                                        PWRMGR_INTR_ENABLE_REG_OFFSET);
-  *state = bool_to_toggle(bitfield_bit32_read(reg_val, irq));
-
-  return kDifPwrmgrOk;
-}
-
-dif_pwrmgr_result_t dif_pwrmgr_irq_set_enabled(const dif_pwrmgr_t *pwrmgr,
-                                               dif_pwrmgr_irq_t irq,
-                                               dif_pwrmgr_toggle_t state) {
-  if (pwrmgr == NULL || !is_valid_irq(irq)) {
-    return kDifPwrmgrBadArg;
-  }
-
-  bool enable = false;
-  if (!toggle_to_bool(state, &enable)) {
-    return kDifPwrmgrBadArg;
-  }
-
-  uint32_t reg_val = mmio_region_read32(pwrmgr->params.base_addr,
-                                        PWRMGR_INTR_ENABLE_REG_OFFSET);
-  reg_val = bitfield_bit32_write(reg_val, irq, enable);
-  mmio_region_write32(pwrmgr->params.base_addr, PWRMGR_INTR_ENABLE_REG_OFFSET,
-                      reg_val);
-
-  return kDifPwrmgrOk;
-}
-
-dif_pwrmgr_result_t dif_pwrmgr_irq_force(const dif_pwrmgr_t *pwrmgr,
-                                         dif_pwrmgr_irq_t irq) {
-  if (pwrmgr == NULL || !is_valid_irq(irq)) {
-    return kDifPwrmgrBadArg;
-  }
-
-  uint32_t reg_val = bitfield_bit32_write(0, irq, true);
-  mmio_region_write32(pwrmgr->params.base_addr, PWRMGR_INTR_TEST_REG_OFFSET,
-                      reg_val);
-
-  return kDifPwrmgrOk;
-}
-
-dif_pwrmgr_result_t dif_pwrmgr_irq_disable_all(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_irq_snapshot_t *snapshot) {
+dif_result_t dif_pwrmgr_alert_force(const dif_pwrmgr_t *pwrmgr,
+                                    dif_pwrmgr_alert_t alert) {
   if (pwrmgr == NULL) {
-    return kDifPwrmgrBadArg;
-  }
-
-  if (snapshot != NULL) {
-    *snapshot = mmio_region_read32(pwrmgr->params.base_addr,
-                                   PWRMGR_INTR_ENABLE_REG_OFFSET);
-  }
-  mmio_region_write32(pwrmgr->params.base_addr, PWRMGR_INTR_ENABLE_REG_OFFSET,
-                      0);
-
-  return kDifPwrmgrOk;
-}
-
-dif_pwrmgr_result_t dif_pwrmgr_irq_restore_all(
-    const dif_pwrmgr_t *pwrmgr, dif_pwrmgr_irq_snapshot_t snapshot) {
-  if (pwrmgr == NULL) {
-    return kDifPwrmgrBadArg;
-  }
-
-  mmio_region_write32(pwrmgr->params.base_addr, PWRMGR_INTR_ENABLE_REG_OFFSET,
-                      snapshot);
-  return kDifPwrmgrOk;
-}
-
-dif_pwrmgr_result_t dif_pwrmgr_alert_force(const dif_pwrmgr_t *pwrmgr,
-                                           dif_pwrmgr_alert_t alert) {
-  if (pwrmgr == NULL) {
-    return kDifPwrmgrBadArg;
+    return kDifBadArg;
   }
 
   bitfield_bit32_index_t index;
@@ -607,12 +492,11 @@ dif_pwrmgr_result_t dif_pwrmgr_alert_force(const dif_pwrmgr_t *pwrmgr,
       index = PWRMGR_ALERT_TEST_FATAL_FAULT_BIT;
       break;
     default:
-      return kDifPwrmgrBadArg;
+      return kDifBadArg;
   }
 
   uint32_t reg = bitfield_bit32_write(0, index, true);
-  mmio_region_write32(pwrmgr->params.base_addr, PWRMGR_ALERT_TEST_REG_OFFSET,
-                      reg);
+  mmio_region_write32(pwrmgr->base_addr, PWRMGR_ALERT_TEST_REG_OFFSET, reg);
 
-  return kDifPwrmgrOk;
+  return kDifOk;
 }

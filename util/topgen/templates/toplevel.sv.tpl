@@ -5,6 +5,8 @@ ${gencmd}
 <%
 import re
 import topgen.lib as lib
+from topgen.clocks import Clocks
+from topgen.resets import Resets
 
 num_mio_inputs = top['pinmux']['io_counts']['muxed']['inouts'] + \
                  top['pinmux']['io_counts']['muxed']['inputs']
@@ -88,17 +90,20 @@ module top_${top["name"]} #(
 
   // Inter-module Signal External type
   % for sig in top["inter_signal"]["external"]:
-  ${"input " if sig["direction"] == "in" else "output"} ${lib.im_defname(sig)} ${lib.bitarray(sig["width"],1)} ${sig["signame"]},
+  ${lib.get_direction(sig)} ${lib.im_defname(sig)} ${lib.bitarray(sig["width"],1)} ${sig["signame"]},
   % endfor
 
-  // Flash specific voltages
-  inout [1:0] flash_test_mode_a_io,
-  inout flash_test_voltage_h_io,
-
-  // OTP specific voltages
-  inout otp_ext_voltage_h_io,
-
 % endif
+
+  // All externally supplied clocks
+  % for clk in top['clocks'].typed_clocks().ast_clks:
+  input ${clk},
+  % endfor
+
+  // All clocks forwarded to ast
+  output clkmgr_pkg::clkmgr_out_t clks_ast_o,
+  output rstmgr_pkg::rstmgr_out_t rsts_ast_o,
+
   input                      scan_rst_ni, // reset used for test mode
   input                      scan_en_i,
   input lc_ctrl_pkg::lc_tx_t scanmode_i   // lc_ctrl_pkg::On for Scan
@@ -239,9 +244,12 @@ module top_${top["name"]} #(
   // OTP HW_CFG Broadcast signals.
   // TODO(#6713): The actual struct breakout and mapping currently needs to
   // be performed by hand.
-  assign csrng_otp_en_csrng_sw_app_read = otp_ctrl_otp_hw_cfg.data.en_csrng_sw_app_read;
-  assign entropy_src_otp_en_entropy_src_fw_read = otp_ctrl_otp_hw_cfg.data.en_entropy_src_fw_read;
-  assign entropy_src_otp_en_entropy_src_fw_over = otp_ctrl_otp_hw_cfg.data.en_entropy_src_fw_over;
+  assign csrng_otp_en_csrng_sw_app_read =
+    prim_mubi_pkg::mubi8_e'(otp_ctrl_otp_hw_cfg.data.en_csrng_sw_app_read);
+  assign entropy_src_otp_en_entropy_src_fw_read =
+    prim_mubi_pkg::mubi8_e'(otp_ctrl_otp_hw_cfg.data.en_entropy_src_fw_read);
+  assign entropy_src_otp_en_entropy_src_fw_over =
+    prim_mubi_pkg::mubi8_e'(otp_ctrl_otp_hw_cfg.data.en_entropy_src_fw_over);
   assign sram_ctrl_main_otp_en_sram_ifetch = otp_ctrl_otp_hw_cfg.data.en_sram_ifetch;
   assign lc_ctrl_otp_device_id = otp_ctrl_otp_hw_cfg.data.device_id;
   assign lc_ctrl_otp_manuf_state = otp_ctrl_otp_hw_cfg.data.manuf_state;
@@ -256,17 +264,15 @@ module top_${top["name"]} #(
   % endif
 % endfor
 
-  // Unused reset signals
-% for k, v in unused_resets.items():
-  logic unused_d${v.lower()}_rst_${k};
-% endfor
-% for k, v in unused_resets.items():
-  assign unused_d${v.lower()}_rst_${k} = ${lib.get_reset_path(k, v, top)};
-% endfor
+  // See #7978 This below is a hack.
+  // This is because ast is a comportable-like module that sits outside
+  // of top_earlgrey's boundary.
+  assign clks_ast_o = ${top['clocks'].hier_paths['top'][:-1]};
+  assign rsts_ast_o = ${top['resets'].hier_paths['top'][:-1]};
 
   // ibex specific assignments
   // TODO: This should be further automated in the future.
-  assign rv_core_ibex_irq_timer = intr_rv_timer_timer_expired_0_0;
+  assign rv_core_ibex_irq_timer = intr_rv_timer_timer_expired_hart0_timer0;
   assign rv_core_ibex_hart_id = '0;
 
   ## Not all top levels have a rom controller.
@@ -275,6 +281,12 @@ module top_${top["name"]} #(
   assign rv_core_ibex_boot_addr = ADDR_SPACE_ROM_CTRL__ROM;
 % else:
   assign rv_core_ibex_boot_addr = ADDR_SPACE_ROM;
+% endif
+
+  ## Not all top levels have a lifecycle controller.
+  ## For those that do not, always enable ibex.
+% if not lib.is_lc_ctrl(top["module"]):
+  assign rv_core_ibex_lc_cpu_en = lc_ctrl_pkg::On;
 % endif
 
   // Struct breakout module tool-inserted DFT TAP signals
@@ -289,91 +301,68 @@ module top_${top["name"]} #(
     .tdo_oe_i (1'b0)
   );
 
-## Memory Instantiation
-% for m in top["memory"]:
+  // Wire up alert handler LPGs
+  lc_ctrl_pkg::lc_tx_t [alert_pkg::NLpg-1:0] lpg_cg_en;
+  lc_ctrl_pkg::lc_tx_t [alert_pkg::NLpg-1:0] lpg_rst_en;
+
 <%
-  resets = m['reset_connections']
-  clocks = m['clock_connections']
+# get all known typed clocks and add them to a dict
+# this is used to generate the tie-off assignments further below
+clocks = top['clocks']
+assert isinstance(clocks, Clocks)
+typed_clocks = clocks.typed_clocks()
+known_clocks = {}
+for clk in typed_clocks.all_clocks():
+  known_clocks.update({top['clocks'].hier_paths['lpg'] + clk.split('clk_')[-1]: 1})
+
+# get all known resets and add them to a dict
+# this is used to generate the tie-off assignments further below
+resets = top['resets']
+assert isinstance(resets, Resets)
+output_rsts = resets.get_top_resets()
+known_resets = {}
+for rst in output_rsts:
+  for dom in top['power']['domains']:
+    if rst.shadowed:
+      path = lib.get_reset_lpg_path(top, resets.get_reset_by_name(rst.name)._asdict(), True, dom)
+      known_resets.update({
+        path: 1
+      })
+    path = lib.get_reset_lpg_path(top, resets.get_reset_by_name(rst.name)._asdict(), False, dom)
+    known_resets.update({
+      path: 1
+    })
 %>\
-  % if m["type"] == "eflash":
 
-  // host to flash communication
-  logic flash_host_req;
-  tlul_pkg::tl_type_e flash_host_req_type;
-  logic flash_host_req_rdy;
-  logic flash_host_req_done;
-  logic flash_host_rderr;
-  logic [flash_ctrl_pkg::BusWidth-1:0] flash_host_rdata;
-  logic [flash_ctrl_pkg::BusAddrW-1:0] flash_host_addr;
-  logic flash_host_intg_err;
+% for k, lpg in enumerate(top['alert_lpgs']):
+  // ${lpg['name']}
+<%
+  cg_en = top['clocks'].hier_paths['lpg'] + lpg['clock_connection'].split('.clk_')[-1]
+  rst_en = lib.get_reset_lpg_path(top, lpg['reset_connection'])
+  known_clocks[cg_en] = 0
+  known_resets[rst_en] = 0
+%>\
+  assign lpg_cg_en[${k}] = ${cg_en};
+  assign lpg_rst_en[${k}] = ${rst_en};
+% endfor
 
-  tlul_adapter_sram #(
-    .SramAw(flash_ctrl_pkg::BusAddrW),
-    .SramDw(flash_ctrl_pkg::BusWidth),
-    .Outstanding(2),
-    .ByteAccess(0),
-    .ErrOnWrite(1),
-    .CmdIntgCheck(1),
-    .EnableRspIntgGen(1),
-    .EnableDataIntgGen(1)
-  ) u_tl_adapter_${m["name"]} (
-    % for key in clocks:
-    .${key}   (${clocks[key]}),
-    % endfor
-    % for port, reset in resets.items():
-    .${port}   (${lib.get_reset_path(reset, m['domain'], top)}),
-    % endfor
-
-    .tl_i        (${m["name"]}_tl_req),
-    .tl_o        (${m["name"]}_tl_rsp),
-    .en_ifetch_i (tlul_pkg::InstrEn), // tie this to secure boot somehow
-    .req_o       (flash_host_req),
-    .req_type_o  (flash_host_req_type),
-    .gnt_i       (flash_host_req_rdy),
-    .we_o        (),
-    .addr_o      (flash_host_addr),
-    .wdata_o     (),
-    .wmask_o     (),
-    .intg_error_o(flash_host_intg_err),
-    .rdata_i     (flash_host_rdata),
-    .rvalid_i    (flash_host_req_done),
-    .rerror_i    ({flash_host_rderr,1'b0})
-  );
-
-  flash_phy u_flash_${m["name"]} (
-    % for key in clocks:
-    .${key}   (${clocks[key]}),
-    % endfor
-    % for port, reset in resets.items():
-    .${port}   (${lib.get_reset_path(reset, m['domain'], top)}),
-    % endfor
-    .host_req_i        (flash_host_req),
-    .host_intg_err_i   (flash_host_intg_err),
-    .host_req_type_i   (flash_host_req_type),
-    .host_addr_i       (flash_host_addr),
-    .host_req_rdy_o    (flash_host_req_rdy),
-    .host_req_done_o   (flash_host_req_done),
-    .host_rderr_o      (flash_host_rderr),
-    .host_rdata_o      (flash_host_rdata),
-    .flash_ctrl_i      (${m["inter_signal_list"][0]["top_signame"]}_req),
-    .flash_ctrl_o      (${m["inter_signal_list"][0]["top_signame"]}_rsp),
-    .lc_nvm_debug_en_i (${m["inter_signal_list"][2]["top_signame"]}),
-    .flash_bist_enable_i,
-    .flash_power_down_h_i,
-    .flash_power_ready_h_i,
-    .flash_test_mode_a_io,
-    .flash_test_voltage_h_io,
-    .flash_alert_o,
-    .scanmode_i,
-    .scan_en_i,
-    .scan_rst_ni
-  );
-
-  % else:
-    // flash memory is embedded within controller
+// tie-off unused connections
+<% k = 0 %>\
+% for clk, unused in known_clocks.items():
+  % if unused:
+    prim_mubi_pkg::mubi4_t unused_cg_en_${k};
+    assign unused_cg_en_${k} = ${clk};<% k += 1 %>
   % endif
 % endfor
-## Peripheral Instantiation
+<% k = 0 %>\
+% for rst, unused in known_resets.items():
+  % if unused:
+    prim_mubi_pkg::mubi4_t unused_rst_en_${k};
+    assign unused_rst_en_${k} = ${rst};<% k += 1 %>
+  % endif
+% endfor
+
+  // Peripheral Instantiation
 
 <% alert_idx = 0 %>
 % for m in top["module"]:
@@ -443,6 +432,8 @@ slice = str(alert_idx+w-1) + ":" + str(alert_idx)
         % if sig['type'] == "req_rsp":
       .${lib.im_portname(sig,"req")}(${lib.im_netname(sig, "req")}),
       .${lib.im_portname(sig,"rsp")}(${lib.im_netname(sig, "rsp")}),
+        % elif sig['type'] == "io":
+      .${lib.im_portname(sig,"io")}(${lib.im_netname(sig, "io")}),
         % elif sig['type'] == "uni":
           ## TODO: Broadcast type
           ## TODO: default for logic type
@@ -478,9 +469,10 @@ slice = str(alert_idx+w-1) + ":" + str(alert_idx)
       // alert signals
       .alert_rx_o  ( alert_rx ),
       .alert_tx_i  ( alert_tx ),
-    % endif
-    % if m["type"] == "otp_ctrl":
-      .otp_ext_voltage_h_io,
+      // synchronized clock gated / reset asserted
+      // indications for each alert
+      .lpg_cg_en_i  ( lpg_cg_en  ),
+      .lpg_rst_en_i ( lpg_rst_en ),
     % endif
     % if block.scan:
       .scanmode_i,
@@ -497,10 +489,12 @@ slice = str(alert_idx+w-1) + ":" + str(alert_idx)
       .${k} (${v}),
     % endfor
     % for port, reset in m["reset_connections"].items():
-      .${port} (${lib.get_reset_path(reset, m['domain'], top)})${"," if not loop.last else ""}
+      % if lib.is_shadowed_port(block, port):
+      .${lib.shadow_name(port)} (${lib.get_reset_path(top, reset, True)}),
+      % endif:
+      .${port} (${lib.get_reset_path(top, reset)})${"," if not loop.last else ""}
     % endfor
   );
-
 % endfor
   // interrupt assignments
 <% base = interrupt_num %>\
@@ -522,7 +516,7 @@ slice = str(alert_idx+w-1) + ":" + str(alert_idx)
     .${k} (${v}),
   % endfor
   % for port, reset in xbar["reset_connections"].items():
-    .${port} (${lib.get_reset_path(reset, xbar["domain"], top)}),
+    .${port} (${lib.get_reset_path(top, reset)}),
   % endfor
 
   ## Inter-module signal

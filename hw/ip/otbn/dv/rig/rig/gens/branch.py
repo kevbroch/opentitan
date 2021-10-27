@@ -80,16 +80,10 @@ class Branch(SnippetGen):
         return (pc + 4 if fall_thru else
                 program.pick_branch_target(pc, 1, off_min, off_max))
 
-    def gen(self,
-            cont: GenCont,
-            model: Model,
-            program: Program) -> Optional[GenRet]:
-        # Return None if this is the last instruction in the current gap
-        # because we need to either jump or do an ECALL to avoid getting stuck
-        # (just like the StraightLineInsn generator)
-        if program.get_insn_space_at(model.pc) <= 1:
-            return None
-
+    def gen_head(self,
+                 model: Model,
+                 program: Program) -> Optional[Tuple[ProgInsn, int]]:
+        '''Generate the actual branch instruction'''
         # Decide whether to generate BEQ or BNE.
         is_beq = random.random() < self.beq_prob
 
@@ -105,10 +99,8 @@ class Branch(SnippetGen):
         off_min, off_max = off_rng
 
         # Pick the source GPRs that we're comparing.
-        assert isinstance(grs1_op.op_type, RegOperandType)
-        assert isinstance(grs2_op.op_type, RegOperandType)
-        grs1 = model.pick_reg_operand_value(grs1_op.op_type)
-        grs2 = model.pick_reg_operand_value(grs2_op.op_type)
+        grs1 = model.pick_operand_value(grs1_op.op_type)
+        grs2 = model.pick_operand_value(grs2_op.op_type)
         if grs1 is None or grs2 is None:
             return None
 
@@ -121,7 +113,23 @@ class Branch(SnippetGen):
         off_enc = off_op.op_type.op_val_to_enc_val(tgt_addr, model.pc)
         assert off_enc is not None
 
-        branch_insn = ProgInsn(insn, [grs1, grs2, off_enc], None)
+        return (ProgInsn(insn, [grs1, grs2, off_enc], None), tgt_addr)
+
+    def gen(self,
+            cont: GenCont,
+            model: Model,
+            program: Program) -> Optional[GenRet]:
+        # Return None if this is the last instruction in the current gap
+        # because we need to either jump or do an ECALL to avoid getting stuck
+        # (just like the StraightLineInsn generator)
+        if program.get_insn_space_at(model.pc) <= 1:
+            return None
+
+        ret = self.gen_head(model, program)
+        if ret is None:
+            return None
+
+        branch_insn, tgt_addr = ret
 
         if tgt_addr == model.pc + 4:
             # If tgt_addr equals model.pc + 4, this actually behaves like a
@@ -230,7 +238,7 @@ class Branch(SnippetGen):
             if jump_ret is None:
                 return None
 
-            jmp_snippet, model0 = jump_ret
+            jmp_insn, jmp_snippet, model0 = jump_ret
             snippet0 = Snippet.cons_option(snippet0, jmp_snippet)
         else:
             # Add the jump to go from branch 1 to branch 0
@@ -240,7 +248,7 @@ class Branch(SnippetGen):
             if jump_ret is None:
                 return None
 
-            jmp_snippet, model1 = jump_ret
+            jmp_insn, jmp_snippet, model1 = jump_ret
             snippet1 = Snippet.cons_option(snippet1, jmp_snippet)
 
         assert model0.pc == model1.pc

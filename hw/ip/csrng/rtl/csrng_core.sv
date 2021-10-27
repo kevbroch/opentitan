@@ -37,7 +37,10 @@ module csrng_core import csrng_pkg::*; #(
   output csrng_rsp_t  [NHwApps-1:0] csrng_cmd_o,
 
   // Alerts
-  output logic           alert_test_o,
+
+  output logic           recov_alert_test_o,
+  output logic           fatal_alert_test_o,
+  output logic           recov_alert_o,
   output logic           fatal_alert_o,
 
   output logic           intr_cs_cmd_req_done_o,
@@ -62,6 +65,9 @@ module csrng_core import csrng_pkg::*; #(
   localparam int BlkEncArbWidth = KeyLen+BlkLen+StateId+Cmd;
   localparam int NUpdateArbReqs = 2;
   localparam int UpdateArbWidth = KeyLen+BlkLen+SeedLen+StateId+Cmd;
+  localparam int MaxClen = 12;
+  localparam int ADataDepthWidth = SeedLen/AppCmdWidth;
+  localparam unsigned ADataDepthClog = $clog2(ADataDepthWidth)+1;
 
   // signals
   // interrupt signals
@@ -70,7 +76,15 @@ module csrng_core import csrng_pkg::*; #(
   logic       event_cs_hw_inst_exc;
   logic       event_cs_fatal_err;
   logic       cs_enable;
+  logic       cs_enable_pfe;
+  logic       cs_enable_pfa;
   logic       sw_app_enable;
+  logic       sw_app_enable_pfe;
+  logic       sw_app_enable_pfa;
+  logic       read_int_state;
+  logic       read_int_state_pfe;
+  logic       read_int_state_pfa;
+  logic       recov_alert_event;
   logic       acmd_avail;
   logic       acmd_sop;
   logic       acmd_mop;
@@ -91,6 +105,9 @@ module csrng_core import csrng_pkg::*; #(
   logic [AppCmdWidth-1:0] acmd_bus;
 
   logic [SeedLen-1:0]     packer_adata;
+  logic [ADataDepthClog-1:0] packer_adata_depth;
+  logic                   packer_adata_pop;
+  logic                   packer_adata_clr;
   logic [SeedLen-1:0]     seed_diversification;
 
   logic                   cmd_entropy_req;
@@ -133,6 +150,7 @@ module csrng_core import csrng_pkg::*; #(
   logic                   generate_req;
   logic                   update_req;
   logic                   uninstant_req;
+  logic                   clr_adata_packer;
   logic [Cmd-1:0]         ctr_drbg_cmd_ccmd;
   logic                   ctr_drbg_cmd_req;
   logic                   ctr_drbg_gen_req;
@@ -301,6 +319,7 @@ module csrng_core import csrng_pkg::*; #(
 
   logic [14:0]             hw_exception_sts;
   logic                    lc_hw_debug_on;
+  logic                    state_db_is_dump_en;
   logic                    state_db_reg_rd_sel;
   logic                    state_db_reg_rd_id_pulse;
   logic [StateId-1:0]      state_db_reg_rd_id;
@@ -330,7 +349,6 @@ module csrng_core import csrng_pkg::*; #(
   logic        cmd_req_dly_q, cmd_req_dly_d;
   logic [Cmd-1:0] cmd_req_ccmd_dly_q, cmd_req_ccmd_dly_d;
   logic           cs_aes_halt_q, cs_aes_halt_d;
-  logic           packer_adata_pop_q, packer_adata_pop_d;
   logic [SeedLen-1:0] entropy_src_seed_q, entropy_src_seed_d;
   logic               entropy_src_fips_q, entropy_src_fips_d;
 
@@ -346,7 +364,6 @@ module csrng_core import csrng_pkg::*; #(
       cmd_req_dly_q <= '0;
       cmd_req_ccmd_dly_q <= '0;
       cs_aes_halt_q <= '0;
-      packer_adata_pop_q <= '0;
       entropy_src_seed_q <= '0;
       entropy_src_fips_q <= '0;
     end else begin
@@ -360,7 +377,6 @@ module csrng_core import csrng_pkg::*; #(
       cmd_req_dly_q <= cmd_req_dly_d;
       cmd_req_ccmd_dly_q <= cmd_req_ccmd_dly_d;
       cs_aes_halt_q <= cs_aes_halt_d;
-      packer_adata_pop_q <= packer_adata_pop_d;
       entropy_src_seed_q <= entropy_src_seed_d;
       entropy_src_fips_q <= entropy_src_fips_d;
     end
@@ -643,14 +659,52 @@ module csrng_core import csrng_pkg::*; #(
   assign fatal_alert_o = event_cs_fatal_err;
 
   // alert test
-  assign alert_test_o = {
-    reg2hw.alert_test.q &
-    reg2hw.alert_test.qe
+  assign recov_alert_test_o = {
+    reg2hw.alert_test.recov_alert.q &&
+    reg2hw.alert_test.recov_alert.qe
+  };
+  assign fatal_alert_test_o = {
+    reg2hw.alert_test.fatal_alert.q &&
+    reg2hw.alert_test.fatal_alert.qe
   };
 
+
+  assign recov_alert_event = cs_enable_pfa || sw_app_enable_pfa || read_int_state_pfa;
+
+  assign recov_alert_o = recov_alert_event;
+
+
+  import prim_mubi_pkg::mubi4_e;
+  import prim_mubi_pkg::mubi4_test_true_strict;
+  import prim_mubi_pkg::mubi4_test_invalid;
+
+  // check for illegal enable field states, and set alert if detected
+  mubi4_e mubi_cs_enable;
+  assign mubi_cs_enable = mubi4_e'(reg2hw.ctrl.enable.q);
+  assign cs_enable_pfe = mubi4_test_true_strict(mubi_cs_enable);
+  assign cs_enable_pfa = mubi4_test_invalid(mubi_cs_enable);
+  assign hw2reg.recov_alert_sts.enable_field_alert.de = cs_enable_pfa;
+  assign hw2reg.recov_alert_sts.enable_field_alert.d  = cs_enable_pfa;
+
+  mubi4_e mubi_sw_app_enable;
+  assign mubi_sw_app_enable = mubi4_e'(reg2hw.ctrl.sw_app_enable.q);
+  assign sw_app_enable_pfe = mubi4_test_true_strict(mubi_sw_app_enable);
+  assign sw_app_enable_pfa = mubi4_test_invalid(mubi_sw_app_enable);
+  assign hw2reg.recov_alert_sts.sw_app_enable_field_alert.de = sw_app_enable_pfa;
+  assign hw2reg.recov_alert_sts.sw_app_enable_field_alert.d  = sw_app_enable_pfa;
+
+  mubi4_e mubi_read_int_state;
+  assign mubi_read_int_state = mubi4_e'(reg2hw.ctrl.read_int_state.q);
+  assign read_int_state_pfe = mubi4_test_true_strict(mubi_read_int_state);
+  assign read_int_state_pfa = mubi4_test_invalid(mubi_read_int_state);
+  assign hw2reg.recov_alert_sts.read_int_state_field_alert.de = read_int_state_pfa;
+  assign hw2reg.recov_alert_sts.read_int_state_field_alert.d  = read_int_state_pfa;
+
+
   // master module enable
-  assign cs_enable = (cs_enb_e'(reg2hw.ctrl.enable.q) == CS_FIELD_ON);
-  assign sw_app_enable = (cs_enb_e'(reg2hw.ctrl.sw_app_enable.q) == CS_FIELD_ON);
+  assign cs_enable = cs_enable_pfe;
+  assign sw_app_enable = sw_app_enable_pfe;
+  assign read_int_state = read_int_state_pfe;
 
   //------------------------------------------
   // application interface
@@ -860,6 +914,7 @@ module csrng_core import csrng_pkg::*; #(
     .generate_req_o(generate_req),
     .update_req_o(update_req),
     .uninstant_req_o(uninstant_req),
+    .clr_adata_packer_o(clr_adata_packer),
     .cmd_complete_i(state_db_wr_req),
     .main_sm_err_o(main_sm_err)
   );
@@ -891,21 +946,21 @@ module csrng_core import csrng_pkg::*; #(
   ) u_prim_packer_fifo_adata (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
-    .clr_i      (!cs_enable || packer_adata_pop_q),
+    .clr_i      (!cs_enable || packer_adata_clr),
     .wvalid_i   (acmd_mop),
     .wdata_i    (acmd_bus),
     .wready_o   (),
     .rvalid_o   (),
     .rdata_o    (packer_adata),
-    .rready_i   (packer_adata_pop_q),
-    .depth_o    ()
+    .rready_i   (packer_adata_pop),
+    .depth_o    (packer_adata_depth)
   );
 
-  assign packer_adata_pop_d = cs_enable &&
-         ((instant_req && flag0_q) ||
-          reseed_req ||
-          update_req ||
-          (generate_req && flag0_q));
+  assign packer_adata_pop = cs_enable &&
+         clr_adata_packer && (packer_adata_depth == ADataDepthClog'(MaxClen));
+
+  assign packer_adata_clr = cs_enable &&
+         clr_adata_packer && (packer_adata_depth < ADataDepthClog'(MaxClen));
 
   //-------------------------------------
   // csrng_state_db nstantiation
@@ -921,6 +976,7 @@ module csrng_core import csrng_pkg::*; #(
   assign state_db_reg_rd_id = reg2hw.int_state_num.q;
   assign state_db_reg_rd_id_pulse = reg2hw.int_state_num.qe;
   assign hw2reg.int_state_val.d = state_db_reg_rd_val;
+  assign state_db_is_dump_en = cs_enable && read_int_state && efuse_sw_app_enable_i;
 
 
   csrng_state_db #(
@@ -951,7 +1007,7 @@ module csrng_core import csrng_pkg::*; #(
     .state_db_wr_res_ctr_i(state_db_wr_rc),
     .state_db_wr_sts_i(state_db_wr_sts),
 
-    .state_db_is_dump_en_i(cs_enable), // TODO: add efuse and new config bit
+    .state_db_is_dump_en_i(state_db_is_dump_en),
     .state_db_reg_rd_sel_i(state_db_reg_rd_sel),
     .state_db_reg_rd_id_pulse_i(state_db_reg_rd_id_pulse),
     .state_db_reg_rd_id_i(state_db_reg_rd_id),
@@ -1302,6 +1358,7 @@ module csrng_core import csrng_pkg::*; #(
 
 
   csrng_ctr_drbg_gen #(
+    .NApps(NApps),
     .Cmd(Cmd),
     .StateId(StateId),
     .BlkLen(BlkLen),

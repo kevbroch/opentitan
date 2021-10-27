@@ -4,7 +4,9 @@
 { name: "PWRMGR",
   clocking: [
     {clock: "clk_i", reset: "rst_ni", primary: true},
-    {clock: "clk_slow_i", reset: "rst_slow_ni"}
+    {reset: "rst_main_ni"},
+    {clock: "clk_slow_i", reset: "rst_slow_ni"},
+    {clock: "clk_esc_i", reset: "rst_esc_ni"}
   ]
   bus_interfaces: [
     { protocol: "tlul", direction: "device" }
@@ -20,7 +22,6 @@
     }
   ],
 
-  // Define flash_ctrl <-> flash_phy struct package
   inter_signal_list: [
     { struct:  "pwr_ast",
       type:    "req_rsp",
@@ -128,6 +129,13 @@
       act:     "req",
       package: "lc_ctrl_pkg",
     },
+
+    { struct:  "mubi4",
+      type:    "uni",
+      name:    "sw_rst_req",
+      act:     "rcv",
+      package: "prim_mubi_pkg",
+    },
   ],
 
   param_list: [
@@ -139,8 +147,8 @@
     },
 
     % for wkup in Wkups:
-    { name: "${wkup['name'].upper()}_IDX",
-      desc: "Vector index for ${wkup['name']}, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
+    { name: "${wkup['module'].upper()}_${wkup['name'].upper()}_IDX",
+      desc: "Vector index for ${wkup['module']} ${wkup['name']}, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
       type: "int",
       default: "${loop.index}",
       local: "true"
@@ -304,6 +312,9 @@
                 '''
             },
           ]
+          tags: [// Turning off USB clock in active state impacts other CSRs
+                 // at the chip level (in other blocks, such as clkmgr).
+                 "excl:CsrNonInitTests:CsrExclWrite"]
         },
 
         { bits: "8",

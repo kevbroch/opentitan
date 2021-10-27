@@ -30,12 +30,15 @@ sw_silicon_creator_mask_rom_sigverify = declare_dependency(
   ),
 )
 
-# ROM_EXT image.
-sw_silicon_creator_mask_rom_romextimage = declare_dependency(
+# Mask ROM boot policy.
+sw_silicon_creator_mask_rom_boot_policy = declare_dependency(
   link_with: static_library(
-    'sw_silicon_creator_mask_rom_romextimage',
+    'sw_silicon_creator_mask_rom_boot_policy',
     sources: [
-      'romextimage.c',
+      'boot_policy.c',
+    ],
+    dependencies: [
+      sw_silicon_creator_lib_manifest,
     ],
   ),
 )
@@ -57,18 +60,23 @@ sw_silicon_creator_mask_rom_epmp = declare_dependency(
 # Mask ROM ePMP test library.
 mask_rom_epmp_test_lib = declare_dependency(
   sources: [
+    hw_ip_aon_timer_reg_h,
     hw_ip_entropy_src_reg_h,
     hw_ip_csrng_reg_h,
     hw_ip_edn_reg_h,
     hw_ip_sram_ctrl_reg_h,
+    hw_ip_pwrmgr_reg_h,
     'mask_rom_start.S',
   ],
   link_args: rom_link_args,
   dependencies: [
     freestanding_headers,
+    sw_silicon_creator_lib_base_sec_mmio,
+    sw_silicon_creator_lib_driver_flash_ctrl,
     sw_silicon_creator_lib_driver_uart,
     sw_silicon_creator_lib_epmp_test_unlock,
     sw_silicon_creator_lib_fake_deps,
+    sw_silicon_creator_lib_irq_asm,
     sw_silicon_creator_mask_rom_epmp,
     sw_lib_crt,
     sw_lib_pinmux,
@@ -153,9 +161,27 @@ foreach device_name, device_lib : sw_lib_arch_core_devices
   )
 endforeach
 
+# TODO(lowrisc/opentitan#1513): Switch to EEPROM SPI device bootstrap protocol.
+# Primitive Bootstrap
+primitive_bootstrap_lib = declare_dependency(
+  link_with: static_library (
+    'primitive_bootstrap_lib',
+    sources: [
+      'primitive_bootstrap.c'
+    ],
+    dependencies: [
+      sw_lib_flash_ctrl,
+      sw_lib_dif_gpio,
+      sw_lib_dif_spi_device,
+      sw_silicon_creator_lib_driver_hmac,
+    ],
+  ),
+)
+
 # MaskROM library.
 mask_rom_lib = declare_dependency(
   sources: [
+    hw_ip_aon_timer_reg_h,
     hw_ip_entropy_src_reg_h,
     hw_ip_csrng_reg_h,
     hw_ip_edn_reg_h,
@@ -165,19 +191,24 @@ mask_rom_lib = declare_dependency(
     link_args: rom_link_args,
     dependencies: [
       freestanding_headers,
+      primitive_bootstrap_lib,
       sw_silicon_creator_lib_driver_hmac,
+      sw_silicon_creator_lib_driver_flash_ctrl,
       sw_silicon_creator_lib_driver_keymgr,
       sw_silicon_creator_lib_driver_lifecycle,
       sw_silicon_creator_lib_driver_pinmux,
+      sw_silicon_creator_lib_driver_retention_sram,
+      sw_silicon_creator_lib_driver_rstmgr,
       sw_silicon_creator_lib_driver_uart,
       sw_silicon_creator_lib_fake_deps,
+      sw_silicon_creator_lib_irq_asm,
+      sw_silicon_creator_lib_log,
       sw_silicon_creator_lib_manifest,
       sw_silicon_creator_lib_shutdown,
       sw_silicon_creator_mask_rom_epmp,
       sw_silicon_creator_mask_rom_sigverify,
-      sw_silicon_creator_mask_rom_romextimage,
+      sw_silicon_creator_mask_rom_boot_policy,
       sw_lib_crt,
-      sw_lib_runtime_print,
     ],
     link_with: static_library(
       'mask_rom_lib',
@@ -256,11 +287,11 @@ foreach device_name, device_lib : sw_lib_arch_core_devices
   )
 endforeach
 
-test('sw_silicon_creator_mask_rom_romextimage_unittest', executable(
-    'sw_silicon_creator_mask_rom_romextimage_unittest',
+test('sw_silicon_creator_mask_rom_boot_policy_unittest', executable(
+    'sw_silicon_creator_mask_rom_boot_policy_unittest',
     sources: [
-      'romextimage_unittest.cc',
-      'romextimage.c',
+      'boot_policy_unittest.cc',
+      'boot_policy.c',
     ],
     dependencies: [
       sw_vendor_gtest,

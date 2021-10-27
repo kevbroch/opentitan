@@ -12,26 +12,28 @@ module rv_core_ibex
   import rv_core_ibex_pkg::*;
   import rv_core_ibex_reg_pkg::*;
 #(
-  parameter logic [NumAlerts-1:0] AlertAsyncOn    = {NumAlerts{1'b1}},
-  parameter bit                 PMPEnable         = 1'b0,
-  parameter int unsigned        PMPGranularity    = 0,
-  parameter int unsigned        PMPNumRegions     = 4,
-  parameter int unsigned        MHPMCounterNum    = 10,
-  parameter int unsigned        MHPMCounterWidth  = 32,
-  parameter bit                 RV32E             = 0,
-  parameter ibex_pkg::rv32m_e   RV32M             = ibex_pkg::RV32MSingleCycle,
-  parameter ibex_pkg::rv32b_e   RV32B             = ibex_pkg::RV32BNone,
-  parameter ibex_pkg::regfile_e RegFile           = ibex_pkg::RegFileFF,
-  parameter bit                 BranchTargetALU   = 1'b1,
-  parameter bit                 WritebackStage    = 1'b1,
-  parameter bit                 ICache            = 1'b0,
-  parameter bit                 ICacheECC         = 1'b0,
-  parameter bit                 BranchPredictor   = 1'b0,
-  parameter bit                 DbgTriggerEn      = 1'b1,
-  parameter bit                 SecureIbex        = 1'b0,
-  parameter int unsigned        DmHaltAddr        = 32'h1A110800,
-  parameter int unsigned        DmExceptionAddr   = 32'h1A110808,
-  parameter bit                 PipeLine          = 1'b0
+  parameter logic [NumAlerts-1:0] AlertAsyncOn     = {NumAlerts{1'b1}},
+  parameter bit                   PMPEnable        = 1'b0,
+  parameter int unsigned          PMPGranularity   = 0,
+  parameter int unsigned          PMPNumRegions    = 4,
+  parameter int unsigned          MHPMCounterNum   = 10,
+  parameter int unsigned          MHPMCounterWidth = 32,
+  parameter bit                   RV32E            = 0,
+  parameter ibex_pkg::rv32m_e     RV32M            = ibex_pkg::RV32MSingleCycle,
+  parameter ibex_pkg::rv32b_e     RV32B            = ibex_pkg::RV32BNone,
+  parameter ibex_pkg::regfile_e   RegFile          = ibex_pkg::RegFileFF,
+  parameter bit                   BranchTargetALU  = 1'b1,
+  parameter bit                   WritebackStage   = 1'b1,
+  parameter bit                   ICache           = 1'b0,
+  parameter bit                   ICacheECC        = 1'b0,
+  parameter bit                   BranchPredictor  = 1'b0,
+  parameter bit                   DbgTriggerEn     = 1'b1,
+  parameter bit                   SecureIbex       = 1'b0,
+  parameter ibex_pkg::lfsr_seed_t RndCnstLfsrSeed  = ibex_pkg::RndCnstLfsrSeedDefault,
+  parameter ibex_pkg::lfsr_perm_t RndCnstLfsrPerm  = ibex_pkg::RndCnstLfsrPermDefault,
+  parameter int unsigned          DmHaltAddr       = 32'h1A110800,
+  parameter int unsigned          DmExceptionAddr  = 32'h1A110808,
+  parameter bit                   PipeLine         = 1'b0
 ) (
   // Clock and Reset
   input  logic        clk_i,
@@ -112,6 +114,7 @@ module rv_core_ibex
   logic        instr_rvalid;
   logic [31:0] instr_addr;
   logic [31:0] instr_rdata;
+  logic [6:0]  instr_rdata_intg;
   logic        instr_err;
 
   // Data interface (internal)
@@ -122,7 +125,9 @@ module rv_core_ibex
   logic [3:0]  data_be;
   logic [31:0] data_addr;
   logic [31:0] data_wdata;
+  logic [6:0]  data_wdata_intg;
   logic [31:0] data_rdata;
+  logic [6:0]  data_rdata_intg;
   logic        data_err;
 
   // Pipeline interfaces
@@ -188,9 +193,9 @@ module rv_core_ibex
     .N_ESC_SEV   (alert_handler_reg_pkg::N_ESC_SEV),
     .PING_CNT_DW (alert_handler_reg_pkg::PING_CNT_DW)
   ) u_prim_esc_receiver (
-    .clk_i    ( clk_esc_i  ),
-    .rst_ni   ( rst_esc_ni ),
-    .esc_en_o ( esc_irq_nm ),
+    .clk_i     ( clk_esc_i  ),
+    .rst_ni    ( rst_esc_ni ),
+    .esc_req_o ( esc_irq_nm ),
     .esc_rx_o,
     .esc_tx_i
   );
@@ -240,6 +245,21 @@ module rv_core_ibex
     .lc_en_o(pwrmgr_cpu_en)
   );
 
+  logic irq_software;
+  logic irq_timer;
+  logic irq_external;
+
+  prim_sec_anchor_buf #(
+    .Width(3)
+  ) u_prim_buf_irq (
+    .in_i({irq_software_i,
+           irq_timer_i,
+           irq_external_i}),
+    .out_o({irq_software,
+            irq_timer,
+            irq_external})
+  );
+
   ibex_top #(
     .PMPEnable                ( PMPEnable                ),
     .PMPGranularity           ( PMPGranularity           ),
@@ -257,6 +277,8 @@ module rv_core_ibex
     .BranchPredictor          ( BranchPredictor          ),
     .DbgTriggerEn             ( DbgTriggerEn             ),
     .SecureIbex               ( SecureIbex               ),
+    .RndCnstLfsrSeed          ( RndCnstLfsrSeed          ),
+    .RndCnstLfsrPerm          ( RndCnstLfsrPerm          ),
     .DmHaltAddr               ( DmHaltAddr               ),
     .DmExceptionAddr          ( DmExceptionAddr          )
   ) u_core (
@@ -272,28 +294,31 @@ module rv_core_ibex
     .hart_id_i,
     .boot_addr_i,
 
-    .instr_req_o    ( instr_req    ),
-    .instr_gnt_i    ( instr_gnt    ),
-    .instr_rvalid_i ( instr_rvalid ),
-    .instr_addr_o   ( instr_addr   ),
-    .instr_rdata_i  ( instr_rdata  ),
-    .instr_err_i    ( instr_err    ),
+    .instr_req_o        ( instr_req        ),
+    .instr_gnt_i        ( instr_gnt        ),
+    .instr_rvalid_i     ( instr_rvalid     ),
+    .instr_addr_o       ( instr_addr       ),
+    .instr_rdata_i      ( instr_rdata      ),
+    .instr_rdata_intg_i ( instr_rdata_intg ),
+    .instr_err_i        ( instr_err        ),
 
-    .data_req_o     ( data_req     ),
-    .data_gnt_i     ( data_gnt     ),
-    .data_rvalid_i  ( data_rvalid  ),
-    .data_we_o      ( data_we      ),
-    .data_be_o      ( data_be      ),
-    .data_addr_o    ( data_addr    ),
-    .data_wdata_o   ( data_wdata   ),
-    .data_rdata_i   ( data_rdata   ),
-    .data_err_i     ( data_err     ),
+    .data_req_o         ( data_req         ),
+    .data_gnt_i         ( data_gnt         ),
+    .data_rvalid_i      ( data_rvalid      ),
+    .data_we_o          ( data_we          ),
+    .data_be_o          ( data_be          ),
+    .data_addr_o        ( data_addr        ),
+    .data_wdata_o       ( data_wdata       ),
+    .data_wdata_intg_o  ( data_wdata_intg  ),
+    .data_rdata_i       ( data_rdata       ),
+    .data_rdata_intg_i  ( data_rdata_intg  ),
+    .data_err_i         ( data_err         ),
 
-    .irq_software_i,
-    .irq_timer_i,
-    .irq_external_i,
-    .irq_fast_i     ( '0           ),
-    .irq_nm_i       ( irq_nm       ),
+    .irq_software_i     ( irq_software     ),
+    .irq_timer_i        ( irq_timer        ),
+    .irq_external_i     ( irq_external     ),
+    .irq_fast_i         ( '0               ),
+    .irq_nm_i           ( irq_nm           ),
 
     .debug_req_i,
     .crash_dump_o,
@@ -350,19 +375,21 @@ module rv_core_ibex
   ) tl_adapter_host_i_ibex (
     .clk_i,
     .rst_ni,
-    .req_i      (instr_req),
-    .type_i     (tlul_pkg::InstrType),
-    .gnt_o      (instr_gnt),
-    .addr_i     (instr_addr_trans),
-    .we_i       (1'b0),
-    .wdata_i    (32'b0),
-    .be_i       (4'hF),
-    .valid_o    (instr_rvalid),
-    .rdata_o    (instr_rdata),
-    .err_o      (instr_err),
-    .intg_err_o (ibus_intg_err),
-    .tl_o       (tl_i_ibex2fifo),
-    .tl_i       (tl_i_fifo2ibex)
+    .req_i        (instr_req),
+    .instr_type_i (prim_mubi_pkg::MuBi4True),
+    .gnt_o        (instr_gnt),
+    .addr_i       (instr_addr_trans),
+    .we_i         (1'b0),
+    .wdata_i      (32'b0),
+    .wdata_intg_i ('0),
+    .be_i         (4'hF),
+    .valid_o      (instr_rvalid),
+    .rdata_o      (instr_rdata),
+    .rdata_intg_o (instr_rdata_intg),
+    .err_o        (instr_err),
+    .intg_err_o   (ibus_intg_err),
+    .tl_o         (tl_i_ibex2fifo),
+    .tl_i         (tl_i_fifo2ibex)
   );
 
   tlul_fifo_sync #(
@@ -399,19 +426,21 @@ module rv_core_ibex
   ) tl_adapter_host_d_ibex (
     .clk_i,
     .rst_ni,
-    .req_i      (data_req),
-    .type_i     (tlul_pkg::DataType),
-    .gnt_o      (data_gnt),
-    .addr_i     (data_addr_trans),
-    .we_i       (data_we),
-    .wdata_i    (data_wdata),
-    .be_i       (data_be),
-    .valid_o    (data_rvalid),
-    .rdata_o    (data_rdata),
-    .err_o      (data_err),
-    .intg_err_o (dbus_intg_err),
-    .tl_o       (tl_d_ibex2fifo),
-    .tl_i       (tl_d_fifo2ibex)
+    .req_i        (data_req),
+    .instr_type_i (prim_mubi_pkg::MuBi4False),
+    .gnt_o        (data_gnt),
+    .addr_i       (data_addr_trans),
+    .we_i         (data_we),
+    .wdata_i      (data_wdata),
+    .wdata_intg_i (data_wdata_intg),
+    .be_i         (data_be),
+    .valid_o      (data_rvalid),
+    .rdata_o      (data_rdata),
+    .rdata_intg_o (data_rdata_intg),
+    .err_o        (data_err),
+    .intg_err_o   (dbus_intg_err),
+    .tl_o         (tl_d_ibex2fifo),
+    .tl_i         (tl_d_fifo2ibex)
   );
 
   tlul_fifo_sync #(
@@ -568,4 +597,13 @@ module rv_core_ibex
     );
   end
 
+  //////////////
+  // RND Data //
+  //////////////
+
+  // Not yet implemented, tie-off all signals for now
+  assign hw2reg.rnd_data.de = 1'b0;
+  assign hw2reg.rnd_data.d  = '0;
+
+  assign hw2reg.rnd_status.d = 1'b0;
 endmodule

@@ -14,8 +14,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "sw/device/lib/base/macros.h"
 #include "sw/device/lib/base/mmio.h"
-#include "sw/device/lib/dif/dif_warn_unused_result.h"
+#include "sw/device/lib/dif/dif_base.h"
+
+#include "sw/device/lib/dif/autogen/dif_lc_ctrl_autogen.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -141,6 +144,54 @@ typedef enum dif_lc_ctrl_state_t {
    */
   kDifLcCtrlStateTestUnlocked3,
   /**
+   * The third locked test state.
+   *
+   * All functions are disabled.
+   */
+  kDifLcCtrlStateTestLocked3,
+  /**
+   * The fourth test state.
+   *
+   * Debug functions are enabled.
+   */
+  kDifLcCtrlStateTestUnlocked4,
+  /**
+   * The fourth locked test state.
+   *
+   * All functions are disabled.
+   */
+  kDifLcCtrlStateTestLocked4,
+  /**
+   * The fifth test state.
+   *
+   * Debug functions are enabled.
+   */
+  kDifLcCtrlStateTestUnlocked5,
+  /**
+   * The fifth locked test state.
+   *
+   * All functions are disabled.
+   */
+  kDifLcCtrlStateTestLocked5,
+  /**
+   * The sixth test state.
+   *
+   * Debug functions are enabled.
+   */
+  kDifLcCtrlStateTestUnlocked6,
+  /**
+   * The sixth locked test state.
+   *
+   * All functions are disabled.
+   */
+  kDifLcCtrlStateTestLocked6,
+  /**
+   * The seventh test state.
+   *
+   * Debug functions are enabled.
+   */
+  kDifLcCtrlStateTestUnlocked7,
+  /**
    * The development state.
    *
    * Some debug functions are enabled.
@@ -209,6 +260,21 @@ typedef enum dif_lc_ctrl_id_state {
 } dif_lc_ctrl_id_state_t;
 
 /**
+ * Programming clock settings, indicating whether to use the internal or
+ * external clock to perform the life cycle transition.
+ */
+typedef enum dif_lc_ctrl_clock_settings {
+  /**
+   * Use internal clock for transition.
+   */
+  kDifLcCtrlInternalClockEn,
+  /**
+   * Use external clock for transition.
+   */
+  kDifLcCtrlExternalClockEn
+} dif_lc_ctrl_clock_settings_t;
+
+/**
  * A 128-bit unlock token used for certain kinds of lifecycle transitions.
  */
 typedef struct dif_lc_ctrl_token {
@@ -216,108 +282,22 @@ typedef struct dif_lc_ctrl_token {
 } dif_lc_ctrl_token_t;
 
 /**
+ * Settings for lifecycle transitions.
+ */
+typedef struct dif_lc_ctrl_settings {
+  /**
+   * Indicates whether an external clock source shall be used to perform the
+   * life cycle transition.
+   */
+  dif_lc_ctrl_clock_settings_t clock_select;
+} dif_lc_ctrl_settings_t;
+
+/**
  * A 256-bit device id stored in OTP's hw_cfg partition.
  */
 typedef struct dif_lc_ctrl_device_id {
   uint32_t data[256 / 32];
 } dif_lc_ctrl_device_id_t;
-
-/**
- * Hardware instantiation parameters for a lifecycle controller.
- *
- * This struct describes information about the underlying hardware that is
- * not determined until the hardware design is used as part of a top-level
- * design.
- */
-typedef struct dif_lc_ctrl_params {
-  /**
-   * The base address for the lifecycle controller hardware registers.
-   */
-  mmio_region_t base_addr;
-} dif_lc_ctrl_params_t;
-
-/**
- * A handle to a lifecycle controller.
- *
- * This type should be treated as opaque by users.
- */
-typedef struct dif_lc_ctrl {
-  dif_lc_ctrl_params_t params;
-} dif_lc_ctrl_t;
-
-/**
- * The result of a lifecycle controller operation.
- */
-typedef enum dif_lc_ctrl_result {
-  /**
-   * Indicates that the operation succeeded.
-   */
-  kDifLcCtrlOk = 0,
-  /**
-   * Indicates some unspecified failure.
-   */
-  kDifLcCtrlError = 1,
-  /**
-   * Indicates that some parameter passed into a function failed a
-   * precondition.
-   *
-   * When this value is returned, no hardware operations occurred.
-   */
-  kDifLcCtrlBadArg = 2,
-} dif_lc_ctrl_result_t;
-
-/**
- * The result of a lifecycle attempt counter operation.
- */
-typedef enum dif_lc_ctrl_attempts_result {
-  /**
-   * Indicates that the operation succeeded.
-   */
-  kDifLcCtrlAttemptsOk = kDifLcCtrlOk,
-  /**
-   * Indicates some unspecified failure.
-   */
-  kDifLcCtrlAttemptsError = kDifLcCtrlError,
-  /**
-   * Indicates that some parameter passed into a function failed a
-   * precondition.
-   *
-   * When this value is returned, no hardware operations occurred.
-   */
-  kDifLcCtrlAttemptsBadArg = kDifLcCtrlBadArg,
-  /**
-   * Indicates that too many lifecycle transitions have occurred, such that the
-   * hardware can no longer keep a count.
-   */
-  kDifLcCtrlAttemptsTooMany,
-} dif_lc_ctrl_attempts_result_t;
-
-/**
- * The result of a lifecycle controller operation involving the hardware mutex.
- */
-typedef enum dif_lc_ctrl_mutex_result {
-  /**
-   * Indicates that the operation succeeded.
-   */
-  kDifLcCtrlMutexOk = kDifLcCtrlOk,
-  /**
-   * Indicates some unspecified failure.
-   */
-  kDifLcCtrlMutexError = kDifLcCtrlError,
-  /**
-   * Indicates that some parameter passed into a function failed a
-   * precondition.
-   *
-   * When this value is returned, no hardware operations occurred.
-   */
-  kDifLcCtrlMutexBadArg = kDifLcCtrlBadArg,
-
-  /**
-   * Indicates that a mutex-guarded operation failed because someone (other
-   * than software) is holding it.
-   */
-  kDifLcCtrlMutexAlreadyTaken = 3,
-} dif_lc_ctrl_mutex_result_t;
 
 /**
  * An alert that can be raised by the hardware.
@@ -338,28 +318,15 @@ typedef enum dif_lc_ctrl_alert {
 } dif_lc_ctrl_alert_t;
 
 /**
- * Creates a new handle for the lifecycle controller.
- *
- * This function does not actuate the hardware.
- *
- * @param params Hardware instantiation parameters.
- * @param[out] lc Out param for the initialized handle.
- * @return The result of the operation.
- */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_result_t dif_lc_ctrl_init(dif_lc_ctrl_params_t params,
-                                      dif_lc_ctrl_t *lc);
-
-/**
  * Returns the current state of the lifecycle controller.
  *
  * @param lc A lifecycle handle.
  * @param[out] state Out-param for the controller's state.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_result_t dif_lc_ctrl_get_state(const dif_lc_ctrl_t *lc,
-                                           dif_lc_ctrl_state_t *state);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_get_state(const dif_lc_ctrl_t *lc,
+                                   dif_lc_ctrl_state_t *state);
 
 /**
  * Returns the number of lifecycle transitions that this device has attempted,
@@ -369,9 +336,8 @@ dif_lc_ctrl_result_t dif_lc_ctrl_get_state(const dif_lc_ctrl_t *lc,
  * @param[out] count Out-param for the number of attempts.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_attempts_result_t dif_lc_ctrl_get_attempts(const dif_lc_ctrl_t *lc,
-                                                       uint8_t *count);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_get_attempts(const dif_lc_ctrl_t *lc, uint8_t *count);
 
 /**
  * Returns the current status of the lifecycle controller.
@@ -380,9 +346,9 @@ dif_lc_ctrl_attempts_result_t dif_lc_ctrl_get_attempts(const dif_lc_ctrl_t *lc,
  * @param[out] status Out-param for the controller's status.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_result_t dif_lc_ctrl_get_status(const dif_lc_ctrl_t *lc,
-                                            dif_lc_ctrl_status_t *status);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_get_status(const dif_lc_ctrl_t *lc,
+                                    dif_lc_ctrl_status_t *status);
 
 /**
  * Returns the current personalization state of the lifecycle controller.
@@ -391,9 +357,9 @@ dif_lc_ctrl_result_t dif_lc_ctrl_get_status(const dif_lc_ctrl_t *lc,
  * @param[out] state Out-param for the controller's personalization state.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_result_t dif_lc_ctrl_get_id_state(const dif_lc_ctrl_t *lc,
-                                              dif_lc_ctrl_id_state_t *state);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_get_id_state(const dif_lc_ctrl_t *lc,
+                                      dif_lc_ctrl_id_state_t *state);
 
 /**
  * Returns the current device id reading from lifecycle controller's device id
@@ -403,9 +369,9 @@ dif_lc_ctrl_result_t dif_lc_ctrl_get_id_state(const dif_lc_ctrl_t *lc,
  * @param[out] device_id Out-param for the device id.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_result_t dif_lc_ctrl_get_device_id(
-    const dif_lc_ctrl_t *lc, dif_lc_ctrl_device_id_t *device_id);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_get_device_id(const dif_lc_ctrl_t *lc,
+                                       dif_lc_ctrl_device_id_t *device_id);
 
 /**
  * Forces a particular alert, causing it to be escalated as if the hardware had
@@ -415,9 +381,9 @@ dif_lc_ctrl_result_t dif_lc_ctrl_get_device_id(
  * @param alert The alert to force.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_result_t dif_lc_ctrl_alert_force(const dif_lc_ctrl_t *lc,
-                                             dif_lc_ctrl_alert_t alert);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_alert_force(const dif_lc_ctrl_t *lc,
+                                     dif_lc_ctrl_alert_t alert);
 
 /**
  * Attempts to acquire the lifecycle controller's HW mutex.
@@ -430,9 +396,8 @@ dif_lc_ctrl_result_t dif_lc_ctrl_alert_force(const dif_lc_ctrl_t *lc,
  */
 // Open Q: do we want to be checking REGWEN for all operations dependent on the
 // mutex?
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_mutex_result_t dif_lc_ctrl_mutex_try_acquire(
-    const dif_lc_ctrl_t *lc);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_mutex_try_acquire(const dif_lc_ctrl_t *lc);
 
 /**
  * Releases the lifecycle controller's HW mutex.
@@ -443,8 +408,8 @@ dif_lc_ctrl_mutex_result_t dif_lc_ctrl_mutex_try_acquire(
  * @param lc A lifecycle handle.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_mutex_result_t dif_lc_ctrl_mutex_release(const dif_lc_ctrl_t *lc);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_mutex_release(const dif_lc_ctrl_t *lc);
 
 /**
  * Performs a lifecycle transition.
@@ -457,10 +422,11 @@ dif_lc_ctrl_mutex_result_t dif_lc_ctrl_mutex_release(const dif_lc_ctrl_t *lc);
  * @param token A token for unlocking the transition; may be null.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_mutex_result_t dif_lc_ctrl_transition(
-    const dif_lc_ctrl_t *lc, dif_lc_ctrl_state_t state,
-    const dif_lc_ctrl_token_t *token);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_transition(const dif_lc_ctrl_t *lc,
+                                    dif_lc_ctrl_state_t state,
+                                    const dif_lc_ctrl_token_t *token,
+                                    const dif_lc_ctrl_settings_t *settings);
 
 /**
  * Writes settings to the vendor-specific OTP test control register.
@@ -469,9 +435,9 @@ dif_lc_ctrl_mutex_result_t dif_lc_ctrl_transition(
  * @param settings The settings to write to the register.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_mutex_result_t dif_lc_ctrl_set_otp_test_reg(const dif_lc_ctrl_t *lc,
-                                                        uint32_t settings);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_set_otp_vendor_test_reg(const dif_lc_ctrl_t *lc,
+                                                 uint32_t settings);
 
 /**
  * Reads settings from the vendor-specific OTP test control register.
@@ -480,9 +446,9 @@ dif_lc_ctrl_mutex_result_t dif_lc_ctrl_set_otp_test_reg(const dif_lc_ctrl_t *lc,
  * @param settings Output parameter for the settings.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_lc_ctrl_result_t dif_lc_ctrl_get_otp_test_reg(const dif_lc_ctrl_t *lc,
-                                                  uint32_t *settings);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_lc_ctrl_get_otp_vendor_test_reg(const dif_lc_ctrl_t *lc,
+                                                 uint32_t *settings);
 
 #ifdef __cplusplus
 }  // extern "C"

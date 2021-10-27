@@ -62,14 +62,14 @@ static void aes_serial_set_key(const uint8_t *key, size_t key_len) {
   dif_aes_key_share_t key_shares;
   memcpy(key_shares.share0, key, sizeof(key_shares.share0));
   memset(key_shares.share1, 0, sizeof(key_shares.share1));
-  SS_CHECK(dif_aes_start_ecb(&aes, &transaction, key_shares) == kDifAesOk);
+  SS_CHECK_DIF_OK(dif_aes_start_ecb(&aes, &transaction, key_shares));
 }
 
 /**
  * Callback wrapper for AES manual trigger function.
  */
 static void aes_manual_trigger(void) {
-  SS_CHECK(dif_aes_trigger(&aes, kDifAesTriggerStart) == kDifAesOk);
+  SS_CHECK_DIF_OK(dif_aes_trigger(&aes, kDifAesTriggerStart));
 }
 
 /**
@@ -86,13 +86,12 @@ static void aes_manual_trigger(void) {
 static void aes_serial_encrypt(const uint8_t *plaintext, size_t plaintext_len) {
   bool ready = false;
   do {
-    SS_CHECK(dif_aes_get_status(&aes, kDifAesStatusInputReady, &ready) ==
-             kDifAesOk);
+    SS_CHECK_DIF_OK(dif_aes_get_status(&aes, kDifAesStatusInputReady, &ready));
   } while (!ready);
   dif_aes_data_t data;
   SS_CHECK(plaintext_len <= sizeof(data.data));
   memcpy(data.data, plaintext, plaintext_len);
-  SS_CHECK(dif_aes_load_data(&aes, data) == kDifAesOk);
+  SS_CHECK_DIF_OK(dif_aes_load_data(&aes, data));
 
   // Start AES operation (this triggers the capture) and go to sleep.
   // Using the SecAesStartTriggerDelay hardware parameter, the AES unit is
@@ -121,12 +120,11 @@ static void aes_serial_single_encrypt(const uint8_t *plaintext,
 
   bool ready = false;
   do {
-    SS_CHECK(dif_aes_get_status(&aes, kDifAesStatusOutputValid, &ready) ==
-             kDifAesOk);
+    SS_CHECK_DIF_OK(dif_aes_get_status(&aes, kDifAesStatusOutputValid, &ready));
   } while (!ready);
 
   dif_aes_data_t ciphertext;
-  SS_CHECK(dif_aes_read_output(&aes, &ciphertext) == kDifAesOk);
+  SS_CHECK_DIF_OK(dif_aes_read_output(&aes, &ciphertext));
   simple_serial_send_packet('r', (uint8_t *)ciphertext.data,
                             sizeof(ciphertext.data));
 }
@@ -170,12 +168,11 @@ static void aes_serial_batch_encrypt(const uint8_t *data, size_t data_len) {
 
   bool ready = false;
   do {
-    SS_CHECK(dif_aes_get_status(&aes, kDifAesStatusOutputValid, &ready) ==
-             kDifAesOk);
+    SS_CHECK_DIF_OK(dif_aes_get_status(&aes, kDifAesStatusOutputValid, &ready));
   } while (!ready);
 
   dif_aes_data_t ciphertext;
-  SS_CHECK(dif_aes_read_output(&aes, &ciphertext) == kDifAesOk);
+  SS_CHECK_DIF_OK(dif_aes_read_output(&aes, &ciphertext));
   simple_serial_send_packet('r', (uint8_t *)ciphertext.data,
                             sizeof(ciphertext.data));
 }
@@ -184,11 +181,9 @@ static void aes_serial_batch_encrypt(const uint8_t *data, size_t data_len) {
  * Initializes the AES peripheral.
  */
 static void init_aes(void) {
-  dif_aes_params_t params = {
-      .base_addr = mmio_region_from_addr(TOP_EARLGREY_AES_BASE_ADDR),
-  };
-  SS_CHECK(dif_aes_init(params, &aes) == kDifAesOk);
-  SS_CHECK(dif_aes_reset(&aes) == kDifAesOk);
+  SS_CHECK_DIF_OK(
+      dif_aes_init(mmio_region_from_addr(TOP_EARLGREY_AES_BASE_ADDR), &aes));
+  SS_CHECK_DIF_OK(dif_aes_reset(&aes));
 }
 
 /**
@@ -200,13 +195,10 @@ static void init_aes(void) {
 int main(void) {
   const dif_uart_t *uart1;
 
-  sca_init();
+  sca_init(kScaTriggerSourceAes, kScaPeripheralAes);
   sca_get_uart(&uart1);
 
   LOG_INFO("Running AES serial");
-
-  LOG_INFO("Disabling entropy complex and unneeded clocks to reduce noise.");
-  sca_reduce_noise();
 
   LOG_INFO("Initializing simple serial interface to capture board.");
   simple_serial_init(uart1);

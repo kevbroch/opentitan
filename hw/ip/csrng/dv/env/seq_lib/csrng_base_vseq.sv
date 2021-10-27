@@ -30,11 +30,13 @@ class csrng_base_vseq extends cip_base_vseq #(
 
   // setup basic csrng features
   virtual task csrng_init();
-    cfg.efuse_sw_app_enable_vif.drive_pin(.idx(0), .val(cfg.efuse_sw_app_enable));
+    cfg.otp_en_cs_sw_app_read_vif.drive(.val(cfg.otp_en_cs_sw_app_read));
 
     // Enables
+    csr_wr(.ptr(ral.regwen), .value(cfg.regwen));
     ral.ctrl.enable.set(cfg.enable);
     ral.ctrl.sw_app_enable.set(cfg.sw_app_enable);
+    ral.ctrl.read_int_state.set(cfg.read_int_state);
     csr_update(.csr(ral.ctrl));
   endtask
 
@@ -56,6 +58,8 @@ class csrng_base_vseq extends cip_base_vseq #(
       // Drive cmd_req
       m_edn_push_seq[hwapp].start(p_sequencer.edn_sequencer_h[hwapp].m_cmd_push_sequencer);
     join_none
+    // Wait for ack
+    cfg.m_edn_agent_cfg[hwapp].vif.wait_cmd_ack();
   endtask
 
 endclass : csrng_base_vseq

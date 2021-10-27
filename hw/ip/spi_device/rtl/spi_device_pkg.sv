@@ -129,6 +129,21 @@ package spi_device_pkg;
     logic [3:0]   payload_en;
     payload_dir_e payload_dir;
 
+    // upload: If upload field in the command info entry is set, the cmdparse
+    // activates the upload submodule when the opcode is received. `addr_en`,
+    // `addr_4B_affected`, and `addr_4b_forced` (TBD) affect the upload
+    // functionality. The three address related configs defines the command
+    // address field size.
+
+    // The logic assumes the following SPI input stream as payload, which max
+    // size is 256B. If the command exceeds the maximum payload size 256B, the
+    // logic wraps the payload and overwrites.
+    logic upload;
+
+    // busy: Set to 1 to set the BUSY bit in the FLASH_STATUS when the command
+    // is received.  This bit is active only when `upload` bit is set.
+    logic busy;
+
   } cmd_info_t;
 
   // CmdInfoInput parameter is the default value if no opcode in the cmd info
@@ -142,8 +157,17 @@ package spi_device_pkg;
     dummy_en:         1'b 0,
     dummy_size:       3'h 0,
     payload_en:       4'b 0001, // MOSI active
-    payload_dir:      PayloadIn
+    payload_dir:      PayloadIn,
+    upload:           1'b 0,
+    busy:             1'b 0
   };
+
+  function automatic logic is_cmdinfo_addr_4b(cmd_info_t ci, logic addr_4b_en);
+    logic result;
+    // TODO: Add force 4B
+    result = ci.addr_4b_affected ? addr_4b_en : 1'b 0;
+    return result;
+  endfunction : is_cmdinfo_addr_4b
 
   // SPI_DEVICE HWIP has 16 command info slots. A few of them are pre-assigned.
   // (defined in the spi_device_pkg)
@@ -171,13 +195,13 @@ package spi_device_pkg;
     CmdInfoReadCmdStart = 5,
     CmdInfoReadCmdEnd   = 10,
 
-    // other 5 slots are used in the Passthrough mode only. These free slots may
-    // be used for the commands that are not processed in the flash mode.
-    // Examples are "Release Power-down / ID", "Manufacture/Device ID", etc.
-    // They are not always Input mode. Some has a dummy cycle followed by the
-    // output field.
-    CmdInfoPassthroughStart = 11,
-    CmdInfoPassthroughEnd   = 15
+    // other slots are used in the Passthrough and/or upload submodules. These
+    // free slots may be used for the commands that are not processed in the
+    // flash mode.  Examples are "Release Power-down / ID",
+    // "Manufacture/Device ID", etc.  They are not always Input mode. Some has
+    // a dummy cycle followed by the output field.
+    CmdInfoReserveStart = 11,
+    CmdInfoReserveEnd   = spi_device_reg_pkg::NumCmdInfo -1
   } cmd_info_index_e;
 
   parameter int unsigned NumReadCmdInfo = CmdInfoReadCmdEnd - CmdInfoReadCmdStart + 1;
@@ -206,7 +230,8 @@ package spi_device_pkg;
     IoModeReadCmd  = 2,
     IoModeStatus   = 3,
     IoModeJedec    = 4,
-    IoModeEnd      = 5 // Indicate of Length
+    IoModeUpload   = 5,
+    IoModeEnd      = 6 // Indicate of Length
   } sub_io_mode_e;
 
   // SPI Line Mode (Mode0 <-> Mode3)
@@ -350,6 +375,16 @@ package spi_device_pkg;
     return result;
   endfunction : sram_strb2mask
 
+  function automatic logic [SramStrbW-1:0] sram_mask2strb(
+    logic [SramDw-1:0] mask
+  );
+    logic [SramStrbW-1:0] result;
+    for (int unsigned i = 0 ; i < SramStrbW ; i++) begin
+      result[i] = &mask[8*i+:8];
+    end
+    return result;
+  endfunction : sram_mask2strb
+
   // Calculate each space's base and size
   parameter sram_addr_t SramReadBufferIdx  = sram_addr_t'(0);
   parameter sram_addr_t SramReadBufferSize = sram_addr_t'(SramMsgDepth);
@@ -374,7 +409,7 @@ package spi_device_pkg;
   parameter int unsigned BitCntW   = $clog2(BitLength + 1);
 
   // spi device scanmode usage
-  typedef enum logic [2:0] {
+  typedef enum logic [3:0] {
     ClkInvSel,
     CsbRstMuxSel,
     TxRstMuxSel,
@@ -382,7 +417,16 @@ package spi_device_pkg;
     ClkMuxSel,
     ClkSramSel,
     RstSramSel,
+    TpmRstSel,
     ScanModeUseLast
   } scan_mode_e;
+
+  // TPM ======================================================================
+  typedef struct packed {
+    logic [7:0] rev;
+    logic       locality;
+    logic [2:0] max_xfer_size;
+  } tpm_cap_t;
+  // TPM ----------------------------------------------------------------------
 
 endpackage : spi_device_pkg

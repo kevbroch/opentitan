@@ -30,14 +30,15 @@ module aes
                                                     // need to skip reseeding requests.
                                                     // Useful for SCA only.
   parameter logic [NumAlerts-1:0] AlertAsyncOn = {NumAlerts{1'b1}},
-  parameter clearing_lfsr_seed_t   RndCnstClearingLfsrSeed  = RndCnstClearingLfsrSeedDefault,
-  parameter clearing_lfsr_perm_t   RndCnstClearingLfsrPerm  = RndCnstClearingLfsrPermDefault,
-  parameter clearing_lfsr_perm_t   RndCnstClearingSharePerm = RndCnstClearingSharePermDefault,
-  parameter masking_lfsr_seed_t    RndCnstMaskingLfsrSeed   = RndCnstMaskingLfsrSeedDefault,
-  parameter mskg_chunk_lfsr_perm_t RndCnstMskgChunkLfsrPerm = RndCnstMskgChunkLfsrPermDefault
+  parameter clearing_lfsr_seed_t RndCnstClearingLfsrSeed  = RndCnstClearingLfsrSeedDefault,
+  parameter clearing_lfsr_perm_t RndCnstClearingLfsrPerm  = RndCnstClearingLfsrPermDefault,
+  parameter clearing_lfsr_perm_t RndCnstClearingSharePerm = RndCnstClearingSharePermDefault,
+  parameter masking_lfsr_seed_t  RndCnstMaskingLfsrSeed   = RndCnstMaskingLfsrSeedDefault,
+  parameter masking_lfsr_perm_t  RndCnstMaskingLfsrPerm   = RndCnstMaskingLfsrPermDefault
 ) (
   input  logic                                      clk_i,
   input  logic                                      rst_ni,
+  input  logic                                      rst_shadowed_ni,
 
   // Idle indicator for clock manager
   output logic                                      idle_o,
@@ -50,6 +51,9 @@ module aes
   input  logic                                      rst_edn_ni,
   output edn_pkg::edn_req_t                         edn_o,
   input  edn_pkg::edn_rsp_t                         edn_i,
+
+  // Key manager (keymgr) key sideload interface
+  input  keymgr_pkg::hw_key_req_t                   keymgr_key_i,
 
   // Bus interface
   input  tlul_pkg::tl_h2d_t                         tl_i,
@@ -153,17 +157,19 @@ module aes
     .RndCnstClearingLfsrPerm  ( RndCnstClearingLfsrPerm  ),
     .RndCnstClearingSharePerm ( RndCnstClearingSharePerm ),
     .RndCnstMaskingLfsrSeed   ( RndCnstMaskingLfsrSeed   ),
-    .RndCnstMskgChunkLfsrPerm ( RndCnstMskgChunkLfsrPerm )
+    .RndCnstMaskingLfsrPerm   ( RndCnstMaskingLfsrPerm   )
   ) u_aes_core (
     .clk_i                  ( clk_i                ),
     .rst_ni                 ( rst_ni               ),
-
+    .rst_shadowed_ni        ( rst_shadowed_ni      ),
     .entropy_clearing_req_o ( entropy_clearing_req ),
     .entropy_clearing_ack_i ( entropy_clearing_ack ),
     .entropy_clearing_i     ( edn_data             ),
     .entropy_masking_req_o  ( entropy_masking_req  ),
     .entropy_masking_ack_i  ( entropy_masking_ack  ),
     .entropy_masking_i      ( edn_data             ),
+
+    .keymgr_key_i           ( keymgr_key_i         ),
 
     .lc_escalate_en_i       ( lc_escalate_en       ),
 

@@ -10,12 +10,16 @@
 // The top level flash_phy is only responsible for dispatching transactions and
 // correctly collecting the responses in order.
 
-module flash_phy import flash_ctrl_pkg::*; (
+module flash_phy
+  import flash_ctrl_pkg::*;
+  import prim_mubi_pkg::mubi4_e;
+
+(
   input clk_i,
   input rst_ni,
   input host_req_i,
   input host_intg_err_i,
-  input tlul_pkg::tl_type_e host_req_type_i,
+  input mubi4_e host_instr_type_i,
   input [BusAddrW-1:0] host_addr_i,
   output logic host_req_rdy_o,
   output logic host_req_done_o,
@@ -23,6 +27,8 @@ module flash_phy import flash_ctrl_pkg::*; (
   output logic host_rderr_o,
   input flash_req_t flash_ctrl_i,
   output flash_rsp_t flash_ctrl_o,
+  input tlul_pkg::tl_h2d_t tl_i,
+  output tlul_pkg::tl_d2h_t tl_o,
   input lc_ctrl_pkg::lc_tx_t scanmode_i,
   input scan_en_i,
   input scan_rst_ni,
@@ -157,23 +163,23 @@ module flash_phy import flash_ctrl_pkg::*; (
   flash_phy_pkg::flash_phy_prim_flash_req_t [NumBanks-1:0] prim_flash_req;
   flash_phy_pkg::flash_phy_prim_flash_rsp_t [NumBanks-1:0] prim_flash_rsp;
   logic [NumBanks-1:0] ecc_single_err;
-  logic [NumBanks-1:0] ecc_multi_err;
   logic [NumBanks-1:0][BusAddrW-1:0] ecc_addr;
 
   assign flash_ctrl_o.ecc_single_err = ecc_single_err;
-  assign flash_ctrl_o.ecc_multi_err = ecc_multi_err;
   assign flash_ctrl_o.ecc_addr = ecc_addr;
 
-  lc_ctrl_pkg::lc_tx_t [NumBanks-1:0] flash_disable;
-  prim_lc_sync #(
-    .NumCopies(NumBanks),
-    .AsyncOn(0)
-  ) u_flash_disable_sync (
-    .clk_i('0),
-    .rst_ni('0),
-    .lc_en_i(flash_ctrl_i.flash_disable),
-    .lc_en_o(flash_disable)
-  );
+  logic [NumBanks-1:0][prim_mubi_pkg::MuBi4Width-1:0] flash_disable_raw;
+  prim_mubi_pkg::mubi4_t [NumBanks-1:0] flash_disable;
+
+  for (genvar i=0; i < NumBanks; i++) begin : gen_flash_disable_buf
+    prim_buf #(
+      .Width(prim_mubi_pkg::MuBi4Width)
+    ) u_flash_disable_buf (
+      .in_i(flash_ctrl_i.flash_disable),
+      .out_o(flash_disable_raw[i])
+    );
+    assign flash_disable[i] = prim_mubi_pkg::mubi4_t'(flash_disable_raw[i]);
+  end
 
   for (genvar bank = 0; bank < NumBanks; bank++) begin : gen_flash_cores
 
@@ -217,7 +223,7 @@ module flash_phy import flash_ctrl_pkg::*; (
       // host request must be suppressed if response fifo cannot hold more
       // otherwise the flash_phy_core and flash_phy will get out of sync
       .host_req_i(host_req),
-      .host_req_type_i,
+      .host_instr_type_i,
       .host_scramble_en_i(host_scramble_en),
       .host_ecc_en_i(host_ecc_en),
       .host_addr_i(host_addr_i[0 +: BusBankAddrW]),
@@ -248,7 +254,6 @@ module flash_phy import flash_ctrl_pkg::*; (
       .prim_flash_req_o(prim_flash_req[bank]),
       .prim_flash_rsp_i(prim_flash_rsp[bank]),
       .ecc_single_err_o(ecc_single_err[bank]),
-      .ecc_multi_err_o(ecc_multi_err[bank]),
       .ecc_addr_o(ecc_addr[bank][BusBankAddrW-1:0])
     );
   end // block: gen_flash_banks
@@ -284,8 +289,8 @@ module flash_phy import flash_ctrl_pkg::*; (
   ) u_flash (
     .clk_i,
     .rst_ni,
-    .tl_i(flash_ctrl_i.tl_flash_c2p),
-    .tl_o(flash_ctrl_o.tl_flash_p2c),
+    .tl_i,
+    .tl_o,
     .devmode_i(1'b1),
     .flash_req_i(prim_flash_req),
     .flash_rsp_o(prim_flash_rsp),
@@ -309,8 +314,6 @@ module flash_phy import flash_ctrl_pkg::*; (
   );
   logic unused_alert;
   assign unused_alert = flash_ctrl_i.alert_trig & flash_ctrl_i.alert_ack;
-  assign flash_ctrl_o.flash_alert_p = flash_alert_o.p;
-  assign flash_ctrl_o.flash_alert_n = flash_alert_o.n;
 
   logic unused_trst_n;
   assign unused_trst_n = flash_ctrl_i.jtag_req.trst_n;

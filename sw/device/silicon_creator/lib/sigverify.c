@@ -4,10 +4,9 @@
 
 #include "sw/device/silicon_creator/lib/sigverify.h"
 
+#include "sw/device/lib/base/bitfield.h"
 #include "sw/device/lib/base/hardened.h"
 #include "sw/device/lib/base/memory.h"
-#include "sw/device/lib/base/mmio.h"
-#include "sw/device/silicon_creator/lib/drivers/hmac.h"
 #include "sw/device/silicon_creator/lib/drivers/otp.h"
 #include "sw/device/silicon_creator/lib/sigverify_mod_exp.h"
 
@@ -72,17 +71,55 @@ static rom_error_t sigverify_padding_and_digest_check(
   return kErrorOk;
 }
 
-rom_error_t sigverify_rsa_verify(const void *signed_message,
-                                 size_t signed_message_len,
-                                 const sigverify_rsa_buffer_t *signature,
-                                 const sigverify_rsa_key_t *key) {
-  hmac_digest_t act_digest;
-  hmac_sha256_init();
-  RETURN_IF_ERROR(hmac_sha256_update(signed_message, signed_message_len));
-  RETURN_IF_ERROR(hmac_sha256_final(&act_digest));
+/**
+ * Determines whether the software implementation should be used for signature
+ * verification.
+ *
+ * During manufacturing (TEST_UNLOCKED*), software implementation is used by
+ * default since OTP may not have been programmed yet. The implementation to use
+ * after manufacturing (PROD, PROD_END, DEV, RMA) is determined by the OTP
+ * value.
+ *
+ * @param lc_state Life cycle state of the device.
+ * @param[out] use_sw Use software implementation for signature verification.
+ * @return Result of the operation.
+ */
+static rom_error_t sigverify_use_sw_rsa_verify(lifecycle_state_t lc_state,
+                                               hardened_bool_t *use_sw) {
+  switch (lc_state) {
+    case kLcStateTestUnlocked0:
+    case kLcStateTestUnlocked1:
+    case kLcStateTestUnlocked2:
+    case kLcStateTestUnlocked3:
+    case kLcStateTestUnlocked4:
+    case kLcStateTestUnlocked5:
+    case kLcStateTestUnlocked6:
+    case kLcStateTestUnlocked7:
+      // Don't read from OTP during manufacturing. Use software
+      // implementation by default.
+      *use_sw = kHardenedBoolTrue;
+      return kErrorOk;
+    case kLcStateProd:
+    case kLcStateProdEnd:
+    case kLcStateDev:
+    case kLcStateRma:
+      *use_sw =
+          otp_read32(OTP_CTRL_PARAM_CREATOR_SW_CFG_USE_SW_RSA_VERIFY_OFFSET);
+      return kErrorOk;
+    default:
+      return kErrorSigverifyBadLcState;
+  }
+}
+
+rom_error_t sigverify_rsa_verify(const sigverify_rsa_buffer_t *signature,
+                                 const sigverify_rsa_key_t *key,
+                                 const hmac_digest_t *act_digest,
+                                 lifecycle_state_t lc_state) {
+  hardened_bool_t use_sw;
+  RETURN_IF_ERROR(sigverify_use_sw_rsa_verify(lc_state, &use_sw));
 
   sigverify_rsa_buffer_t enc_msg;
-  switch (otp_read32(OTP_CTRL_PARAM_CREATOR_SW_CFG_USE_SW_RSA_VERIFY_OFFSET)) {
+  switch (use_sw) {
     case kHardenedBoolTrue:
       RETURN_IF_ERROR(sigverify_mod_exp_ibex(key, signature, &enc_msg));
       break;
@@ -92,9 +129,47 @@ rom_error_t sigverify_rsa_verify(const void *signed_message,
     default:
       return kErrorSigverifyBadOtpValue;
   }
-  RETURN_IF_ERROR(sigverify_padding_and_digest_check(&enc_msg, &act_digest));
+  RETURN_IF_ERROR(sigverify_padding_and_digest_check(&enc_msg, act_digest));
 
   return kErrorOk;
+}
+
+void sigverify_usage_constraints_get(
+    uint32_t selector_bits, manifest_usage_constraints_t *usage_constraints) {
+  usage_constraints->selector_bits = selector_bits;
+  lifecycle_device_id_get(&usage_constraints->device_id);
+  // TODO(#7948): Define OTP entries for manufacturing states. Left unselected
+  // for now.
+  usage_constraints->manuf_state_creator =
+      MANIFEST_USAGE_CONSTRAINT_UNSELECTED_WORD_VAL;
+  usage_constraints->manuf_state_owner =
+      MANIFEST_USAGE_CONSTRAINT_UNSELECTED_WORD_VAL;
+  usage_constraints->life_cycle_state = lifecycle_state_get();
+
+  static_assert(
+      kManifestSelectorBitDeviceIdFirst == 0 &&
+          kManifestSelectorBitDeviceIdLast == kLifecycleDeviceIdNumWords - 1,
+      "mapping from selector_bits to device_id changed, loop must be updated");
+  for (size_t i = 0; i < kLifecycleDeviceIdNumWords; ++i) {
+    if (!bitfield_bit32_read(selector_bits, i)) {
+      usage_constraints->device_id.device_id[i] =
+          MANIFEST_USAGE_CONSTRAINT_UNSELECTED_WORD_VAL;
+    }
+  }
+  if (!bitfield_bit32_read(selector_bits,
+                           kManifestSelectorBitManufStateCreator)) {
+    usage_constraints->manuf_state_creator =
+        MANIFEST_USAGE_CONSTRAINT_UNSELECTED_WORD_VAL;
+  }
+  if (!bitfield_bit32_read(selector_bits,
+                           kManifestSelectorBitManufStateOwner)) {
+    usage_constraints->manuf_state_owner =
+        MANIFEST_USAGE_CONSTRAINT_UNSELECTED_WORD_VAL;
+  }
+  if (!bitfield_bit32_read(selector_bits, kManifestSelectorBitLifeCycleState)) {
+    usage_constraints->life_cycle_state =
+        MANIFEST_USAGE_CONSTRAINT_UNSELECTED_WORD_VAL;
+  }
 }
 
 // `extern` declarations for `inline` functions in the header.

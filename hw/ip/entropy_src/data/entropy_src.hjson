@@ -41,17 +41,17 @@
       act:     "req",
       package: "entropy_src_pkg",
     }
-    { struct:  "otp_en"
+    { struct:  "mubi8"
       type:    "uni"
       name:    "otp_en_entropy_src_fw_read"
       act:     "rcv"
-      package: "otp_ctrl_pkg"
+      package: "prim_mubi_pkg"
     }
-    { struct:  "otp_en"
+    { struct:  "mubi8"
       type:    "uni"
       name:    "otp_en_entropy_src_fw_over"
       act:     "rcv"
-      package: "otp_ctrl_pkg"
+      package: "prim_mubi_pkg"
     }
     { struct:  "logic"
       type:    "uni"
@@ -86,9 +86,8 @@
   registers: [
     { name: "REGWEN",
       desc: "Register write enable for all control registers",
-      swaccess: "ro", // lock is managed by HW
-      hwaccess: "hwo",
-      hwext: "true",
+      swaccess: "rw0c",
+      hwaccess: "none",
       fields: [
         {
             bits: "0",
@@ -125,48 +124,55 @@
       desc: "Configuration register",
       swaccess: "rw",
       hwaccess: "hro",
+      regwen:   "REGWEN",
+      tags: [// Exclude from writes to these field because they cause side affects.
+             "excl:CsrAllTests:CsrExclAll"]
       fields: [
-        { bits: "1:0",
+        { bits: "3:0",
           name: "ENABLE",
-          desc: '''This field is the module enable for the ENTROPY_SRC entropy generation function.
-                This two bit field determines what source will be used for all processing:
-                0b00: Disabled
-                0b01: PTRNG mode enabled
-                0b10: LFSR mode enabled
-                0b11: Reserved
+          mubi: true,
+          desc: '''
+                Setting this field to kMuBi4True will enable the ENTROPY_SRC module.
                 '''
-          tags: [// Exclude from writes to these bits to avoid Xs from entropy FIFO.
-                 "excl:CsrAllTests:CsrExclWrite"]
-        }
-        { bits: "3",
+          resval: false,
+        },
+        { bits: "7:4",
+          name: "ENTROPY_DATA_REG_ENABLE",
+          mubi: true,
+          desc: '''
+                Setting this field to kMuBi4True will enable reading entropy values from the
+                ENTROPY_DATA register. This function also requires that the efuse_es_sw_reg_en
+                input is set.
+                '''
+          resval: "false"
+        },
+        { bits: "15:12",
           name: "BOOT_BYPASS_DISABLE",
-          desc: "Setting this bit disables the initial generation of non-FIPS entropy."
-        }
-        { bits: "4",
-          name: "REPCNT_DISABLE",
-          desc: "Setting this bit disables the health test called Repetition Count test."
-        }
-        { bits: "5",
-          name: "ADAPTP_DISABLE",
-          desc: "Setting this bit disables the health test called  Adaptive Proportion test."
-        }
-        { bits: "6",
-          name: "BUCKET_DISABLE",
-          desc: "Setting this bit disables the health test called Bucket test."
-        }
-        { bits: "7",
-          name: "MARKOV_DISABLE",
-          desc: "Setting this bit disables the health test called Markov test."
-        }
-        { bits: "8",
+          mubi: true,
+          desc: '''
+                Setting this field to kMuBi4True will disable the initial generation of non-FIPS entropy.
+                '''
+          resval: false
+        },
+        { bits: "19:16",
           name: "HEALTH_TEST_CLR",
-          desc: "Setting this bit will clear all registers related to the health test operations."
-        }
-        { bits: "9",
-          name: "RNG_BIT_EN",
-          desc: "Setting this bit enables the single RNG bit mode, where only one bit is sampled."
-        }
-        { bits: "11:10",
+          mubi: true,
+          desc: '''
+                Setting this field to kMuBi4True will clear all registers related to the
+                health test operations.
+                '''
+          resval: false
+        },
+        { bits: "23:20",
+          name: "RNG_BIT_ENABLE",
+          mubi: true,
+          desc: '''
+                Setting this field to kMuBi4True enables the single RNG bit mode, where only
+                one bit is sampled.
+                '''
+          resval: false
+        },
+        { bits: "25:24",
           name: "RNG_BIT_SEL",
           desc: '''When the above bit iset, this field selects which bit from the RNG bus will
                 be processed when in single RNG bit mode.
@@ -177,33 +183,6 @@
                 0b11: RNG bit 3
                 '''
         }
-        { bits: "12",
-          name: "EXTHT_ENABLE",
-          desc: '''Setting this bit enables the hardware-based health test that is external
-                to ENTROPY_SRC."
-                '''
-        }
-        { bits: "13",
-          name: "REPCNTS_DISABLE",
-          desc: '''Setting this bit disables the health test called Repetition Count test,
-                which is based on counting symbols.
-                '''
-        }
-      ]
-    },
-    { name: "RATE",
-      desc: "Entropy rate register",
-      swaccess: "rw",
-      fields: [
-        { bits: "15:0",
-          name: "ENTROPY_RATE",
-          desc: '''This register determines the rate that entropy bits will be supplied.
-                   In LFSR mode, this is the rate that the LFSR value will be advanced.
-                   The number in this register represents how many clocks there are between
-                   each newLFSR value generation.
-                '''
-          resval: "0x00000004"
-        }
       ]
     },
     { name: "ENTROPY_CONTROL",
@@ -211,21 +190,29 @@
       swaccess: "rw",
       hwaccess: "hro",
       regwen:   "REGWEN",
+      tags: [// Exclude from writes to these field because they cause side affects.
+             "excl:CsrAllTests:CsrExclAll"]
       fields: [
-        { bits: "0",
+        { bits: "3:0",
           name: "ES_ROUTE",
-          desc: '''Setting this bit routes the generated entropy value to the ENTROPY_DATA
-                register to be read by firmware. When this bit is zero, the generated
+          mubi: true,
+          desc: '''
+                Setting this field to kMuBi4True routes the generated entropy value to the ENTROPY_DATA
+                register to be read by firmware. When this field is kMuBi4False, the generated
                 entropy will be forwarded out of this module to the hardware interface.
                 '''
-        }
-        { bits: "1",
+          resval: false
+        },
+        { bits: "7:4",
           name: "ES_TYPE",
-          desc: '''Setting this bit will bypass the conditioning logic and bring raw entropy
-                data to the ENTROPY_DATA register. When zero, FIPS compliant entropy
+          mubi: true,
+          desc: '''
+                Setting this field to kMuBi4True will bypass the conditioning logic and bring raw entropy
+                data to the ENTROPY_DATA register. When kMuBi4False, FIPS compliant entropy
                 will be brought the ENTROPY_DATA register, after being conditioned.
                 '''
-        }
+          resval: false
+        },
       ]
     },
     { name: "ENTROPY_DATA",
@@ -999,23 +986,31 @@
       swaccess: "rw",
       hwaccess: "hro",
       regwen:   "REGWEN",
+      tags: [// Exclude from writes to these field because they cause side affects.
+             "excl:CsrAllTests:CsrExclAll"]
       fields: [
-        { bits: "0",
+        { bits: "3:0",
           name: "FW_OV_MODE",
-          desc: '''Setting this bit will put the entropy flow in firmware override mode.
+          desc: '''
+                Setting this field to 0xA will put the entropy flow in firmware override mode.
                 In this mode, firmware can monitor the post-health test entropy by reading
-                the observe FIFO.
+                the observe FIFO. This function also requires that the efuse_es_sw_ov_en
+                input is set.
                 '''
-        }
-        { bits: "1",
+          resval: "0x5"
+        },
+        { bits: "7:4",
           name: "FW_OV_ENTROPY_INSERT",
-          desc: '''Setting this bit will switch the input into the pre-conditioner packer FIFO.
-                Firmware can directly write into the packer FIFO, enabling the ability to insert
-                entropy bits back into the hardware flow. Firmware can read data from the health
-                check packer FIFO, then do optional health checks or optional conditioning, then
-                insert the results back into the flow. Also, the !!FW_OV_MODE bit must be set.
+          desc: '''
+                Setting this field to 0xA will switch the input into the pre-conditioner
+                packer FIFO. Firmware can directly write into the packer FIFO, enabling
+                the ability to insert entropy bits back into the hardware flow. Firmware
+                can read data from the health check packer FIFO, then do optional health
+                checks or optional conditioning, then insert the results back into the flow.
+                Also, the !!FW_OV_MODE bit must be set.
                 '''
-        }
+          resval: "0x5"
+        },
       ]
     },
     { name: "FW_OV_RD_DATA",
@@ -1102,16 +1097,99 @@
         }
       ]
     },
-    { name: "SEED",
-      desc: "ENTROPY_SRC seed register",
-      swaccess: "rw",
-      regwen:   "REGWEN",
+    {
+      name: "RECOV_ALERT_STS",
+      desc: "Recoverable alert status register",
+      swaccess: "rw0c",
+      hwaccess: "hwo",
       fields: [
-        { bits: "3:0",
-          name: "LFSR_SEED",
-          desc: "Seed used to load into the LFSR for the initial state. This field will not update if the REGWEN bit 0 is cleared.",
-          resval: "0xb"
-       }
+        { bits: "0",
+          name: "ENABLE_FIELD_ALERT",
+          desc: '''
+                This bit is set when the ENABLE field in the !!CONF register is set to
+                a value other than 0x5 or 0xA.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "1",
+          name: "ENTROPY_DATA_REG_EN_FIELD_ALERT",
+          desc: '''
+                This bit is set when the ENTROPY_DATA_REG_ENABLE field in the !!CONF register is set to
+                a value other than 0x5 or 0xA.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "3",
+          name: "BOOT_BYPASS_DISABLE_FIELD_ALERT",
+          desc: '''
+                This bit is set when the BOOT_BYPASS_DISABLE field in the !!CONF register is set to
+                a value other than 0x5 or 0xA.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "4",
+          name: "HEALTH_TEST_CLR_FIELD_ALERT",
+          desc: '''
+                This bit is set when the HEALTH_TEST_CLR field in the !!CONF register is set to
+                a value other than 0x5 or 0xA.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "5",
+          name: "RNG_BIT_ENABLE_FIELD_ALERT",
+          desc: '''
+                This bit is set when the RNG_BIT_ENABLE field in the !!CONF register is set to
+                a value other than 0x5 or 0xA.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "8",
+          name: "FW_OV_MODE_FIELD_ALERT",
+          desc: '''
+                This bit is set when the FW_OV_MODE field in the !!FW_OV_CONTROL register is set to
+                a value other than 0x5 or 0xA.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "9",
+          name: "FW_OV_ENTROPY_INSERT_FIELD_ALERT",
+          desc: '''
+                This bit is set when the FW_OV_ENTROPY_INSERT field in the !!FW_OV_CONTROL register is set to
+                a value other than 0x5 or 0xA.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "10",
+          name: "ES_ROUTE_FIELD_ALERT",
+          desc: '''
+                This bit is set when the ES_ROUTE field in the !!ENTROPY_CONTROL register is set to
+                a value other than 0x5 or 0xA.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "11",
+          name: "ES_TYPE_FIELD_ALERT",
+          desc: '''
+                This bit is set when the ES_TYPE field in the !!ENTROPY_CONTROL register is set to
+                a value other than 0x5 or 0xA.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "12",
+          name: "ES_MAIN_SM_ALERT",
+          desc: '''
+                This bit is set when the main state machine detects a threshhold failure state.
+                Writing a zero resets this status bit.
+                '''
+        }
+        { bits: "13",
+          name: "ES_BUS_CMP_ALERT",
+          desc: '''
+                This bit is set when the interal entropy bus value is equal to the prior
+                valid value on the bus, indicating a possible attack.
+                Writing a zero resets this status bit.
+                '''
+        }
       ]
     },
     {
@@ -1119,6 +1197,8 @@
       desc: "Hardware detection of error conditions status register",
       swaccess: "ro",
       hwaccess: "hwo",
+      tags: [ // The internal HW can modify the error code registers
+              "excl:CsrAllTests:CsrExclCheck"],
       fields: [
         { bits: "0",
           name: "SFIFO_ESRNG_ERR",

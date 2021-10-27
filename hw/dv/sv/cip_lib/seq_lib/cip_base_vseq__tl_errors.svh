@@ -50,23 +50,6 @@ virtual task tl_access_unmapped_addr(string ral_name);
   end
 endtask
 
-virtual task tl_write_csr_word_unaligned_addr(string ral_name);
-  addr_range_t loc_mem_ranges[$] = updated_mem_ranges[ral_name];
-  repeat ($urandom_range(10, 100)) begin
-    if (cfg.under_reset) return;
-    `create_tl_access_error_case(
-        tl_write_csr_word_unaligned_addr,
-        opcode inside {tlul_pkg::PutFullData, tlul_pkg::PutPartialData};
-        foreach (loc_mem_ranges[i]) {
-          !((addr & csr_addr_mask[ral_name])
-              inside {[loc_mem_ranges[i].start_addr : loc_mem_ranges[i].end_addr]});
-        }
-        addr[1:0] != 2'b00;,
-        ,
-        p_sequencer.tl_sequencer_hs[ral_name])
-  end
-endtask
-
 virtual task tl_write_less_than_csr_width(string ral_name);
   uvm_reg all_csrs[$];
 
@@ -242,7 +225,6 @@ virtual task run_tl_errors_vseq_sub(int num_times = 1, bit do_wait_clk = 0, stri
                 1: tl_protocol_err(p_sequencer.tl_sequencer_hs[ral_name]);
                 // only run when csr addresses exist
                 has_csr_addrs: tl_write_less_than_csr_width(ral_name);
-                has_csr_addrs: tl_write_csr_word_unaligned_addr(ral_name);
 
                 // only run when unmapped addr exists
                 cfg.ral_models[ral_name].has_unmapped_addrs: tl_access_unmapped_addr(ral_name);
@@ -291,48 +273,67 @@ virtual task run_tl_intg_err_vseq_sub(int num_times = 1, string ral_name);
         run_csr_vseq("rw");
       end
       begin
-        bit [BUS_AW-1:0] addr;
-        bit [BUS_DW-1:0] data = $urandom;
-        bit              write;
-        tl_intg_err_e    tl_intg_err_type;
-        bit              has_mem = cfg.ral_models[ral_name].mem_ranges.size > 0;
+        issue_tl_access_w_intg_err(ral_name);
 
-        #($urandom_range(10, 1000) * 1ns);
-        `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(tl_intg_err_type,
-                                           tl_intg_err_type != TlIntgErrNone;)
-        // data integrity doesn't apply to read
-        `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(write,
-            tl_intg_err_type inside {TlIntgErrData, TlIntgErrBoth} -> write == 1;)
-
-        randcase
-          // any address
-          1: addr = $urandom;
-          // mem address
-          has_mem: begin
-            int mem_idx = $urandom_range(0, cfg.ral_models[ral_name].mem_ranges.size - 1);
-            addr = $urandom_range(cfg.ral_models[ral_name].mem_ranges[mem_idx].start_addr,
-                                  cfg.ral_models[ral_name].mem_ranges[mem_idx].end_addr);
-          end
-        endcase
-        tl_access(.addr($urandom), .write(write), .data(data),
-                  .tl_intg_err_type(tl_intg_err_type));
-
-        `DV_CHECK_FATAL(cfg.tl_intg_alert_name inside {cfg.list_of_alerts}, $sformatf(
-            "tl intg alert (%s) is not inside %p", cfg.tl_intg_alert_name, cfg.list_of_alerts))
-
-        `uvm_info(`gfn, "expected fatal alert is triggered", UVM_LOW)
-
-        // This is a fatal alert and design keeps sending it until reset is issued.
-        // Check alerts are triggered for a few times
-        repeat ($urandom_range(5, 20)) begin
-          wait_alert_trigger(cfg.tl_intg_alert_name, .wait_complete(1));
-        end
+        // Check design's response to tl_intg_error.
+        // This virtual task verifies the fatal alert is firing continuously and verifies integrity
+        // error status register field is set.
+        check_tl_intg_error_response();
       end
     join
 
     // issue hard reset for fatal alert to recover
     dut_init("HARD");
   end
+endtask
+
+virtual task issue_tl_access_w_intg_err(string ral_name);
+  bit [BUS_AW-1:0] addr;
+  bit [BUS_DW-1:0] data = $urandom;
+  bit              write;
+  tl_intg_err_e    tl_intg_err_type;
+  bit              has_mem = cfg.ral_models[ral_name].mem_ranges.size > 0;
+
+  #($urandom_range(10, 1000) * 1ns);
+  `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(tl_intg_err_type,
+                                     tl_intg_err_type != TlIntgErrNone;)
+  // data integrity doesn't apply to read
+  `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(write,
+      tl_intg_err_type inside {TlIntgErrData, TlIntgErrBoth} -> write == 1;)
+
+  randcase
+    // any address
+    1: addr = $urandom;
+    // mem address
+    has_mem: begin
+      int mem_idx = $urandom_range(0, cfg.ral_models[ral_name].mem_ranges.size - 1);
+      addr = $urandom_range(cfg.ral_models[ral_name].mem_ranges[mem_idx].start_addr,
+                            cfg.ral_models[ral_name].mem_ranges[mem_idx].end_addr);
+    end
+  endcase
+  tl_access(.addr($urandom), .write(write), .data(data),
+            .tl_intg_err_type(tl_intg_err_type));
+endtask
+
+virtual task check_tl_intg_error_response();
+  `DV_CHECK_FATAL(cfg.tl_intg_alert_name inside {cfg.list_of_alerts}, $sformatf(
+      "tl intg alert (%s) is not inside %p", cfg.tl_intg_alert_name, cfg.list_of_alerts))
+
+  `uvm_info(`gfn, "expected fatal alert is triggered", UVM_LOW)
+
+  // Check both alert and CSR status update
+  fork
+    // This is a fatal alert and design keeps sending it until reset is issued.
+    // Check alerts are triggered for a few times
+    repeat ($urandom_range(5, 20)) begin
+      wait_alert_trigger(cfg.tl_intg_alert_name, .wait_complete(1));
+    end
+    // Check corresponding CSR status is updated correctly
+    foreach (cfg.tl_intg_alert_fields[csr_field]) begin
+      bit [BUS_DW-1:0] exp_val = cfg.tl_intg_alert_fields[csr_field];
+      csr_rd_check(.ptr(csr_field), .compare_value(exp_val));
+    end
+  join
 endtask
 
 `undef create_tl_access_error_case

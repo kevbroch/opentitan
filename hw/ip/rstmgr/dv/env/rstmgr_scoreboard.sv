@@ -30,14 +30,34 @@ class rstmgr_scoreboard extends cip_base_scoreboard #(
   task run_phase(uvm_phase phase);
     super.run_phase(phase);
     fork
+      monitor_por();
     join_none
+  endtask
+
+  // Start coverage collection after the very first POR negedge, since that transition is not
+  // useful for coverage.
+  task monitor_por();
+    int stretch_start;
+    int reset_count;
+    if (!cfg.en_cov) return;
+    @(negedge cfg.rstmgr_vif.por_n);
+    forever
+      @cfg.rstmgr_vif.por_n begin
+        if (cfg.rstmgr_vif.por_n == 1'b1) stretch_start = cfg.rstmgr_vif.aon_cycles;
+        else begin
+          int stretch_cycles = cfg.rstmgr_vif.aon_cycles - stretch_start;
+          ++reset_count;
+          `DV_CHECK_GT(stretch_cycles, 0)
+          cov.reset_stretcher_cg.sample(stretch_cycles, reset_count);
+        end
+      end
   endtask
 
   virtual task process_tl_access(tl_seq_item item, tl_channels_e channel, string ral_name);
     uvm_reg        csr;
     bit            do_read_check = 1'b1;
     bit            write = item.is_write();
-    uvm_reg_addr_t csr_addr = ral.get_word_aligned_addr(item.a_addr);
+    uvm_reg_addr_t csr_addr = cfg.ral_models[ral_name].get_word_aligned_addr(item.a_addr);
 
     bit            addr_phase_read = (!write && channel == AddrChannel);
     bit            addr_phase_write = (write && channel == AddrChannel);
@@ -46,7 +66,7 @@ class rstmgr_scoreboard extends cip_base_scoreboard #(
 
     // if access was to a valid csr, get the csr handle
     if (csr_addr inside {cfg.ral_models[ral_name].csr_addrs}) begin
-      csr = ral.default_map.get_reg_by_offset(csr_addr);
+      csr = cfg.ral_models[ral_name].default_map.get_reg_by_offset(csr_addr);
       `DV_CHECK_NE_FATAL(csr, null)
     end else begin
       `uvm_fatal(`gfn, $sformatf("Access unexpected addr 0x%0h", csr_addr))
@@ -76,6 +96,8 @@ class rstmgr_scoreboard extends cip_base_scoreboard #(
         // do_read_check = 1'b0;
       end
       "alert_info_ctrl": begin
+        // The en bit is cleared by the hardware.
+        do_read_check = 1'b0;
       end
       "alert_info_attr": begin
         // Read only.
@@ -90,6 +112,8 @@ class rstmgr_scoreboard extends cip_base_scoreboard #(
         // do_read_check = 1'b0;
       end
       "cpu_info_ctrl": begin
+        // The en bit is cleared by the hardware.
+        do_read_check = 1'b0;
       end
       "cpu_info_attr": begin
         // Read only.
@@ -99,10 +123,10 @@ class rstmgr_scoreboard extends cip_base_scoreboard #(
         // Read only.
         do_read_check = 1'b0;
       end
-      "sw_rst_regen": begin
+      "sw_rst_regwen": begin
       end
       "sw_rst_ctrl_n": begin
-        // TODO Check with bitwise enables from sw_rst_regen.
+        // TODO Check with bitwise enables from sw_rst_regwen.
         do_read_check = 1'b0;
       end
       default: begin

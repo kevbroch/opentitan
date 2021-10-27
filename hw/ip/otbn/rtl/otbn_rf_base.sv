@@ -37,6 +37,7 @@ module otbn_rf_base
   input  logic                     rst_ni,
 
   input  logic                     state_reset_i,
+  input  logic                     sec_wipe_stack_reset_i,
 
   input  logic [4:0]               wr_addr_i,
   input  logic                     wr_en_i,
@@ -77,26 +78,38 @@ module otbn_rf_base
   logic pop_stack_b;
   logic pop_stack_reqd;
   logic pop_stack;
+  logic pop_stack_a_err;
+  logic pop_stack_b_err;
   logic push_stack_reqd;
   logic push_stack;
+  logic push_stack_err;
 
   logic                     stack_full;
   logic [BaseIntgWidth-1:0] stack_data_intg;
   logic                     stack_data_valid;
 
+  logic state_reset;
 
-  assign pop_stack_a    = rd_en_a_i & (rd_addr_a_i == CallStackRegIndex[4:0]);
-  assign pop_stack_b    = rd_en_b_i & (rd_addr_b_i == CallStackRegIndex[4:0]);
+  assign state_reset = state_reset_i | sec_wipe_stack_reset_i;
+
+  assign pop_stack_a     = rd_en_a_i & (rd_addr_a_i == CallStackRegIndex[4:0]);
+  assign pop_stack_b     = rd_en_b_i & (rd_addr_b_i == CallStackRegIndex[4:0]);
   // pop_stack_reqd indicates a call stack pop is requested and pop_stack commands it to happen.
-  assign pop_stack_reqd = (pop_stack_a | pop_stack_b);
-  assign pop_stack      = rd_commit_i & pop_stack_reqd;
+  assign pop_stack_reqd  = (pop_stack_a | pop_stack_b);
+  assign pop_stack       = rd_commit_i & pop_stack_reqd;
+  // Separate error signals for call stack pop for a and b read ports are required to determine if
+  // an integrity error is valid or not.
+  assign pop_stack_a_err = pop_stack_a & ~stack_data_valid;
+  assign pop_stack_b_err = pop_stack_b & ~stack_data_valid;
 
   // push_stack_reqd indicates a call stack push is requested and push_stack commands it to happen.
   assign push_stack_reqd = wr_en_i & (wr_addr_i == CallStackRegIndex[4:0]);
   assign push_stack      = wr_commit_i & push_stack_reqd;
+  // Simultaneous push and pop doesn't cause an error when the stack is full (pop ordered before
+  // push).
+  assign push_stack_err  = push_stack_reqd & stack_full & ~pop_stack_reqd;
 
-  assign call_stack_err_o =
-      (push_stack_reqd & stack_full & ~pop_stack_reqd) | (pop_stack_reqd & ~stack_data_valid);
+  assign call_stack_err_o = pop_stack_a_err | pop_stack_b_err | push_stack_err;
 
   // Prevent any write to the stack register from going to the register file,
   // all other committed writes are passed straight through
@@ -124,7 +137,7 @@ module otbn_rf_base
 
     .full_o        (stack_full),
 
-    .clear_i       (state_reset_i),
+    .clear_i       (state_reset),
 
     .push_i        (push_stack),
     .push_data_i   (wr_data_intg_mux_out),
@@ -179,5 +192,8 @@ module otbn_rf_base
     .err_o     (rd_data_b_err)
   );
 
-  assign rd_data_err_o = (|rd_data_a_err & rd_en_a_i) | (|rd_data_b_err & rd_en_b_i);
+  // Suppress integrity error where the relevant read port saw a call stack pop error (so both
+  // integrity and data are invalid).
+  assign rd_data_err_o = (|rd_data_a_err & rd_en_a_i & ~pop_stack_a_err) |
+                         (|rd_data_b_err & rd_en_b_i & ~pop_stack_b_err);
 endmodule

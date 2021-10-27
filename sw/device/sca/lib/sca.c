@@ -5,8 +5,9 @@
 #include "sw/device/sca/lib/sca.h"
 
 #include "sw/device/lib/arch/device.h"
+#include "sw/device/lib/base/bitfield.h"
 #include "sw/device/lib/dif/dif_clkmgr.h"
-#include "sw/device/lib/dif/dif_entropy.h"
+#include "sw/device/lib/dif/dif_entropy_src.h"
 #include "sw/device/lib/dif/dif_gpio.h"
 #include "sw/device/lib/dif/dif_rv_timer.h"
 #include "sw/device/lib/dif/dif_uart.h"
@@ -30,19 +31,24 @@
   if (expr) {               \
   }
 
+/**
+ * Bitfield for the trigger source.
+ *
+ * Bits 9 to 11 are used to select the trigger source. See chiplevel.sv.tpl for
+ * details.
+ */
+static const bitfield_field32_t kTriggerSourceBitfield = {
+    .index = 9,
+    .mask = 0x7,
+};
+
 enum {
   /**
-   * GPIO capture trigger values.
+   * Bit index of the trigger gate signal for gating the trigger from software.
    *
-   * GPIO10[11:9]: Trigger select, 000 for AES, see chiplevel.sv.tpl for
-   *               details.
-   * GPIO8:        Trigger enable
+   * See chiplevel.sv.tpl for details.
    */
-  kGpioCaptureTriggerSelMask = 0x00E00,
-  kGpioCaptureTriggerEnMask = 0x00100,
-  kGpioCaptureTriggerSel = 0x00000,
-  kGpioCaptureTriggerHigh = 0x00100,
-  kGpioCaptureTriggerLow = 0x00000,
+  kTriggerGateBitIndex = 8,
   /**
    * RV timer settings.
    */
@@ -64,37 +70,38 @@ static void sca_init_uart(void) {
   const dif_uart_config_t uart_config = {
       .baudrate = kUartBaudrate,
       .clk_freq_hz = kClockFreqPeripheralHz,
-      .parity_enable = kDifUartToggleDisabled,
+      .parity_enable = kDifToggleDisabled,
       .parity = kDifUartParityEven,
   };
 
   IGNORE_RESULT(dif_uart_init(
-      (dif_uart_params_t){
-          .base_addr = mmio_region_from_addr(TOP_EARLGREY_UART0_BASE_ADDR),
-      },
-      &uart0));
+      mmio_region_from_addr(TOP_EARLGREY_UART0_BASE_ADDR), &uart0));
   IGNORE_RESULT(dif_uart_configure(&uart0, uart_config));
   base_uart_stdout(&uart0);
 
   IGNORE_RESULT(dif_uart_init(
-      (dif_uart_params_t){
-          .base_addr = mmio_region_from_addr(TOP_EARLGREY_UART1_BASE_ADDR),
-      },
-      &uart1));
+      mmio_region_from_addr(TOP_EARLGREY_UART1_BASE_ADDR), &uart1));
   IGNORE_RESULT(dif_uart_configure(&uart1, uart_config));
 }
 
 /**
  * Initializes the GPIO peripheral.
+ *
+ * @param trigger Trigger source.
  */
-static void sca_init_gpio(void) {
-  dif_gpio_params_t gpio_params = {
-      .base_addr = mmio_region_from_addr(TOP_EARLGREY_GPIO_BASE_ADDR)};
-  IGNORE_RESULT(dif_gpio_init(gpio_params, &gpio));
-  IGNORE_RESULT(dif_gpio_output_set_enabled_all(
-      &gpio, kGpioCaptureTriggerSelMask | kGpioCaptureTriggerEnMask));
-  IGNORE_RESULT(dif_gpio_write_masked(&gpio, kGpioCaptureTriggerSelMask,
-                                      kGpioCaptureTriggerSel));
+static void sca_init_gpio(sca_trigger_source_t trigger) {
+  IGNORE_RESULT(
+      dif_gpio_init(mmio_region_from_addr(TOP_EARLGREY_GPIO_BASE_ADDR), &gpio));
+
+  uint32_t select_mask =
+      bitfield_field32_write(0, kTriggerSourceBitfield, UINT32_MAX);
+  uint32_t enable_mask = bitfield_bit32_write(0, kTriggerGateBitIndex, true);
+  IGNORE_RESULT(
+      dif_gpio_output_set_enabled_all(&gpio, select_mask | enable_mask));
+
+  IGNORE_RESULT(dif_gpio_write_masked(
+      &gpio, select_mask,
+      bitfield_field32_write(0, kTriggerSourceBitfield, trigger)));
 }
 
 /**
@@ -102,15 +109,15 @@ static void sca_init_gpio(void) {
  */
 static void sca_init_timer(void) {
   IGNORE_RESULT(dif_rv_timer_init(
-      mmio_region_from_addr(TOP_EARLGREY_RV_TIMER_BASE_ADDR),
-      (dif_rv_timer_config_t){.hart_count = 1, .comparator_count = 1}, &timer));
+      mmio_region_from_addr(TOP_EARLGREY_RV_TIMER_BASE_ADDR), &timer));
+  IGNORE_RESULT(dif_rv_timer_reset(&timer));
   dif_rv_timer_tick_params_t tick_params;
   IGNORE_RESULT(dif_rv_timer_approximate_tick_params(
       kClockFreqPeripheralHz, kClockFreqCpuHz, &tick_params));
   IGNORE_RESULT(
       dif_rv_timer_set_tick_params(&timer, kRvTimerHart, tick_params));
-  IGNORE_RESULT(dif_rv_timer_irq_enable(
-      &timer, kRvTimerHart, kRvTimerComparator, kDifRvTimerEnabled));
+  IGNORE_RESULT(dif_rv_timer_irq_set_enabled(
+      &timer, kDifRvTimerIrqTimerExpiredHart0Timer0, kDifToggleEnabled));
   irq_timer_ctrl(true);
   irq_global_ctrl(true);
 }
@@ -124,69 +131,88 @@ void handler_irq_timer(void) {
   // Return values of below functions are ignored to improve capture
   // performance.
   IGNORE_RESULT(dif_rv_timer_counter_set_enabled(&timer, kRvTimerHart,
-                                                 kDifRvTimerDisabled));
-  IGNORE_RESULT(
-      dif_rv_timer_irq_clear(&timer, kRvTimerHart, kRvTimerComparator));
+                                                 kDifToggleDisabled));
+  IGNORE_RESULT(dif_rv_timer_irq_acknowledge(
+      &timer, kDifRvTimerIrqTimerExpiredHart0Timer0));
 }
 
-void sca_init(void) {
-  pinmux_init();
-  sca_init_uart();
-  sca_init_gpio();
-  sca_init_timer();
-}
-
-void sca_reduce_noise() {
-  // Disable/stopping functionality not yet provided by EDN and CSRNG DIFs.
-  mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_EDN0_BASE_ADDR),
-                      EDN_CTRL_REG_OFFSET, EDN_CTRL_REG_RESVAL);
-  mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_EDN1_BASE_ADDR),
-                      EDN_CTRL_REG_OFFSET, EDN_CTRL_REG_RESVAL);
-  mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_CSRNG_BASE_ADDR),
-                      CSRNG_CTRL_REG_OFFSET, CSRNG_CTRL_REG_RESVAL);
-
-  // Disable entropy source through DIF.
-  const dif_entropy_params_t entropy_params = {
-      .base_addr = mmio_region_from_addr(TOP_EARLGREY_ENTROPY_SRC_BASE_ADDR),
-  };
-  dif_entropy_t entropy;
-  IGNORE_RESULT(dif_entropy_init(entropy_params, &entropy) == kDifEntropyOk);
-  IGNORE_RESULT(dif_entropy_disable(&entropy) == kDifEntropyOk);
+/**
+ * Disables the given peripherals to reduce noise during SCA.
+ *
+ * Care must be taken when disabling the entropy complex if a peripheral that
+ * depends on it will be used in SCA. E.g., We can disable the entropy complex
+ * when analyzing AES only because AES features a parameter to skip PRNG
+ * reseeding for SCA experiments. Without this parameter, AES would simply get
+ * stalled with a disabled entropy complex.
+ *
+ * @param disable Set of peripherals to disable.
+ */
+void sca_disable_peripherals(sca_peripherals_t disable) {
+  if (disable & kScaPeripheralEdn) {
+    // TODO(#5465): Replace with `dif_edn_stop()` when it is implemented.
+    mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_EDN0_BASE_ADDR),
+                        EDN_CTRL_REG_OFFSET, EDN_CTRL_REG_RESVAL);
+    mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_EDN1_BASE_ADDR),
+                        EDN_CTRL_REG_OFFSET, EDN_CTRL_REG_RESVAL);
+  }
+  if (disable & kScaPeripheralCsrng) {
+    // TODO(#7837): Replace with `dif_csrng_stop()` when it is implemented.
+    mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_CSRNG_BASE_ADDR),
+                        CSRNG_CTRL_REG_OFFSET, CSRNG_CTRL_REG_RESVAL);
+  }
+  if (disable & kScaPeripheralEntropy) {
+    dif_entropy_src_t entropy;
+    IGNORE_RESULT(dif_entropy_src_init(
+        mmio_region_from_addr(TOP_EARLGREY_ENTROPY_SRC_BASE_ADDR), &entropy));
+    IGNORE_RESULT(dif_entropy_src_disable(&entropy));
+  }
 
   // Disable HMAC, KMAC, OTBN and USB clocks through CLKMGR DIF.
-  const dif_clkmgr_params_t clkmgr_params = {
-      .base_addr = mmio_region_from_addr(TOP_EARLGREY_CLKMGR_AON_BASE_ADDR),
-      .last_gateable_clock = CLKMGR_CLK_ENABLES_CLK_USB_PERI_EN_BIT,
-      .last_hintable_clock = CLKMGR_CLK_HINTS_STATUS_CLK_MAIN_OTBN_VAL_BIT};
   dif_clkmgr_t clkmgr;
-  IGNORE_RESULT(dif_clkmgr_init(clkmgr_params, &clkmgr) == kDifClkmgrOk);
-  IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
-                    &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_HMAC_HINT_BIT,
-                    kDifClkmgrToggleDisabled) == kDifClkmgrOk);
-  IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
-                    &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_KMAC_HINT_BIT,
-                    kDifClkmgrToggleDisabled) == kDifClkmgrOk);
-  IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
-                    &clkmgr, CLKMGR_CLK_HINTS_CLK_IO_DIV4_OTBN_HINT_BIT,
-                    kDifClkmgrToggleDisabled) == kDifClkmgrOk);
-  IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
-                    &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_OTBN_HINT_BIT,
-                    kDifClkmgrToggleDisabled) == kDifClkmgrOk);
-  IGNORE_RESULT(dif_clkmgr_gateable_clock_set_enabled(
-                    &clkmgr, CLKMGR_CLK_ENABLES_CLK_USB_PERI_EN_BIT,
-                    kDifClkmgrToggleDisabled) == kDifClkmgrOk);
+  IGNORE_RESULT(dif_clkmgr_init(
+      mmio_region_from_addr(TOP_EARLGREY_CLKMGR_AON_BASE_ADDR), &clkmgr));
+
+  if (disable & kScaPeripheralAes) {
+    IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
+        &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_AES_HINT_BIT, kDifToggleDisabled));
+  }
+  if (disable & kScaPeripheralHmac) {
+    IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
+        &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_HMAC_HINT_BIT, kDifToggleDisabled));
+  }
+  if (disable & kScaPeripheralKmac) {
+    IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
+        &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_KMAC_HINT_BIT, kDifToggleDisabled));
+  }
+  if (disable & kScaPeripheralOtbn) {
+    IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
+        &clkmgr, CLKMGR_CLK_HINTS_CLK_IO_DIV4_OTBN_HINT_BIT,
+        kDifToggleDisabled));
+    IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
+        &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_OTBN_HINT_BIT, kDifToggleDisabled));
+  }
+  if (disable & kScaPeripheralUsb) {
+    IGNORE_RESULT(dif_clkmgr_gateable_clock_set_enabled(
+        &clkmgr, CLKMGR_CLK_ENABLES_CLK_USB_PERI_EN_BIT, kDifToggleDisabled));
+  }
+}
+
+void sca_init(sca_trigger_source_t trigger, sca_peripherals_t enable) {
+  pinmux_init();
+  sca_init_uart();
+  sca_init_gpio(trigger);
+  sca_init_timer();
+  sca_disable_peripherals(~enable);
 }
 
 void sca_get_uart(const dif_uart_t **uart_out) { *uart_out = &uart1; }
 
 void sca_set_trigger_high() {
-  IGNORE_RESULT(dif_gpio_write_masked(&gpio, kGpioCaptureTriggerEnMask,
-                                      kGpioCaptureTriggerHigh));
+  IGNORE_RESULT(dif_gpio_write(&gpio, kTriggerGateBitIndex, true));
 }
 
 void sca_set_trigger_low() {
-  IGNORE_RESULT(dif_gpio_write_masked(&gpio, kGpioCaptureTriggerEnMask,
-                                      kGpioCaptureTriggerLow));
+  IGNORE_RESULT(dif_gpio_write(&gpio, kTriggerGateBitIndex, false));
 }
 
 void sca_call_and_sleep(sca_callee callee, uint32_t sleep_cycles) {
@@ -198,7 +224,7 @@ void sca_call_and_sleep(sca_callee callee, uint32_t sleep_cycles) {
   IGNORE_RESULT(dif_rv_timer_arm(&timer, kRvTimerHart, kRvTimerComparator,
                                  current_time + sleep_cycles));
   IGNORE_RESULT(dif_rv_timer_counter_set_enabled(&timer, kRvTimerHart,
-                                                 kDifRvTimerEnabled));
+                                                 kDifToggleEnabled));
 
   callee();
 

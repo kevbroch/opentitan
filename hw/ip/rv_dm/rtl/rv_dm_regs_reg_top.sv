@@ -9,7 +9,6 @@
 module rv_dm_regs_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -113,7 +112,6 @@ module rv_dm_regs_reg_top (
 
   // Register instances
   // R[alert_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_alert_test (
@@ -126,7 +124,6 @@ module rv_dm_regs_reg_top (
     .q      (reg2hw.alert_test.q),
     .qs     ()
   );
-
 
 
 
@@ -161,12 +158,18 @@ module rv_dm_regs_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

@@ -107,7 +107,9 @@ module tb;
     .pwr_otp_i                  (otp_ctrl_if.pwr_otp_init_i),
     .pwr_otp_o                  ({otp_ctrl_if.pwr_otp_done_o, otp_ctrl_if.pwr_otp_idle_o}),
     // lc
-    .lc_otp_program_i           ({lc_prog_if.req, lc_prog_if.h_data, otp_ctrl_if.otp_test_ctrl_i}),
+    .lc_otp_vendor_test_o       (otp_ctrl_if.otp_vendor_test_status_o),
+    .lc_otp_vendor_test_i       (otp_ctrl_if.otp_vendor_test_ctrl_i),
+    .lc_otp_program_i           ({lc_prog_if.req, lc_prog_if.h_data}),
     .lc_otp_program_o           ({lc_prog_if.d_data, lc_prog_if.ack}),
     .lc_creator_seed_sw_rw_en_i (otp_ctrl_if.lc_creator_seed_sw_rw_en_i),
     .lc_seed_hw_rd_en_i         (otp_ctrl_if.lc_seed_hw_rd_en_i),
@@ -210,10 +212,10 @@ module tb;
     $assertoff(0, tb.dut.u_prim_lc_sync_check_byp_en.PrimLcSyncCheckTransients1_A);
 
     // DV forced otp_cmd_i to reach invalid state, thus violate the assertions
-    $assertoff(0, tb.dut.gen_partitions[2].gen_buffered.u_part_buf.OtpErrorState_A);
     $assertoff(0, tb.dut.gen_partitions[3].gen_buffered.u_part_buf.OtpErrorState_A);
     $assertoff(0, tb.dut.gen_partitions[4].gen_buffered.u_part_buf.OtpErrorState_A);
     $assertoff(0, tb.dut.gen_partitions[5].gen_buffered.u_part_buf.OtpErrorState_A);
+    $assertoff(0, tb.dut.gen_partitions[6].gen_buffered.u_part_buf.OtpErrorState_A);
 
     // drive clk and rst_n from clk_if
     clk_rst_if.set_active();

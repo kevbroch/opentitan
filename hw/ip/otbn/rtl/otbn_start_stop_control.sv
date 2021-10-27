@@ -10,39 +10,56 @@
  *
  * pre-start actions:
  *  - Seed LFSR for URND
+ *
+ * post-stop actions:
+ *  - Internal Secure Wipe
+ *    -Delete WDRs
+ *    -Delete Base registers
+ *    -Delete Accumulator
+ *    -Delete Modulus
+ *    -Reset stack
  */
 
 `include "prim_assert.sv"
 
 module otbn_start_stop_control
   import otbn_pkg::*;
-#(
-  // Size of the instruction memory, in bytes
-  parameter int ImemSizeByte = 4096,
-  localparam int ImemAddrWidth = prim_util_pkg::vbits(ImemSizeByte)
-) (
-  input  logic  clk_i,
-  input  logic  rst_ni,
+  #(
+  // Enable internal secure wipe
+  parameter bit                SecWipeEn  = 1'b0
+)(
+  input  logic clk_i,
+  input  logic rst_ni,
 
-  input  logic                     start_i,
-  input  logic [ImemAddrWidth-1:0] start_addr_i,
+  input  logic start_i,
 
-  output logic                     controller_start_o,
-  output logic [ImemAddrWidth-1:0] controller_start_addr_o,
-
-  input  logic                     controller_done_i,
+  output logic controller_start_o,
 
   output logic urnd_reseed_req_o,
   input  logic urnd_reseed_busy_i,
   output logic urnd_advance_o,
+
+  input   logic start_secure_wipe_i,
+  output  logic secure_wipe_running_o,
+  output  logic done_o,
+
+  output logic       sec_wipe_wdr_o,
+  output logic       sec_wipe_wdr_urnd_o,
+  output logic       sec_wipe_base_o,
+  output logic       sec_wipe_base_urnd_o,
+  output logic [4:0] sec_wipe_addr_o,
+
+  output logic sec_wipe_acc_urnd_o,
+  output logic sec_wipe_mod_urnd_o,
+  output logic sec_wipe_zero_o,
 
   output logic ispr_init_o,
   output logic state_reset_o
 );
   otbn_start_stop_state_e state_q, state_d;
 
-  logic [ImemAddrWidth-1:0] start_addr_q;
-  logic start_addr_en;
+  logic addr_cnt_inc;
+  logic [4:0] addr_cnt_q, addr_cnt_d;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -52,24 +69,25 @@ module otbn_start_stop_control
     end
   end
 
-  always_ff @(posedge clk_i) begin
-    if (start_addr_en) begin
-      start_addr_q <= start_addr_i;
-    end
-  end
-
   always_comb begin
-    urnd_reseed_req_o = 1'b0;
-    urnd_advance_o    = 1'b0;
-    start_addr_en     = 1'b0;
-    state_d           = state_q;
-    ispr_init_o       = 1'b0;
-    state_reset_o     = 1'b0;
+    urnd_reseed_req_o      = 1'b0;
+    urnd_advance_o         = 1'b0;
+    state_d                = state_q;
+    ispr_init_o            = 1'b0;
+    state_reset_o          = 1'b0;
+    sec_wipe_wdr_o         = 1'b0;
+    sec_wipe_wdr_urnd_o    = 1'b0;
+    sec_wipe_base_o        = 1'b0;
+    sec_wipe_base_urnd_o   = 1'b0;
+    sec_wipe_acc_urnd_o    = 1'b0;
+    sec_wipe_mod_urnd_o    = 1'b0;
+    sec_wipe_zero_o        = 1'b0;
+    addr_cnt_inc           = 1'b0;
+    secure_wipe_running_o  = 1'b0;
 
-    unique case(state_q)
+    unique case (state_q)
       OtbnStartStopStateHalt: begin
         if (start_i) begin
-          start_addr_en     = 1'b1;
           urnd_reseed_req_o = 1'b1;
           ispr_init_o       = 1'b1;
           state_reset_o     = 1'b1;
@@ -83,9 +101,59 @@ module otbn_start_stop_control
       end
       OtbnStartStopStateRunning: begin
         urnd_advance_o = 1'b1;
-        if (controller_done_i) begin
-          state_d = OtbnStartStopStateHalt;
+        if (start_secure_wipe_i) begin
+          if (SecWipeEn) begin
+            state_d = OtbnStartStopSecureWipeWdrUrnd;
+          end
+          else begin
+            state_d = OtbnStartStopSecureWipeComplete;
+          end
         end
+      end
+      // Writing random numbers to the wide data registers.
+       OtbnStartStopSecureWipeWdrUrnd: begin
+        urnd_advance_o        = 1'b1;
+        addr_cnt_inc          = 1'b1;
+        sec_wipe_wdr_o        = 1'b1;
+        sec_wipe_wdr_urnd_o   = 1'b1;
+        secure_wipe_running_o = 1'b1;
+        if (addr_cnt_q == 5'b11111) begin
+          state_d = OtbnStartStopSecureWipeAccModBaseUrnd;
+        end
+      end
+      // Writing random numbers to the accumulator, modulus and the base registers.
+      // addr_cnt_q wraps around to 0 when first moving to this state, and we need to
+      // supress writes to the zero register and the call stack.
+       OtbnStartStopSecureWipeAccModBaseUrnd: begin
+        secure_wipe_running_o = 1'b1;
+        urnd_advance_o        = 1'b1;
+        addr_cnt_inc          = 1'b1;
+        // The first two clock cycles are used to write random data to accumulator and modulus.
+        sec_wipe_acc_urnd_o   = (addr_cnt_q == 5'b00000);
+        sec_wipe_mod_urnd_o   = (addr_cnt_q == 5'b00001);
+        // Supress writes to the zero register and the call stack.
+        sec_wipe_base_o       = (addr_cnt_q > 5'b00001);
+        sec_wipe_base_urnd_o  = (addr_cnt_q > 5'b00001);
+        if (addr_cnt_q == 5'b11111) begin
+          state_d = OtbnStartStopSecureWipeAllZero;
+        end
+      end
+      // Writing zeros to the accumulator, modulus and the registers.
+      // Resetting stack
+       OtbnStartStopSecureWipeAllZero: begin
+        secure_wipe_running_o = 1'b1;
+        sec_wipe_zero_o       = (addr_cnt_q == 5'b00000);
+        sec_wipe_wdr_o        = 1'b1;
+        sec_wipe_base_o       = (addr_cnt_q > 5'b00001);
+        addr_cnt_inc = 1'b1;
+        if (addr_cnt_q == 5'b11111) begin
+          state_d = OtbnStartStopSecureWipeComplete;
+        end
+      end
+       OtbnStartStopSecureWipeComplete: begin
+        urnd_advance_o = 1'b1;
+        secure_wipe_running_o = 1'b1;
+        state_d = OtbnStartStopStateHalt;
       end
       default: ;
     endcase
@@ -94,10 +162,31 @@ module otbn_start_stop_control
   // Logic separate from main FSM code to avoid false combinational loop warning from verilator
   assign controller_start_o = (state_q == OtbnStartStopStateUrndRefresh) & !urnd_reseed_busy_i;
 
+  if (SecWipeEn) begin: gen_sec_wipe
+    assign done_o = (state_q == OtbnStartStopSecureWipeComplete);
+  end
+  else begin: gen_bypass_sec_wipe
+      assign done_o = start_secure_wipe_i;
+  end
+
+  assign addr_cnt_d = addr_cnt_inc ? (addr_cnt_q + 5'd1) : 5'd0;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      addr_cnt_q <= 5'd0;
+    end else
+      addr_cnt_q <= addr_cnt_d;
+  end
+
+  assign sec_wipe_addr_o = addr_cnt_q;
+
   `ASSERT(StartStopStateValid,
       state_q inside {OtbnStartStopStateHalt,
                       OtbnStartStopStateUrndRefresh,
-                      OtbnStartStopStateRunning})
+                      OtbnStartStopStateRunning,
+                      OtbnStartStopSecureWipeWdrUrnd,
+                      OtbnStartStopSecureWipeAccModBaseUrnd,
+                      OtbnStartStopSecureWipeAllZero,
+                      OtbnStartStopSecureWipeComplete})
 
-  assign controller_start_addr_o = start_addr_q;
 endmodule

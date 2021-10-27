@@ -9,6 +9,7 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
     .VIRTUAL_SEQUENCER_T (otp_ctrl_virtual_sequencer)
   );
   `uvm_object_utils(otp_ctrl_base_vseq)
+  `uvm_object_new
 
   // various knobs to enable certain routines
   bit do_otp_ctrl_init = 1'b1;
@@ -37,7 +38,12 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
   lc_ctrl_state_pkg::lc_state_e lc_state;
   lc_ctrl_state_pkg::lc_cnt_e   lc_cnt;
 
-  `uvm_object_new
+  otp_ctrl_callback_vseq callback_vseq;
+
+  virtual task pre_start();
+    `uvm_create_on(callback_vseq, p_sequencer);
+    super.pre_start();
+  endtask
 
   virtual task dut_init(string reset_kind = "HARD");
     // OTP has dut and edn reset. If assign OTP values after `super.dut_init()`, and if dut reset
@@ -45,6 +51,7 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
     // running.
     otp_ctrl_vif_init();
     super.dut_init(reset_kind);
+    callback_vseq.dut_init_callback();
 
     cfg.backdoor_clear_mem = 0;
     // reset power init pin and lc pins
@@ -73,11 +80,11 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
 
     // Unused signals in open sourced OTP memory
     `DV_CHECK_RANDOMIZE_FATAL(cfg.dut_cfg)
-    cfg.otp_ctrl_vif.otp_ast_pwr_seq_h_i = cfg.dut_cfg.otp_ast_pwr_seq_h;
-    cfg.otp_ctrl_vif.scan_en_i           = cfg.dut_cfg.scan_en;
-    cfg.otp_ctrl_vif.scan_rst_ni         = cfg.dut_cfg.scan_rst_n;
-    cfg.otp_ctrl_vif.scanmode_i          = cfg.dut_cfg.scanmode;
-    cfg.otp_ctrl_vif.otp_test_ctrl_i     = cfg.dut_cfg.otp_test_ctrl;
+    cfg.otp_ctrl_vif.otp_ast_pwr_seq_h_i    = cfg.dut_cfg.otp_ast_pwr_seq_h;
+    cfg.otp_ctrl_vif.scan_en_i              = cfg.dut_cfg.scan_en;
+    cfg.otp_ctrl_vif.scan_rst_ni            = cfg.dut_cfg.scan_rst_n;
+    cfg.otp_ctrl_vif.scanmode_i             = cfg.dut_cfg.scanmode;
+    cfg.otp_ctrl_vif.otp_vendor_test_ctrl_i = cfg.dut_cfg.otp_vendor_test_ctrl;
   endtask
 
   // drive otp_pwr req pin to initialize OTP, and wait until init is done
@@ -325,7 +332,7 @@ class otp_ctrl_base_vseq extends cip_base_vseq #(
           forever begin
             bit [TL_DW-1:0] err_val;
             cfg.clk_rst_vif.wait_clks(1);
-            csr_rd(.ptr(ral.err_code.err_code[7]), .value(err_val), .backdoor(1));
+            csr_rd(.ptr(ral.err_code[0].err_code[7]), .value(err_val), .backdoor(1));
             // Break if error will cause fatal alerts
             if (err_val inside {OTP_TERMINAL_ERRS}) break;
           end

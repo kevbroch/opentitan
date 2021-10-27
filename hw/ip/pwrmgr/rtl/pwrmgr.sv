@@ -18,6 +18,9 @@ module pwrmgr
   input clk_i,
   input rst_slow_ni,
   input rst_ni,
+  input rst_main_ni,
+  input clk_esc_i,
+  input rst_esc_ni,
 
   // Bus Interface
   input  tlul_pkg::tl_h2d_t tl_i,
@@ -65,6 +68,9 @@ module pwrmgr
   // rom_ctrl interface
   input rom_ctrl_pkg::pwrmgr_data_t rom_ctrl_i,
 
+  // software issued reset request
+  input prim_mubi_pkg::mubi4_t sw_rst_req_i,
+
   // escalation interface
   input prim_esc_pkg::esc_tx_t esc_rst_tx_i,
   output prim_esc_pkg::esc_rx_t esc_rst_rx_o,
@@ -83,9 +89,9 @@ module pwrmgr
     .N_ESC_SEV   (alert_handler_reg_pkg::N_ESC_SEV),
     .PING_CNT_DW (alert_handler_reg_pkg::PING_CNT_DW)
   ) u_esc_rx (
-    .clk_i,
-    .rst_ni,
-    .esc_en_o(esc_rst_req),
+    .clk_i(clk_esc_i),
+    .rst_ni(rst_esc_ni),
+    .esc_req_o(esc_rst_req),
     .esc_rx_o(esc_rst_rx_o),
     .esc_tx_i(esc_rst_tx_i)
   );
@@ -94,9 +100,28 @@ module pwrmgr
   ///  async declarations
   ////////////////////////////
   pwr_peri_t peri_reqs_raw;
+  logic slow_rst_req;
 
   assign peri_reqs_raw.wakeups = wakeups_i;
-  assign peri_reqs_raw.rstreqs = {esc_rst_req, rstreqs_i};
+  assign peri_reqs_raw.rstreqs[NumRstReqs-1:0] = rstreqs_i;
+  assign peri_reqs_raw.rstreqs[ResetMainPwrIdx] = slow_rst_req;
+  assign peri_reqs_raw.rstreqs[ResetEscIdx] = esc_rst_req;
+
+  ////////////////////////////
+  ///  Software reset request
+  ////////////////////////////
+  logic sw_rst_req;
+  prim_flop #(
+    .Width(1),
+    .ResetValue('0)
+  ) u_sw_req_flop (
+    .clk_i,
+    .rst_ni,
+    .d_i(prim_mubi_pkg::mubi4_test_true_strict(sw_rst_req_i)),
+    .q_o(sw_rst_req)
+  );
+
+  assign peri_reqs_raw.rstreqs[ResetSwReqIdx] = sw_rst_req;
 
   ////////////////////////////
   ///  clk_i domain declarations
@@ -110,6 +135,9 @@ module pwrmgr
   logic ack_pwrup;
   logic req_pwrdn;
   logic ack_pwrdn;
+  logic fsm_invalid;
+  logic clr_slow_req;
+  logic clr_slow_ack;
   pwrup_cause_e pwrup_cause;
 
   logic low_power_fall_through;
@@ -140,11 +168,15 @@ module pwrmgr
   logic slow_ack_pwrup;
   logic slow_req_pwrdn;
   logic slow_ack_pwrdn;
+  logic slow_fsm_invalid;
   logic slow_main_pd_n;
   logic slow_io_clk_en;
   logic slow_core_clk_en;
   logic slow_usb_clk_en_lp;
   logic slow_usb_clk_en_active;
+  logic slow_clr_req;
+
+
 
   ////////////////////////////
   ///  Register module
@@ -213,7 +245,7 @@ module pwrmgr
   ///  cdc handling
   ////////////////////////////
 
-  pwrmgr_cdc i_cdc (
+  pwrmgr_cdc u_cdc (
     .clk_i,
     .rst_ni,
     .clk_slow_i,
@@ -222,6 +254,7 @@ module pwrmgr
     // slow domain signals
     .slow_req_pwrup_i(slow_req_pwrup),
     .slow_ack_pwrdn_i(slow_ack_pwrdn),
+    .slow_fsm_invalid_i(slow_fsm_invalid),
     .slow_pwrup_cause_toggle_i(slow_pwrup_cause_toggle),
     .slow_pwrup_cause_i(slow_pwrup_cause),
     .slow_wakeup_en_o(slow_wakeup_en),
@@ -236,6 +269,7 @@ module pwrmgr
     .slow_ast_o(slow_ast),
     .slow_peri_reqs_o(slow_peri_reqs),
     .slow_peri_reqs_masked_i(slow_peri_reqs_masked),
+    .slow_clr_req_o(slow_clr_req),
 
     // fast domain signals
     .req_pwrdn_i(req_pwrdn),
@@ -250,9 +284,12 @@ module pwrmgr
     .usb_clk_en_lp_i(reg2hw.control.usb_clk_en_lp.q),
     .usb_clk_en_active_i(reg2hw.control.usb_clk_en_active.q),
     .ack_pwrdn_o(ack_pwrdn),
+    .fsm_invalid_o(fsm_invalid),
     .req_pwrup_o(req_pwrup),
     .pwrup_cause_o(pwrup_cause),
     .peri_reqs_o(peri_reqs_masked),
+    .clr_slow_req_i(clr_slow_req),
+    .clr_slow_ack_o(clr_slow_ack),
 
     // AST signals
     .ast_i(pwr_ast_i),
@@ -301,8 +338,13 @@ module pwrmgr
   // and that would be very undesirable.
 
   assign slow_peri_reqs_masked.wakeups = slow_peri_reqs.wakeups & slow_wakeup_en;
-  // msb is escalation reset
-  assign slow_peri_reqs_masked.rstreqs = slow_peri_reqs.rstreqs & {1'b1, slow_reset_en};
+  // msb is software request
+  // the internal requests include escalation and internal requests
+  // the lsbs are the software enabled peripheral requests.
+  assign slow_peri_reqs_masked.rstreqs = slow_peri_reqs.rstreqs &
+                                         {{NumSwRstReq{1'b1}},
+                                          {IntReqLastIdx{1'b1}},
+                                          slow_reset_en};
 
   for (genvar i = 0; i < NumWkups; i++) begin : gen_wakeup_status
     assign hw2reg.wake_status[i].de = 1'b1;
@@ -322,9 +364,10 @@ module pwrmgr
   ///  clk_slow FSM
   ////////////////////////////
 
-  pwrmgr_slow_fsm i_slow_fsm (
+  pwrmgr_slow_fsm u_slow_fsm (
     .clk_i                (clk_slow_i),
     .rst_ni               (rst_slow_ni),
+    .rst_main_ni          (rst_main_ni),
     .wakeup_i             (|slow_peri_reqs_masked.wakeups),
     .reset_req_i          (|slow_peri_reqs_masked.rstreqs),
     .ast_i                (slow_ast),
@@ -334,6 +377,9 @@ module pwrmgr
     .ack_pwrup_i          (slow_ack_pwrup),
     .req_pwrdn_i          (slow_req_pwrdn),
     .ack_pwrdn_o          (slow_ack_pwrdn),
+    .rst_req_o            (slow_rst_req),
+    .fsm_invalid_o        (slow_fsm_invalid),
+    .clr_req_i            (slow_clr_req),
 
     .main_pd_ni           (slow_main_pd_n),
     .io_clk_en_i          (slow_io_clk_en),
@@ -367,6 +413,9 @@ module pwrmgr
     .ack_pwrdn_i       (ack_pwrdn),
     .low_power_entry_i (pwr_cpu_i.core_sleeping & low_power_hint),
     .reset_reqs_i      (peri_reqs_masked.rstreqs),
+    .fsm_invalid_i     (fsm_invalid),
+    .clr_slow_req_o    (clr_slow_req),
+    .clr_slow_ack_i    (clr_slow_ack),
 
     // cfg
     .main_pd_ni        (reg2hw.control.main_pd_n.q),

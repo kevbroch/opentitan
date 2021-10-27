@@ -5,10 +5,10 @@
 '''Code to load instruction words into a simulator'''
 
 import struct
-from typing import List
+from typing import List, Optional, Iterator
 
-from .err_bits import ILLEGAL_INSN
-from .isa import INSNS_FILE, DecodeError, OTBNInsn
+from .constants import ErrBits
+from .isa import INSNS_FILE, OTBNInsn
 from .insn import INSN_CLASSES
 from .state import OTBNState
 
@@ -35,8 +35,31 @@ class IllegalInsn(OTBNInsn):
         # disassembling the underlying DummyInsn.
         self._disasm = (pc, '?? 0x{:08x}'.format(raw))
 
-    def execute(self, state: OTBNState) -> None:
-        state.stop_at_end_of_cycle(ILLEGAL_INSN)
+    def execute(self, state: OTBNState) -> Optional[Iterator[None]]:
+        state.stop_at_end_of_cycle(ErrBits.ILLEGAL_INSN)
+        return None
+
+
+class EmptyInsn(OTBNInsn):
+    '''A subclass of Instruction that represents non-existent data
+
+    This is what we generate on a fetch error, where we don't really have any
+    instruction data at all.
+
+    '''
+    # We don't have any instruction data
+    has_bits = False
+
+    def __init__(self, pc: int) -> None:
+        super().__init__(0, {})
+
+        # Override the memoized disassembly for the instruction, avoiding us
+        # disassembling the underlying DummyInsn.
+        self._disasm = (pc, '?? (no instruction data)')
+
+    def execute(self, state: 'OTBNState') -> Optional[Iterator[None]]:
+        state.stop_at_end_of_cycle(ErrBits.IMEM_INTG_VIOLATION)
+        return None
 
 
 def _decode_word(pc: int, word: int) -> OTBNInsn:
@@ -57,13 +80,7 @@ def _decode_word(pc: int, word: int) -> OTBNInsn:
     # shifting, sign interpretation etc.)
     op_vals = cls.insn.enc_vals_to_op_vals(pc, enc_vals)
 
-    # Catch any decode errors raised by the instruction constructor. This lets
-    # us generate errors if an instruction encoding has extra constraints that
-    # can't be captured by the logic in the Encoding class.
-    try:
-        return cls(word, op_vals)
-    except DecodeError as err:
-        return IllegalInsn(pc, word, str(err))
+    return cls(word, op_vals)
 
 
 def decode_bytes(base_addr: int, data: bytes) -> List[OTBNInsn]:

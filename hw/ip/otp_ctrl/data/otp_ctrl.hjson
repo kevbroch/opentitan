@@ -94,7 +94,7 @@
     { name: "NumErrorEntries",
       desc: "Number of error register entries.",
       type: "int",
-      default: "9", // partitions + DAI/LCI
+      default: "10", // partitions + DAI/LCI
       local: "true"
     },
     { name: "NumDaiWords",
@@ -126,25 +126,61 @@
     { name: "NumPart",
       desc: "Number of partitions",
       type: "int",
-      default: "7",
+      default: "8",
+      local: "true"
+    },
+    { name: "VendorTestOffset",
+      desc: "Offset of the VENDOR_TEST partition",
+      type: "int",
+      default: "0",
+      local: "true"
+    },
+    { name: "VendorTestSize",
+      desc: "Size of the VENDOR_TEST partition",
+      type: "int",
+      default: "64",
+      local: "true"
+    },
+    { name: "ScratchOffset",
+      desc: "Offset of SCRATCH",
+      type: "int",
+      default: "0",
+      local: "true"
+    },
+    { name: "ScratchSize",
+      desc: "Size of SCRATCH",
+      type: "int",
+      default: "56",
+      local: "true"
+    },
+    { name: "VendorTestDigestOffset",
+      desc: "Offset of VENDOR_TEST_DIGEST",
+      type: "int",
+      default: "56",
+      local: "true"
+    },
+    { name: "VendorTestDigestSize",
+      desc: "Size of VENDOR_TEST_DIGEST",
+      type: "int",
+      default: "8",
       local: "true"
     },
     { name: "CreatorSwCfgOffset",
       desc: "Offset of the CREATOR_SW_CFG partition",
       type: "int",
-      default: "0",
+      default: "64",
       local: "true"
     },
     { name: "CreatorSwCfgSize",
       desc: "Size of the CREATOR_SW_CFG partition",
       type: "int",
-      default: "768",
+      default: "800",
       local: "true"
     },
     { name: "CreatorSwCfgAstCfgOffset",
       desc: "Offset of CREATOR_SW_CFG_AST_CFG",
       type: "int",
-      default: "0",
+      default: "64",
       local: "true"
     },
     { name: "CreatorSwCfgAstCfgSize",
@@ -156,7 +192,7 @@
     { name: "CreatorSwCfgRomExtSkuOffset",
       desc: "Offset of CREATOR_SW_CFG_ROM_EXT_SKU",
       type: "int",
-      default: "256",
+      default: "320",
       local: "true"
     },
     { name: "CreatorSwCfgRomExtSkuSize",
@@ -168,7 +204,7 @@
     { name: "CreatorSwCfgUseSwRsaVerifyOffset",
       desc: "Offset of CREATOR_SW_CFG_USE_SW_RSA_VERIFY",
       type: "int",
-      default: "260",
+      default: "324",
       local: "true"
     },
     { name: "CreatorSwCfgUseSwRsaVerifySize",
@@ -180,7 +216,7 @@
     { name: "CreatorSwCfgKeyIsValidOffset",
       desc: "Offset of CREATOR_SW_CFG_KEY_IS_VALID",
       type: "int",
-      default: "264",
+      default: "328",
       local: "true"
     },
     { name: "CreatorSwCfgKeyIsValidSize",
@@ -192,7 +228,7 @@
     { name: "CreatorSwCfgDigestOffset",
       desc: "Offset of CREATOR_SW_CFG_DIGEST",
       type: "int",
-      default: "760",
+      default: "856",
       local: "true"
     },
     { name: "CreatorSwCfgDigestSize",
@@ -204,19 +240,19 @@
     { name: "OwnerSwCfgOffset",
       desc: "Offset of the OWNER_SW_CFG partition",
       type: "int",
-      default: "768",
+      default: "864",
       local: "true"
     },
     { name: "OwnerSwCfgSize",
       desc: "Size of the OWNER_SW_CFG partition",
       type: "int",
-      default: "768",
+      default: "800",
       local: "true"
     },
     { name: "RomErrorReportingOffset",
       desc: "Offset of ROM_ERROR_REPORTING",
       type: "int",
-      default: "768",
+      default: "864",
       local: "true"
     },
     { name: "RomErrorReportingSize",
@@ -228,7 +264,7 @@
     { name: "RomBootstrapEnOffset",
       desc: "Offset of ROM_BOOTSTRAP_EN",
       type: "int",
-      default: "772",
+      default: "868",
       local: "true"
     },
     { name: "RomBootstrapEnSize",
@@ -240,7 +276,7 @@
     { name: "RomFaultResponseOffset",
       desc: "Offset of ROM_FAULT_RESPONSE",
       type: "int",
-      default: "776",
+      default: "872",
       local: "true"
     },
     { name: "RomFaultResponseSize",
@@ -252,7 +288,7 @@
     { name: "RomAlertClassEnOffset",
       desc: "Offset of ROM_ALERT_CLASS_EN",
       type: "int",
-      default: "780",
+      default: "876",
       local: "true"
     },
     { name: "RomAlertClassEnSize",
@@ -264,7 +300,7 @@
     { name: "RomAlertEscalationOffset",
       desc: "Offset of ROM_ALERT_ESCALATION",
       type: "int",
-      default: "784",
+      default: "880",
       local: "true"
     },
     { name: "RomAlertEscalationSize",
@@ -276,7 +312,7 @@
     { name: "RomAlertClassificationOffset",
       desc: "Offset of ROM_ALERT_CLASSIFICATION",
       type: "int",
-      default: "788",
+      default: "884",
       local: "true"
     },
     { name: "RomAlertClassificationSize",
@@ -288,7 +324,7 @@
     { name: "RomLocalAlertClassificationOffset",
       desc: "Offset of ROM_LOCAL_ALERT_CLASSIFICATION",
       type: "int",
-      default: "1108",
+      default: "1204",
       local: "true"
     },
     { name: "RomLocalAlertClassificationSize",
@@ -300,7 +336,7 @@
     { name: "RomAlertAccumThreshOffset",
       desc: "Offset of ROM_ALERT_ACCUM_THRESH",
       type: "int",
-      default: "1172",
+      default: "1268",
       local: "true"
     },
     { name: "RomAlertAccumThreshSize",
@@ -312,7 +348,7 @@
     { name: "RomAlertTimeoutCyclesOffset",
       desc: "Offset of ROM_ALERT_TIMEOUT_CYCLES",
       type: "int",
-      default: "1188",
+      default: "1284",
       local: "true"
     },
     { name: "RomAlertTimeoutCyclesSize",
@@ -324,7 +360,7 @@
     { name: "RomAlertPhaseCyclesOffset",
       desc: "Offset of ROM_ALERT_PHASE_CYCLES",
       type: "int",
-      default: "1204",
+      default: "1300",
       local: "true"
     },
     { name: "RomAlertPhaseCyclesSize",
@@ -336,7 +372,7 @@
     { name: "OwnerSwCfgDigestOffset",
       desc: "Offset of OWNER_SW_CFG_DIGEST",
       type: "int",
-      default: "1528",
+      default: "1656",
       local: "true"
     },
     { name: "OwnerSwCfgDigestSize",
@@ -348,19 +384,19 @@
     { name: "HwCfgOffset",
       desc: "Offset of the HW_CFG partition",
       type: "int",
-      default: "1536",
+      default: "1664",
       local: "true"
     },
     { name: "HwCfgSize",
       desc: "Size of the HW_CFG partition",
       type: "int",
-      default: "208",
+      default: "80",
       local: "true"
     },
     { name: "DeviceIdOffset",
       desc: "Offset of DEVICE_ID",
       type: "int",
-      default: "1536",
+      default: "1664",
       local: "true"
     },
     { name: "DeviceIdSize",
@@ -372,7 +408,7 @@
     { name: "ManufStateOffset",
       desc: "Offset of MANUF_STATE",
       type: "int",
-      default: "1568",
+      default: "1696",
       local: "true"
     },
     { name: "ManufStateSize",
@@ -384,7 +420,7 @@
     { name: "EnSramIfetchOffset",
       desc: "Offset of EN_SRAM_IFETCH",
       type: "int",
-      default: "1600",
+      default: "1728",
       local: "true"
     },
     { name: "EnSramIfetchSize",
@@ -396,7 +432,7 @@
     { name: "EnCsrngSwAppReadOffset",
       desc: "Offset of EN_CSRNG_SW_APP_READ",
       type: "int",
-      default: "1601",
+      default: "1729",
       local: "true"
     },
     { name: "EnCsrngSwAppReadSize",
@@ -408,7 +444,7 @@
     { name: "EnEntropySrcFwReadOffset",
       desc: "Offset of EN_ENTROPY_SRC_FW_READ",
       type: "int",
-      default: "1602",
+      default: "1730",
       local: "true"
     },
     { name: "EnEntropySrcFwReadSize",
@@ -420,7 +456,7 @@
     { name: "EnEntropySrcFwOverOffset",
       desc: "Offset of EN_ENTROPY_SRC_FW_OVER",
       type: "int",
-      default: "1603",
+      default: "1731",
       local: "true"
     },
     { name: "EnEntropySrcFwOverSize",
@@ -652,6 +688,14 @@
   /////////////////////////////
 
   inter_signal_list: [
+    // OTP dedicated power connection from AST
+    { struct:  ""
+      type:    "io"
+      name:    "otp_ext_voltage_h"
+      act:     "none"
+      default: "'0"
+      package: "",
+    }
     // Power sequencing signals to AST
     { struct:  "otp_ast_req"
       type:    "uni"
@@ -689,6 +733,14 @@
       act:     "rsp"
       default: "'0"
       package: "pwrmgr_pkg"
+    }
+    // Macro-specific test signals to/from LC TAP
+    { struct:  "lc_otp_vendor_test"
+      type:    "req_rsp"
+      name:    "lc_otp_vendor_test"
+      act:     "rsp"
+      default: "'0"
+      package: "otp_ctrl_pkg"
     }
     // LC transition command
     { struct:  "lc_otp_program"
@@ -799,112 +851,120 @@
         swaccess: "ro",
         hwaccess: "hwo",
         hwext:    "true",
+        resval:   0,
         tags: [ // OTP internal HW can modify status register
                 "excl:CsrAllTests:CsrExclCheck"],
         fields: [
           { bits: "0"
-            name: "CREATOR_SW_CFG_ERROR"
+            name: "VENDOR_TEST_ERROR"
             desc: '''
                   Set to 1 if an error occurred in this partition.
                   If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
                   '''
           }
           { bits: "1"
-            name: "OWNER_SW_CFG_ERROR"
+            name: "CREATOR_SW_CFG_ERROR"
             desc: '''
                   Set to 1 if an error occurred in this partition.
                   If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
                   '''
           }
           { bits: "2"
-            name: "HW_CFG_ERROR"
+            name: "OWNER_SW_CFG_ERROR"
             desc: '''
                   Set to 1 if an error occurred in this partition.
                   If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
                   '''
           }
           { bits: "3"
-            name: "SECRET0_ERROR"
+            name: "HW_CFG_ERROR"
             desc: '''
                   Set to 1 if an error occurred in this partition.
                   If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
                   '''
           }
           { bits: "4"
-            name: "SECRET1_ERROR"
+            name: "SECRET0_ERROR"
             desc: '''
                   Set to 1 if an error occurred in this partition.
                   If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
                   '''
           }
           { bits: "5"
-            name: "SECRET2_ERROR"
+            name: "SECRET1_ERROR"
             desc: '''
                   Set to 1 if an error occurred in this partition.
                   If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
                   '''
           }
           { bits: "6"
-            name: "LIFE_CYCLE_ERROR"
+            name: "SECRET2_ERROR"
             desc: '''
                   Set to 1 if an error occurred in this partition.
                   If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
                   '''
           }
           { bits: "7"
+            name: "LIFE_CYCLE_ERROR"
+            desc: '''
+                  Set to 1 if an error occurred in this partition.
+                  If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
+                  '''
+          }
+          { bits: "8"
             name: "DAI_ERROR"
             desc: '''
                   Set to 1 if an error occurred in the DAI.
                   If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
                   '''
           }
-          { bits: "8"
+          { bits: "9"
             name: "LCI_ERROR"
             desc: '''
                   Set to 1 if an error occurred in the LCI.
                   If set to 1, SW should check the !!ERR_CODE register at the corresponding index.
                   '''
           }
-          { bits: "9"
+          { bits: "10"
             name: "TIMEOUT_ERROR"
             desc: '''
                   Set to 1 if an integrity or consistency check times out.
                   This raises an fatal_check_error alert and is an unrecoverable error condition.
                   '''
           }
-          { bits: "10"
+          { bits: "11"
             name: "LFSR_FSM_ERROR"
             desc: '''
                   Set to 1 if the LFSR timer FSM has reached an invalid state.
                   This raises an fatal_check_error alert and is an unrecoverable error condition.
                   '''
           }
-          { bits: "11"
+          { bits: "12"
             name: "SCRAMBLING_FSM_ERROR"
             desc: '''
                   Set to 1 if the scrambling datapath FSM has reached an invalid state.
                   This raises an fatal_check_error alert and is an unrecoverable error condition.
                   '''
           }
-          { bits: "12"
+          { bits: "13"
             name: "KEY_DERIV_FSM_ERROR"
             desc: '''
                   Set to 1 if the key derivation FSM has reached an invalid state.
                   This raises an fatal_check_error alert and is an unrecoverable error condition.
                   '''
           }
-          { bits: "13"
+          { bits: "14"
             name: "BUS_INTEG_ERROR"
             desc: '''
                   This bit is set to 1 if a fatal bus integrity fault is detected.
                   This error triggers a fatal_bus_integ_error alert.
                   '''
           }
-          { bits: "14"
+          { bits: "15"
             name: "DAI_IDLE"
             desc: "Set to 1 if the DAI is idle and ready to accept commands."
           }
-          { bits: "15"
+          { bits: "16"
             name: "CHECK_PENDING"
             desc: "Set to 1 if an integrity or consistency check triggered by the LFSR timer or via !!CHECK_TRIGGER is pending."
           }
@@ -925,6 +985,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "AGENT",
+          resval:    0,
           tags: [ // OTP internal HW can modify the error code registers
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [
@@ -1033,6 +1094,7 @@
         hwaccess: "hro",
         hwqe:     "true",
         hwext:    "true",
+        resval:   0,
         regwen:   "DIRECT_ACCESS_REGWEN",
         tags: [ // Write to DIRECT_ACCESS_CMD randomly might cause OTP_ERRORs and illegal sequences
                 "excl:CsrNonInitTests:CsrExclWrite"],
@@ -1067,6 +1129,7 @@
         swaccess: "rw",
         hwaccess: "hro",
         hwqe:     "false",
+        resval:   0,
         regwen:   "DIRECT_ACCESS_REGWEN",
         tags: [ // The enable register "DIRECT_ACCESS_REGWEN" is HW controlled,
                 // so not able to predict this register value automatically
@@ -1096,6 +1159,7 @@
           hwqe:     "false",
           regwen:   "DIRECT_ACCESS_REGWEN",
           cname:    "WORD",
+          resval:   0,
           tags: [ // The value of this register is written from "DIRECT_ACCESS_RDATA",
                   // so could not predict this register value automatically
                   "excl:CsrAllTests:CsrExclCheck"],
@@ -1116,6 +1180,7 @@
           hwaccess: "hwo",
           hwext:    "true",
           cname:    "WORD",
+          resval:   0,
           fields: [
             { bits: "31:0"
             }
@@ -1148,6 +1213,7 @@
         hwaccess: "hro",
         hwqe:     "true",
         hwext:    "true",
+        resval:   0,
         regwen:   "CHECK_TRIGGER_REGWEN",
         fields: [
           { bits: "0",
@@ -1257,6 +1323,26 @@
       ////////////////////////////////////
       // Dynamic Locks of SW Parititons //
       ////////////////////////////////////
+      { name: "VENDOR_TEST_READ_LOCK",
+        desc: '''
+              Runtime read lock for the VENDOR_TEST partition.
+              ''',
+        swaccess: "rw0c",
+        hwaccess: "hro",
+        regwen:   "DIRECT_ACCESS_REGWEN",
+        tags:     [ // The enable register "DIRECT_ACCESS_REGWEN" is HW controlled,
+                    // so not able to predict this register value automatically
+                    "excl:CsrNonInitTests:CsrExclCheck"],
+        fields: [
+          { bits:   "0",
+            desc: '''
+            When cleared to 0, read access to the VENDOR_TEST partition is locked.
+            Write 0 to clear this bit.
+            '''
+            resval: 1,
+          },
+        ]
+      },
       { name: "CREATOR_SW_CFG_READ_LOCK",
         desc: '''
               Runtime read lock for the CREATOR_SW_CFG partition.
@@ -1302,6 +1388,29 @@
       // Integrity Digests //
       ///////////////////////
       { multireg: {
+          name:     "VENDOR_TEST_DIGEST",
+          desc:     '''
+                    Integrity digest for the VENDOR_TEST partition.
+                    The integrity digest is 0 by default. Software must write this
+                    digest value via the direct access interface in order to lock the partition.
+                    After a reset, write access to the VENDOR_TEST partition is locked and
+                    the digest becomes visible in this CSR.
+                    ''',
+          count:     "NumDigestWords",
+          swaccess:  "ro",
+          hwaccess:  "hwo",
+          hwext:     "true",
+          cname:     "WORD",
+          resval:    0,
+          tags: [ // OTP internal HW will update status so can not auto-predict its value.
+                  "excl:CsrAllTests:CsrExclCheck"],
+          fields: [
+            { bits: "31:0"
+            }
+          ]
+        }
+      },
+      { multireg: {
           name:     "CREATOR_SW_CFG_DIGEST",
           desc:     '''
                     Integrity digest for the CREATOR_SW_CFG partition.
@@ -1315,6 +1424,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "WORD",
+          resval:    0,
           tags: [ // OTP internal HW will update status so can not auto-predict its value.
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [
@@ -1337,6 +1447,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "WORD",
+          resval:    0,
           tags: [ // OTP internal HW will update status so can not auto-predict its value.
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [
@@ -1357,6 +1468,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "WORD",
+          resval:    0,
           tags: [ // OTP internal HW will update status so can not auto-predict its value.
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [
@@ -1377,6 +1489,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "WORD",
+          resval:    0,
           tags: [ // OTP internal HW will update status so can not auto-predict its value.
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [
@@ -1397,6 +1510,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "WORD",
+          resval:    0,
           tags: [ // OTP internal HW will update status so can not auto-predict its value.
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [
@@ -1417,6 +1531,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "WORD",
+          resval:    0,
           tags: [ // OTP internal HW will update status so can not auto-predict its value.
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [

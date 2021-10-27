@@ -14,19 +14,19 @@ tl_device_t xbar_devices[$] = '{
         '{32'h00010000, 32'h00010fff}
     }},
     '{"rom_ctrl__rom", '{
-        '{32'h00008000, 32'h0000bfff}
+        '{32'h00008000, 32'h0000ffff}
     }},
     '{"rom_ctrl__regs", '{
         '{32'h411e0000, 32'h411e0fff}
-    }},
-    '{"eflash", '{
-        '{32'h20000000, 32'h200fffff}
     }},
     '{"flash_ctrl__core", '{
         '{32'h41000000, 32'h41000fff}
     }},
     '{"flash_ctrl__prim", '{
         '{32'h41008000, 32'h41008fff}
+    }},
+    '{"flash_ctrl__mem", '{
+        '{32'h20000000, 32'h200fffff}
     }},
     '{"hmac", '{
         '{32'h41110000, 32'h41110fff}
@@ -50,13 +50,13 @@ tl_device_t xbar_devices[$] = '{
         '{32'h41180000, 32'h41180fff}
     }},
     '{"rv_plic", '{
-        '{32'h41010000, 32'h41010fff}
+        '{32'h48000000, 32'h4fffffff}
     }},
     '{"otbn", '{
-        '{32'h411d0000, 32'h411dffff}
+        '{32'h41130000, 32'h4113ffff}
     }},
     '{"keymgr", '{
-        '{32'h41130000, 32'h41130fff}
+        '{32'h41140000, 32'h41140fff}
     }},
     '{"rv_core_ibex__cfg", '{
         '{32'h411f0000, 32'h411f0fff}
@@ -133,7 +133,7 @@ tl_device_t xbar_devices[$] = '{
     '{"lc_ctrl", '{
         '{32'h40140000, 32'h40140fff}
     }},
-    '{"sensor_ctrl_aon", '{
+    '{"sensor_ctrl", '{
         '{32'h40490000, 32'h40490fff}
     }},
     '{"alert_handler", '{
@@ -164,7 +164,7 @@ tl_host_t xbar_hosts[$] = '{
         "rom_ctrl__rom",
         "rv_dm__rom",
         "sram_ctrl_main__ram",
-        "eflash"}}
+        "flash_ctrl__mem"}}
     ,
     '{"rv_core_ibex__cored", 1, '{
         "rom_ctrl__rom",
@@ -172,7 +172,6 @@ tl_host_t xbar_hosts[$] = '{
         "rv_dm__rom",
         "rv_dm__regs",
         "sram_ctrl_main__ram",
-        "eflash",
         "uart0",
         "uart1",
         "uart2",
@@ -194,7 +193,7 @@ tl_host_t xbar_hosts[$] = '{
         "otp_ctrl__core",
         "otp_ctrl__prim",
         "lc_ctrl",
-        "sensor_ctrl_aon",
+        "sensor_ctrl",
         "alert_handler",
         "ast",
         "sram_ctrl_ret_aon__ram",
@@ -205,6 +204,7 @@ tl_host_t xbar_hosts[$] = '{
         "pwm_aon",
         "flash_ctrl__core",
         "flash_ctrl__prim",
+        "flash_ctrl__mem",
         "aes",
         "entropy_src",
         "csrng",
@@ -223,7 +223,6 @@ tl_host_t xbar_hosts[$] = '{
         "rom_ctrl__regs",
         "rv_dm__regs",
         "sram_ctrl_main__ram",
-        "eflash",
         "uart0",
         "uart1",
         "uart2",
@@ -245,7 +244,7 @@ tl_host_t xbar_hosts[$] = '{
         "otp_ctrl__core",
         "otp_ctrl__prim",
         "lc_ctrl",
-        "sensor_ctrl_aon",
+        "sensor_ctrl",
         "alert_handler",
         "ast",
         "sram_ctrl_ret_aon__ram",
@@ -256,6 +255,7 @@ tl_host_t xbar_hosts[$] = '{
         "pwm_aon",
         "flash_ctrl__core",
         "flash_ctrl__prim",
+        "flash_ctrl__mem",
         "aes",
         "entropy_src",
         "csrng",

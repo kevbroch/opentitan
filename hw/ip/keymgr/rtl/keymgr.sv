@@ -29,6 +29,7 @@ module keymgr
 ) (
   input clk_i,
   input rst_ni,
+  input rst_shadowed_ni,
   input clk_edn_i,
   input rst_edn_ni,
 
@@ -88,6 +89,7 @@ module keymgr
   keymgr_reg_top u_reg (
     .clk_i,
     .rst_ni,
+    .rst_shadowed_ni,
     .tl_i,
     .tl_o,
     .reg2hw,
@@ -140,6 +142,7 @@ module keymgr
   logic [LfsrWidth-1:0] seed;
   logic reseed_req;
   logic reseed_ack;
+  logic reseed_cnt_err;
 
   keymgr_reseed_ctrl u_reseed_ctrl (
     .clk_i,
@@ -152,7 +155,8 @@ module keymgr
     .edn_o,
     .edn_i,
     .seed_en_o(seed_en),
-    .seed_o(seed)
+    .seed_o(seed),
+    .cnt_err_o(reseed_cnt_err)
   );
 
   logic [63:0] lfsr;
@@ -195,6 +199,7 @@ module keymgr
   /////////////////////////////////////
 
   keymgr_stage_e stage_sel;
+  logic invalid_stage_sel;
   keymgr_gen_out_e key_sel;
   logic adv_en, id_en, gen_en;
   logic wipe_key;
@@ -214,12 +219,11 @@ module keymgr
   logic [FaultLastPos-1:0] fault_code;
   logic sw_binding_unlock;
   logic [CdiWidth-1:0] cdi_sel;
+  logic sideload_fsm_err;
 
   for (genvar i = 0; i < Shares; i++) begin : gen_truncate_data
     assign kmac_data_truncated[i] = kmac_data[i][KeyWidth-1:0];
   end
-
-  logic ctrl_state_intg_err;
 
   keymgr_ctrl #(
     .KmacEnMasking(KmacEnMasking)
@@ -228,8 +232,10 @@ module keymgr
     .rst_ni,
     .en_i(lc_keymgr_en[KeyMgrEnCtrl] == lc_ctrl_pkg::On),
     .regfile_intg_err_i(regfile_intg_err),
-    .shadowed_err_i(shadowed_storage_err),
-    .state_intg_err_o(ctrl_state_intg_err),
+    .shadowed_update_err_i(shadowed_update_err),
+    .shadowed_storage_err_i(shadowed_storage_err),
+    .reseed_cnt_err_i(reseed_cnt_err),
+    .sideload_fsm_err_i(sideload_fsm_err),
     .prng_reseed_req_o(reseed_req),
     .prng_reseed_ack_i(reseed_ack),
     .prng_en_o(ctrl_lfsr_en),
@@ -249,6 +255,7 @@ module keymgr
     .root_key_i(otp_key_i),
     .hw_sel_o(key_sel),
     .stage_sel_o(stage_sel),
+    .invalid_stage_sel_o(invalid_stage_sel),
     .cdi_sel_o(cdi_sel),
     .wipe_key_o(wipe_key),
     .adv_en_o(adv_en),
@@ -274,12 +281,10 @@ module keymgr
   logic cfg_regwen;
 
   // key manager registers cannot be changed once an operation starts
-  keymgr_cfg_en #(
-    .NonInitClr(1'b1) // clear has effect even when non-init
-  ) u_cfgen (
+  keymgr_cfg_en u_cfgen (
     .clk_i,
     .rst_ni,
-    .init_i(init),
+    .init_i(1'b1), // cfg_regwen does not care about init
     .en_i(lc_keymgr_en[KeyMgrEnCfgEn] == lc_ctrl_pkg::On),
     .set_i(reg2hw.control.start.q & op_done),
     .clr_i(reg2hw.control.start.q),
@@ -288,13 +293,9 @@ module keymgr
 
   assign hw2reg.cfg_regwen.d = cfg_regwen;
 
-  logic sw_binding_set;
+
   logic sw_binding_clr;
   logic sw_binding_regwen;
-
-  // set on a successful advance
-  assign sw_binding_set = reg2hw.control.operation.q == OpAdvance &
-                          sw_binding_unlock;
 
   // this is w0c
   assign sw_binding_clr = reg2hw.sw_binding_regwen.qe & ~reg2hw.sw_binding_regwen.q;
@@ -302,13 +303,13 @@ module keymgr
   // software clears the enable
   // hardware restores it upon successful advance
   keymgr_cfg_en #(
-    .NonInitClr(1'b0)  // clear has no effect until init
+    .NonInitClr(1'b1)  // clear has an effect regardless of init state
   ) u_sw_binding_regwen (
     .clk_i,
     .rst_ni,
     .init_i(init),
     .en_i(lc_keymgr_en[KeyMgrEnSwBindingEn] == lc_ctrl_pkg::On),
-    .set_i(sw_binding_set),
+    .set_i(sw_binding_unlock),
     .clr_i(sw_binding_clr),
     .out_o(sw_binding_regwen)
   );
@@ -398,10 +399,10 @@ module keymgr
                        cipher_sel == Kmac ? RndCnstKmacSeed :
                        cipher_sel == Otbn ? RndCnstOtbnSeed : RndCnstNoneSeed;
   assign output_key = (key_sel == HwKey) ? RndCnstHardOutputSeed : RndCnstSoftOutputSeed;
-  assign gen_in = (stage_sel == Disable) ? {GenLfsrCopies{lfsr[31:0]}} : {reg2hw.key_version,
-                                                                          reg2hw.salt,
-                                                                          cipher_seed,
-                                                                          output_key};
+  assign gen_in = invalid_stage_sel ? {GenLfsrCopies{lfsr[31:0]}} : {reg2hw.key_version,
+                                                                     reg2hw.salt,
+                                                                     cipher_seed,
+                                                                     output_key};
 
   // Advance state operation input construction
   for (genvar i = KeyMgrStages; i < 2**StageWidth; i++) begin : gen_key_version_fill
@@ -487,16 +488,38 @@ module keymgr
     .prng_en_o(sideload_lfsr_en),
     .aes_key_o,
     .otbn_key_o,
-    .kmac_key_o
+    .kmac_key_o,
+    .fsm_err_o(sideload_fsm_err)
   );
 
   for (genvar i = 0; i < 8; i++) begin : gen_sw_assigns
-    assign hw2reg.sw_share0_output[i].d  = ~data_en | wipe_key ? data_rand[0] :
-                                                                 kmac_data[0][i*32 +: 32];
-    assign hw2reg.sw_share1_output[i].d  = ~data_en | wipe_key ? data_rand[1] :
-                                                                 kmac_data[1][i*32 +: 32];
-    assign hw2reg.sw_share0_output[i].de = wipe_key | data_valid & (key_sel == SwKey);
-    assign hw2reg.sw_share1_output[i].de = wipe_key | data_valid & (key_sel == SwKey);
+    prim_sec_anchor_buf #(
+     .Width(32)
+    ) u_prim_buf_share0_d (
+      .in_i(~data_en | wipe_key ? data_rand[0] : kmac_data[0][i*32 +: 32]),
+      .out_o(hw2reg.sw_share0_output[i].d)
+    );
+
+    prim_sec_anchor_buf #(
+     .Width(32)
+    ) u_prim_buf_share1_d (
+      .in_i(~data_en | wipe_key ? data_rand[1] : kmac_data[1][i*32 +: 32]),
+      .out_o(hw2reg.sw_share1_output[i].d)
+    );
+
+    prim_sec_anchor_buf #(
+     .Width(1)
+    ) u_prim_buf_share0_de (
+      .in_i(wipe_key | data_valid & (key_sel == SwKey)),
+      .out_o(hw2reg.sw_share0_output[i].de)
+    );
+
+    prim_sec_anchor_buf #(
+     .Width(1)
+    ) u_prim_buf_share1_de (
+      .in_i(wipe_key | data_valid & (key_sel == SwKey)),
+      .out_o(hw2reg.sw_share1_output[i].de)
+    );
   end
 
   /////////////////////////////////////
@@ -516,37 +539,33 @@ module keymgr
     .intr_o                 (intr_op_done_o)
   );
 
-  assign hw2reg.err_code.invalid_op.d             = reg2hw.err_code.invalid_op.q  |
-                                                    err_code[ErrInvalidOp];
-  assign hw2reg.err_code.invalid_states.d         = reg2hw.err_code.invalid_states.q |
-                                                    err_code[ErrInvalidStates];
-  assign hw2reg.err_code.invalid_kmac_input.d     = reg2hw.err_code.invalid_kmac_input.q |
-                                                    err_code[ErrInvalidIn];
-  assign hw2reg.err_code.invalid_kmac_data.d      = reg2hw.err_code.invalid_kmac_data.q |
-                                                    err_code[ErrInvalidOut];
-  assign hw2reg.err_code.invalid_shadow_update.d  = reg2hw.err_code.invalid_shadow_update.q |
-                                                    shadowed_update_err;
-  assign hw2reg.err_code.invalid_op.de            = 1'b1;
-  assign hw2reg.err_code.invalid_states.de        = 1'b1;
-  assign hw2reg.err_code.invalid_kmac_input.de    = 1'b1;
-  assign hw2reg.err_code.invalid_kmac_data.de     = 1'b1;
-  assign hw2reg.err_code.invalid_shadow_update.de = 1'b1;
+  assign hw2reg.err_code.invalid_op.d             = 1'b1;
+  assign hw2reg.err_code.invalid_kmac_input.d     = 1'b1;
+  assign hw2reg.err_code.invalid_shadow_update.d  = 1'b1;
+  assign hw2reg.err_code.invalid_op.de            = err_code[ErrInvalidOp];
+  assign hw2reg.err_code.invalid_kmac_input.de    = err_code[ErrInvalidIn];
+  assign hw2reg.err_code.invalid_shadow_update.de = err_code[ErrShadowUpdate];
 
-  // detailed breakdown of the invalid_states field above
-  assign hw2reg.fault_status.cmd.d             = fault_code[FaultCmd];
-  assign hw2reg.fault_status.kmac_fsm.d        = fault_code[FaultKmacFsm];
-  assign hw2reg.fault_status.kmac_op.d         = fault_code[FaultKmacOp];
-  assign hw2reg.fault_status.regfile_intg.d    = fault_code[FaultRegFileIntg];
-  assign hw2reg.fault_status.shadow.d          = fault_code[FaultShadow];
-  assign hw2reg.fault_status.ctrl_fsm_intg.d   = fault_code[FaultCtrlFsm];
-  assign hw2reg.fault_status.ctrl_fsm_cnt.d    = fault_code[FaultCtrlCnt];
-  assign hw2reg.fault_status.cmd.de            = 1'b1;
-  assign hw2reg.fault_status.kmac_fsm.de       = 1'b1;
-  assign hw2reg.fault_status.kmac_op.de        = 1'b1;
-  assign hw2reg.fault_status.regfile_intg.de   = 1'b1;
-  assign hw2reg.fault_status.ctrl_fsm_intg.de  = 1'b1;
-  assign hw2reg.fault_status.shadow.de         = 1'b1;
-  assign hw2reg.fault_status.ctrl_fsm_cnt.de   = 1'b1;
+  assign hw2reg.fault_status.cmd.de           = fault_code[FaultKmacCmd];
+  assign hw2reg.fault_status.kmac_fsm.de      = fault_code[FaultKmacFsm];
+  assign hw2reg.fault_status.kmac_op.de       = fault_code[FaultKmacOp];
+  assign hw2reg.fault_status.kmac_out.de      = fault_code[FaultKmacOut];
+  assign hw2reg.fault_status.regfile_intg.de  = fault_code[FaultRegIntg];
+  assign hw2reg.fault_status.shadow.de        = fault_code[FaultShadow];
+  assign hw2reg.fault_status.ctrl_fsm_intg.de = fault_code[FaultCtrlFsm];
+  assign hw2reg.fault_status.ctrl_fsm_cnt.de  = fault_code[FaultCtrlCnt];
+  assign hw2reg.fault_status.reseed_cnt.de    = fault_code[FaultReseedCnt];
+  assign hw2reg.fault_status.side_ctrl_fsm.de = fault_code[FaultSideFsm];
+  assign hw2reg.fault_status.cmd.d            = 1'b1;
+  assign hw2reg.fault_status.kmac_fsm.d       = 1'b1;
+  assign hw2reg.fault_status.kmac_op.d        = 1'b1;
+  assign hw2reg.fault_status.kmac_out.d       = 1'b1;
+  assign hw2reg.fault_status.regfile_intg.d   = 1'b1;
+  assign hw2reg.fault_status.ctrl_fsm_intg.d  = 1'b1;
+  assign hw2reg.fault_status.shadow.d         = 1'b1;
+  assign hw2reg.fault_status.ctrl_fsm_cnt.d   = 1'b1;
+  assign hw2reg.fault_status.reseed_cnt.d     = 1'b1;
+  assign hw2reg.fault_status.side_ctrl_fsm.d  = 1'b1;
 
   // There are two types of alerts
   // - alerts for hardware errors, these could not have been generated by software.
@@ -555,19 +574,13 @@ module keymgr
   logic fault_errs, fault_err_req_q, fault_err_req_d, fault_err_ack;
   logic op_errs, op_err_req_q, op_err_req_d, op_err_ack;
 
-  // Error code fatal faults occur only when keymgr operation is actually invoked.
-  // The regfile and state integrity errors are more persistent / structural issues,
-  // thus they cause both the operational faults to occur and are also sent directly.
-  assign fault_errs = err_code[ErrInvalidOut]    |
-                      err_code[ErrInvalidStates] |
-                      regfile_intg_err           |
-                      ctrl_state_intg_err        |
-                      shadowed_storage_err;
+  // Fault status can happen independently of any operation
+  assign fault_errs = |reg2hw.fault_status;
 
   assign fault_err_req_d = fault_errs    ? 1'b1 :
                            fault_err_ack ? 1'b0 : fault_err_req_q;
 
-  assign op_errs = err_code[ErrInvalidOp] | err_code[ErrInvalidIn] | shadowed_update_err;
+  assign op_errs = |err_code;
   assign op_err_req_d = op_errs    ? 1'b1 :
                         op_err_ack ? 1'b0 : op_err_req_q;
 
@@ -632,7 +645,14 @@ module keymgr
   // Both modules must be consistent with regards to masking assumptions
   logic unused_kmac_en_masking;
   assign unused_kmac_en_masking = kmac_en_masking_i;
-  `ASSERT_INIT(KmacMaskCheck_A, KmacEnMasking == kmac_en_masking_i)
 
+  // Exclude this assertion check from FPV testbench to avoid compilation error
+  `ifndef FPV_ON
+    `ASSERT_INIT(KmacMaskCheck_A, KmacEnMasking == kmac_en_masking_i)
+  `endif
+
+  // Ensure all parameters are consistent
+  `ASSERT_INIT(FaultCntMatch_A, FaultLastPos == AsyncFaultLastIdx + SyncFaultLastIdx)
+  `ASSERT_INIT(ErrCntMatch_A, ErrLastPos == AsyncErrLastIdx + SyncErrLastIdx)
 
 endmodule // keymgr

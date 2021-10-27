@@ -25,7 +25,15 @@ package pwrmgr_env_pkg;
   parameter string LIST_OF_ALERTS[] = {"fatal_fault"};
 
   // types
-  typedef struct {
+  typedef enum int {
+    WakeupSysrst,
+    WakeupDbgCable,
+    WakeupAon,
+    WakeupUsb,
+    WakeupAonTimer
+  } wakeup_e;
+
+  typedef struct packed {
     logic core_clk_en;
     logic io_clk_en;
     logic usb_clk_en_lp;

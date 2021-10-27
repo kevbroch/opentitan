@@ -32,6 +32,16 @@
 #define TOP_EARLGREY_RAM_RET_AON_SIZE_BYTES 0x1000
 
 /**
+ * Memory base for flash_ctrl_eflash in top earlgrey.
+ */
+#define TOP_EARLGREY_EFLASH_BASE_ADDR 0x20000000
+
+/**
+ * Memory size for flash_ctrl_eflash in top earlgrey.
+ */
+#define TOP_EARLGREY_EFLASH_SIZE_BYTES 0x100000
+
+/**
  * Memory base for sram_ctrl_main_ram_main in top earlgrey.
  */
 #define TOP_EARLGREY_RAM_MAIN_BASE_ADDR 0x10000000
@@ -49,18 +59,8 @@
 /**
  * Memory size for rom_ctrl_rom in top earlgrey.
  */
-#define TOP_EARLGREY_ROM_SIZE_BYTES 0x4000
+#define TOP_EARLGREY_ROM_SIZE_BYTES 0x8000
 
-
-/**
- * Memory base address for eflash in top earlgrey.
- */
-#define TOP_EARLGREY_EFLASH_BASE_ADDR 0x20000000
-
-/**
- * Memory size for eflash in top earlgrey.
- */
-#define TOP_EARLGREY_EFLASH_SIZE_BYTES 0x100000
 
 
 /**
@@ -253,12 +253,12 @@
  */
 #define TOP_EARLGREY_AST_BASE_ADDR 0x40480000
 /**
- * Peripheral base address for sensor_ctrl_aon in top earlgrey.
+ * Peripheral base address for sensor_ctrl in top earlgrey.
  *
  * This should be used with #mmio_region_from_addr to access the memory-mapped
  * registers associated with the peripheral (usually via a DIF).
  */
-#define TOP_EARLGREY_SENSOR_CTRL_AON_BASE_ADDR 0x40490000
+#define TOP_EARLGREY_SENSOR_CTRL_BASE_ADDR 0x40490000
 /**
  * Peripheral base address for regs device on sram_ctrl_ret_aon in top earlgrey.
  *
@@ -288,6 +288,13 @@
  */
 #define TOP_EARLGREY_FLASH_CTRL_PRIM_BASE_ADDR 0x41008000
 /**
+ * Peripheral base address for mem device on flash_ctrl in top earlgrey.
+ *
+ * This should be used with #mmio_region_from_addr to access the memory-mapped
+ * registers associated with the peripheral (usually via a DIF).
+ */
+#define TOP_EARLGREY_FLASH_CTRL_MEM_BASE_ADDR 0x20000000
+/**
  * Peripheral base address for regs device on rv_dm in top earlgrey.
  *
  * This should be used with #mmio_region_from_addr to access the memory-mapped
@@ -307,7 +314,7 @@
  * This should be used with #mmio_region_from_addr to access the memory-mapped
  * registers associated with the peripheral (usually via a DIF).
  */
-#define TOP_EARLGREY_RV_PLIC_BASE_ADDR 0x41010000
+#define TOP_EARLGREY_RV_PLIC_BASE_ADDR 0x48000000
 /**
  * Peripheral base address for aes in top earlgrey.
  *
@@ -330,12 +337,19 @@
  */
 #define TOP_EARLGREY_KMAC_BASE_ADDR 0x41120000
 /**
+ * Peripheral base address for otbn in top earlgrey.
+ *
+ * This should be used with #mmio_region_from_addr to access the memory-mapped
+ * registers associated with the peripheral (usually via a DIF).
+ */
+#define TOP_EARLGREY_OTBN_BASE_ADDR 0x41130000
+/**
  * Peripheral base address for keymgr in top earlgrey.
  *
  * This should be used with #mmio_region_from_addr to access the memory-mapped
  * registers associated with the peripheral (usually via a DIF).
  */
-#define TOP_EARLGREY_KEYMGR_BASE_ADDR 0x41130000
+#define TOP_EARLGREY_KEYMGR_BASE_ADDR 0x41140000
 /**
  * Peripheral base address for csrng in top earlgrey.
  *
@@ -378,13 +392,6 @@
  * registers associated with the peripheral (usually via a DIF).
  */
 #define TOP_EARLGREY_SRAM_CTRL_MAIN_RAM_BASE_ADDR 0x10000000
-/**
- * Peripheral base address for otbn in top earlgrey.
- *
- * This should be used with #mmio_region_from_addr to access the memory-mapped
- * registers associated with the peripheral (usually via a DIF).
- */
-#define TOP_EARLGREY_OTBN_BASE_ADDR 0x411D0000
 /**
  * Peripheral base address for regs device on rom_ctrl in top earlgrey.
  *

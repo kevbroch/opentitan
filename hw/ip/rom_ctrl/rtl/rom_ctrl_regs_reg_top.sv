@@ -9,7 +9,6 @@
 module rom_ctrl_regs_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -132,7 +131,6 @@ module rom_ctrl_regs_reg_top (
 
   // Register instances
   // R[alert_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_alert_test (
@@ -148,7 +146,6 @@ module rom_ctrl_regs_reg_top (
 
 
   // R[fatal_alert_cause]: V(False)
-
   //   F[checker_error]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -173,7 +170,6 @@ module rom_ctrl_regs_reg_top (
     // to register interface (read)
     .qs     (fatal_alert_cause_checker_error_qs)
   );
-
 
   //   F[integrity_error]: 1:1
   prim_subreg #(
@@ -201,10 +197,8 @@ module rom_ctrl_regs_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg digest
   // R[digest_0]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -229,9 +223,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (digest_0_qs)
   );
 
+
   // Subregister 1 of Multireg digest
   // R[digest_1]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -256,9 +250,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (digest_1_qs)
   );
 
+
   // Subregister 2 of Multireg digest
   // R[digest_2]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -283,9 +277,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (digest_2_qs)
   );
 
+
   // Subregister 3 of Multireg digest
   // R[digest_3]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -310,9 +304,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (digest_3_qs)
   );
 
+
   // Subregister 4 of Multireg digest
   // R[digest_4]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -337,9 +331,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (digest_4_qs)
   );
 
+
   // Subregister 5 of Multireg digest
   // R[digest_5]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -364,9 +358,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (digest_5_qs)
   );
 
+
   // Subregister 6 of Multireg digest
   // R[digest_6]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -391,9 +385,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (digest_6_qs)
   );
 
+
   // Subregister 7 of Multireg digest
   // R[digest_7]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -419,10 +413,8 @@ module rom_ctrl_regs_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg exp_digest
   // R[exp_digest_0]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -447,9 +439,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (exp_digest_0_qs)
   );
 
+
   // Subregister 1 of Multireg exp_digest
   // R[exp_digest_1]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -474,9 +466,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (exp_digest_1_qs)
   );
 
+
   // Subregister 2 of Multireg exp_digest
   // R[exp_digest_2]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -501,9 +493,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (exp_digest_2_qs)
   );
 
+
   // Subregister 3 of Multireg exp_digest
   // R[exp_digest_3]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -528,9 +520,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (exp_digest_3_qs)
   );
 
+
   // Subregister 4 of Multireg exp_digest
   // R[exp_digest_4]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -555,9 +547,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (exp_digest_4_qs)
   );
 
+
   // Subregister 5 of Multireg exp_digest
   // R[exp_digest_5]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -582,9 +574,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (exp_digest_5_qs)
   );
 
+
   // Subregister 6 of Multireg exp_digest
   // R[exp_digest_6]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -609,9 +601,9 @@ module rom_ctrl_regs_reg_top (
     .qs     (exp_digest_6_qs)
   );
 
+
   // Subregister 7 of Multireg exp_digest
   // R[exp_digest_7]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -635,7 +627,6 @@ module rom_ctrl_regs_reg_top (
     // to register interface (read)
     .qs     (exp_digest_7_qs)
   );
-
 
 
 
@@ -773,12 +764,18 @@ module rom_ctrl_regs_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

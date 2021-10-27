@@ -25,52 +25,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "sw/device/lib/base/macros.h"
 #include "sw/device/lib/base/mmio.h"
-#include "sw/device/lib/dif/dif_warn_unused_result.h"
+#include "sw/device/lib/dif/dif_base.h"
+
+#include "sw/device/lib/dif/autogen/dif_pinmux_autogen.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
-
-/**
- * A toggle state: enabled, or disabled.
- *
- * This enum may be used instead of a `bool` when describing an enabled/disabled
- * state.
- */
-typedef enum dif_pinmux_toggle {
-  /**
-   * The "enabled" state.
-   */
-  kDifPinmuxToggleEnabled,
-  /**
-   * The "disabled" state.
-   */
-  kDifPinmuxToggleDisabled,
-} dif_pinmux_toggle_t;
-
-/**
- * Hardware instantiation parameters for a Pin Multiplexer.
- *
- * This struct describes information about the underlying hardware that is
- * not determined until the hardware design is used as part of a top-level
- * design.
- */
-typedef struct dif_pinmux_params {
-  /**
-   * The base address for the a Pin Multiplexer hardware registers.
-   */
-  mmio_region_t base_addr;
-} dif_pinmux_params_t;
-
-/**
- * A handle to a Pin Multiplexer.
- *
- * This type should be treated as opaque by users.
- */
-typedef struct dif_pinmux {
-  dif_pinmux_params_t params;
-} dif_pinmux_t;
 
 /**
  * Pin Multiplexer Padring pad kinds.
@@ -220,7 +183,7 @@ typedef struct dif_pinmux_wakeup_config {
    * Signal filter - signal must be stable for 4 always-on clock cycles
    * before the value is being forwarded. can be used for debouncing.
    */
-  dif_pinmux_toggle_t signal_filter;
+  dif_toggle_t signal_filter;
   /**
    * Pad type (MIO or DIO) to enable the wake-up detection for.
    */
@@ -306,40 +269,6 @@ typedef struct dif_pinmux_wakeup_timed_config {
 } dif_pinmux_wakeup_timed_config_t;
 
 /**
- * The result of a Pin Multiplexer operation.
- */
-typedef enum dif_pinmux_result {
-  /**
-   * Indicates that the operation succeeded.
-   */
-  kDifPinmuxOk = 0,
-  /**
-   * Indicates some unspecified failure.
-   */
-  kDifPinmuxError = 1,
-  /**
-   * Indicates that some parameter passed into a function failed a
-   * precondition.
-   *
-   * When this value is returned, no hardware operations occurred.
-   */
-  kDifPinmuxBadArg = 2,
-} dif_pinmux_result_t;
-
-/**
- * Creates a new handle for a Pin Multiplexer.
- *
- * This function does not actuate the hardware.
- *
- * @param params Hardware instantiation parameters.
- * @param[out] pinmux Out param for the initialized handle.
- * @return The result of the operation.
- */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_result_t dif_pinmux_init(dif_pinmux_params_t params,
-                                    dif_pinmux_t *pinmux);
-
-/**
  * Locks out Pin Multiplexer functionality based on the `target` and `index`.
  *
  * This function allows for a fine grained locking of the Pin Multiplexer
@@ -358,10 +287,10 @@ dif_pinmux_result_t dif_pinmux_init(dif_pinmux_params_t params,
  * @param target Target functionality to be locked.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_result_t dif_pinmux_lock(const dif_pinmux_t *pinmux,
-                                    dif_pinmux_index_t index,
-                                    dif_pinmux_lock_target_t target);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_lock(const dif_pinmux_t *pinmux,
+                             dif_pinmux_index_t index,
+                             dif_pinmux_lock_target_t target);
 
 /**
  * Obtains the Pin Multiplexer Pad lock status based on `target` and `index`.
@@ -374,37 +303,11 @@ dif_pinmux_result_t dif_pinmux_lock(const dif_pinmux_t *pinmux,
  * @param[out] is_locked Out-param for the locked state.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_result_t dif_pinmux_is_locked(const dif_pinmux_t *pinmux,
-                                         dif_pinmux_index_t index,
-                                         dif_pinmux_lock_target_t target,
-                                         bool *is_locked);
-
-/**
- * The result of a Pin Multiplexer input or output select operations.
- */
-typedef enum dif_pinmux_select_result {
-  /**
-   * Indicates that the operation succeeded.
-   */
-  kDifPinmuxSelectOk = kDifPinmuxOk,
-  /**
-   * Indicates some unspecified failure.
-   */
-  kDifPinmuxSelectError = kDifPinmuxError,
-  /**
-   * Indicates that some parameter passed into a function failed a
-   * precondition.
-   *
-   * When this value is returned, no hardware operations occurred.
-   */
-  kDifPinmuxSelectBadArg = kDifPinmuxBadArg,
-
-  /**
-   * Indicates that the operation is not permitted (locked).
-   */
-  kDifPinmuxSelectLocked,
-} dif_pinmux_select_result_t;
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_is_locked(const dif_pinmux_t *pinmux,
+                                  dif_pinmux_index_t index,
+                                  dif_pinmux_lock_target_t target,
+                                  bool *is_locked);
 
 /**
  * Sets a connection between a peripheral input and a MIO pad input.
@@ -417,10 +320,10 @@ typedef enum dif_pinmux_select_result {
  *              a peripheral input.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_select_result_t dif_pinmux_input_select(
-    const dif_pinmux_t *pinmux, dif_pinmux_index_t peripheral_input,
-    dif_pinmux_index_t insel);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_input_select(const dif_pinmux_t *pinmux,
+                                     dif_pinmux_index_t peripheral_input,
+                                     dif_pinmux_index_t insel);
 
 /**
  * Sets a connection between a MIO pad output and peripheral output.
@@ -433,33 +336,10 @@ dif_pinmux_select_result_t dif_pinmux_input_select(
  *               connected to a MIO pad output.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_select_result_t dif_pinmux_output_select(
-    const dif_pinmux_t *pinmux, dif_pinmux_index_t mio_pad_output,
-    dif_pinmux_index_t outsel);
-
-/**
- * Pin Multiplexer Padring pad attributes write error codes.
- */
-typedef enum dif_pinmux_pad_write_attrs_result {
-  kDifPinmuxPadWriteAttrsOk = kDifPinmuxOk,
-  kDifPinmuxPadWriteAttrsError = kDifPinmuxError,
-  kDifPinmuxPadWriteAttrsBadArg = kDifPinmuxBadArg,
-  /**
-   * Peripheral is locked and attributes cannot be changed. Only a read has been
-   * performed and this error is recoverable but any operation that writes to
-   * the registers will fail.
-   */
-  kDifPinmuxPadWriteAttrsLocked,
-  /**
-   * Attribute change failed because it would result in conflicting attributes
-   * with another already enabled attribute. The change can be re-attempted with
-   * different bits. This could also occur if the attribute register already
-   * contained a conflicting set of attributes (e.g. because they have been
-   * written outside of the DIF with conflicting values).
-   */
-  kDifPinmuxPadWriteAttrsConflict,
-} dif_pinmux_pad_write_attrs_result_t;
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_output_select(const dif_pinmux_t *pinmux,
+                                      dif_pinmux_index_t mio_pad_output,
+                                      dif_pinmux_index_t outsel);
 
 /**
  * Writes attributes for a pad.
@@ -486,10 +366,11 @@ typedef enum dif_pinmux_pad_write_attrs_result {
  *                       hardware.
  * @return The result of the operation.
  */
-dif_pinmux_pad_write_attrs_result_t dif_pinmux_pad_write_attrs(
-    const dif_pinmux_t *pinmux, dif_pinmux_index_t pad,
-    dif_pinmux_pad_kind_t type, dif_pinmux_pad_attr_t attrs_in,
-    dif_pinmux_pad_attr_t *attrs_out);
+dif_result_t dif_pinmux_pad_write_attrs(const dif_pinmux_t *pinmux,
+                                        dif_pinmux_index_t pad,
+                                        dif_pinmux_pad_kind_t type,
+                                        dif_pinmux_pad_attr_t attrs_in,
+                                        dif_pinmux_pad_attr_t *attrs_out);
 
 /**
  * Get attributes for a pad.
@@ -500,36 +381,10 @@ dif_pinmux_pad_write_attrs_result_t dif_pinmux_pad_write_attrs(
  * @param attrs[out] Obtained attributes.
  * @return The result of the operation.
  */
-dif_pinmux_result_t dif_pinmux_pad_get_attrs(const dif_pinmux_t *pinmux,
-                                             dif_pinmux_index_t pad,
-                                             dif_pinmux_pad_kind_t type,
-                                             dif_pinmux_pad_attr_t *attrs);
-
-/**
- * The result of a Pin Multiplexer enable/disable operations.
- */
-typedef enum dif_pinmux_toggle_result {
-  /**
-   * Indicates that the operation succeeded.
-   */
-  kDifPinmuxToggleOk = kDifPinmuxOk,
-  /**
-   * Indicates some unspecified failure.
-   */
-  kDifPinmuxToggleError = kDifPinmuxError,
-  /**
-   * Indicates that some parameter passed into a function failed a
-   * precondition.
-   *
-   * When this value is returned, no hardware operations occurred.
-   */
-  kDifPinmuxToggleBadArg = kDifPinmuxBadArg,
-
-  /**
-   * Indicates that the operation is not permitted (locked).
-   */
-  kDifPinmuxToggleLocked,
-} dif_pinmux_toggle_result_t;
+dif_result_t dif_pinmux_pad_get_attrs(const dif_pinmux_t *pinmux,
+                                      dif_pinmux_index_t pad,
+                                      dif_pinmux_pad_kind_t type,
+                                      dif_pinmux_pad_attr_t *attrs);
 
 /**
  * Enables deep sleep mode of a particular pad.
@@ -546,10 +401,11 @@ typedef enum dif_pinmux_toggle_result {
  * @param mode Pad deep sleep mode.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_toggle_result_t dif_pinmux_pad_sleep_enable(
-    const dif_pinmux_t *pinmux, dif_pinmux_index_t pad,
-    dif_pinmux_pad_kind_t type, dif_pinmux_sleep_mode_t mode);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_pad_sleep_enable(const dif_pinmux_t *pinmux,
+                                         dif_pinmux_index_t pad,
+                                         dif_pinmux_pad_kind_t type,
+                                         dif_pinmux_sleep_mode_t mode);
 
 /**
  * Disables deep sleep mode of a particular pad.
@@ -565,10 +421,10 @@ dif_pinmux_toggle_result_t dif_pinmux_pad_sleep_enable(
  * @param type Pad type (MIO or DIO).
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_toggle_result_t dif_pinmux_pad_sleep_disable(
-    const dif_pinmux_t *pinmux, dif_pinmux_index_t pad,
-    dif_pinmux_pad_kind_t type);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_pad_sleep_disable(const dif_pinmux_t *pinmux,
+                                          dif_pinmux_index_t pad,
+                                          dif_pinmux_pad_kind_t type);
 
 /**
  * Returns the state of a particular pad.
@@ -582,11 +438,11 @@ dif_pinmux_toggle_result_t dif_pinmux_pad_sleep_disable(
  * @param[out] in_sleep_mode Pad state, `true` when in deep sleep mode.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_result_t dif_pinmux_pad_sleep_get_state(const dif_pinmux_t *pinmux,
-                                                   dif_pinmux_index_t pad,
-                                                   dif_pinmux_pad_kind_t type,
-                                                   bool *in_sleep_mode);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_pad_sleep_get_state(const dif_pinmux_t *pinmux,
+                                            dif_pinmux_index_t pad,
+                                            dif_pinmux_pad_kind_t type,
+                                            bool *in_sleep_mode);
 
 /**
  * Clears deep sleep mode for a particular pad.
@@ -601,10 +457,10 @@ dif_pinmux_result_t dif_pinmux_pad_sleep_get_state(const dif_pinmux_t *pinmux,
  * @param type Padring pad type (MIO or DIO).
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_result_t dif_pinmux_pad_sleep_clear_state(
-    const dif_pinmux_t *pinmux, dif_pinmux_index_t pad,
-    dif_pinmux_pad_kind_t type);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_pad_sleep_clear_state(const dif_pinmux_t *pinmux,
+                                              dif_pinmux_index_t pad,
+                                              dif_pinmux_pad_kind_t type);
 
 /**
  * Enables edge triggered wake-up mode detection for a particular detector.
@@ -614,8 +470,8 @@ dif_pinmux_result_t dif_pinmux_pad_sleep_clear_state(
  * @param config A wake-up detector configuration.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_toggle_result_t dif_pinmux_wakeup_detector_enable_edge(
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_wakeup_detector_enable_edge(
     const dif_pinmux_t *pinmux, dif_pinmux_index_t detector,
     dif_pinmux_wakeup_edge_config_t config);
 
@@ -627,8 +483,8 @@ dif_pinmux_toggle_result_t dif_pinmux_wakeup_detector_enable_edge(
  * @param config A wake-up detector configuration.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_toggle_result_t dif_pinmux_wakeup_detector_enable_timed(
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_wakeup_detector_enable_timed(
     const dif_pinmux_t *pinmux, dif_pinmux_index_t detector,
     dif_pinmux_wakeup_timed_config_t config);
 
@@ -639,9 +495,9 @@ dif_pinmux_toggle_result_t dif_pinmux_wakeup_detector_enable_timed(
  * @param detector A detector index.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_toggle_result_t dif_pinmux_wakeup_detect_disable(
-    const dif_pinmux_t *pinmux, dif_pinmux_index_t detector);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_wakeup_detect_disable(const dif_pinmux_t *pinmux,
+                                              dif_pinmux_index_t detector);
 
 /**
  * Clears the wake-up cause information.
@@ -649,8 +505,8 @@ dif_pinmux_toggle_result_t dif_pinmux_wakeup_detect_disable(
  * @param pinmux A Pin Multiplexer handle.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_result_t dif_pinmux_wakeup_cause_clear(const dif_pinmux_t *pinmux);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_wakeup_cause_clear(const dif_pinmux_t *pinmux);
 
 /**
  * Retrieves the index of a detector that has triggered a wake-up event.
@@ -659,9 +515,9 @@ dif_pinmux_result_t dif_pinmux_wakeup_cause_clear(const dif_pinmux_t *pinmux);
  * @param detector[out] A detector index.
  * @return The result of the operation.
  */
-DIF_WARN_UNUSED_RESULT
-dif_pinmux_result_t dif_pinmux_wakeup_cause_get(const dif_pinmux_t *pinmux,
-                                                dif_pinmux_index_t *detector);
+OT_WARN_UNUSED_RESULT
+dif_result_t dif_pinmux_wakeup_cause_get(const dif_pinmux_t *pinmux,
+                                         dif_pinmux_index_t *detector);
 
 #ifdef __cplusplus
 }  // extern "C"

@@ -91,7 +91,7 @@ See the documentation for {{< otbnInsnRef "JAL" >}} and {{< otbnInsnRef "JALR" >
 The call stack has a maximum depth of 8 elements.
 Each instruction that reads from `x1` pops a single element from the stack.
 Each instruction that writes to `x1` pushes a single element onto the stack.
-An instruction that reads from an empty stack or writes to a full stack causes OTBN to stop, raising an alert and setting the `ErrBitCallStack` bit in the {{< regref "ERR_BITS" >}} register.
+An instruction that reads from an empty stack or writes to a full stack causes a `CALL_STACK` [software error](#design-details-errors).
 
 A single instruction can both read and write to the stack.
 In this case, the read is ordered before the write.
@@ -440,8 +440,8 @@ The full secure wipe mechanism is split into three parts:
 
 A secure wipe is performed automatically in certain situations, or can be requested manually by the host software.
 The full secure wipe is automatically initiated as a local reaction to a fatal error.
-A secure wipe of only the internal state is performed whenever an OTBN operation is completed and after a recoverable error.
-Finally, host software can manually trigger the data memory and instruction memory secure wipe operations by writing to the {{< regref "SEC_WIPE">}} register.
+A secure wipe of only the internal state is performed whenever an OTBN operation is complete and after a recoverable error.
+Finally, host software can manually trigger the data memory and instruction memory secure wipe operations by issuing an appropriate [command](#design-details-commands).
 
 Refer to the [Secure Wipe]({{<relref "#design-details-secure-wipe">}}) section for implementation details.
 
@@ -497,7 +497,7 @@ These access 256b-aligned 256b words.
 
 Both memories can be accessed through OTBN's register interface ({{< regref "DMEM" >}} and {{< regref "IMEM" >}}).
 These accesses are ignored if OTBN is busy.
-A host processor can check whether OTBN is busy by reading the {{< regref "STATUS.busy">}} flag.
+A host processor can check whether OTBN is busy by reading the {{< regref "STATUS">}} register.
 All memory accesses through the register interface must be word-aligned 32b word accesses.
 
 ### Random Numbers
@@ -505,13 +505,18 @@ All memory accesses through the register interface must be word-aligned 32b word
 OTBN is connected to the [Entropy Distribution Network (EDN)]({{< relref "hw/ip/edn/doc" >}}) which can provide random numbers via the `RND` and `URND` CSRs and WSRs.
 
 `RND` provides bits taken directly from the EDN connected via `edn_rnd`.
-As an EDN request can take time, `RND` is backed by a single-entry cache containing the result of the most recent EDN request.
+The EDN interface provides 32b of entropy per transaction and comes from a different clock domain to the OTBN core.
+A FIFO is used to synchronize the incoming package to the OTBN clock domain.
+Synchronized packages are then set starting from bottom up to a single `WLEN` value of 256b.
+In order to service a single EDN request, a total of 8 transactions are required from EDN interface.
+
+As an EDN request can take time, `RND` is backed by a single-entry cache containing the result of the most recent EDN request in OTBN core level.
 A read from `RND` empties this cache.
 A prefetch into the cache, which can be used to hide the EDN latency, is triggered on any write to the `RND_PREFETCH` CSR.
 Writes to `RND_PREFETCH` will be ignored whilst a prefetch is in progress or when the cache is already full.
 OTBN will stall until the request provides bits.
 Both the `RND` CSR and WSR take their bits from the same cache.
-`RND` CSR reads simply discard the other 192 bits on a read.
+`RND` CSR reads get bottom 32b and simply discard the other 192b on a read.
 When stalling on an `RND` read, OTBN will unstall on the cycle after it receives WLEN RND data from the EDN.
 
 `URND` provides bits from an LFSR within OTBN; reads from it never stall.
@@ -519,20 +524,76 @@ The `URND` LFSR is seeded once from the EDN connected via `edn_urnd` when OTBN s
 Each new execution of OTBN will reseed the `URND` LFSR.
 The LFSR state is advanced every cycle when OTBN is running.
 
-### Error Handling and Reporting {#design-details-error-handling-and-reporting}
+### Operational States {#design-details-operational-states}
 
-OTBN is able to detect a range of errors.
+<!--
+Source: https://docs.google.com/drawings/d/1C0D4UriRk5pKGFoFtAXYLcJ1oBG1BCDd2omCLPYHtr0/edit
+
+Download the SVG from Google Draw, open it in Inkscape once and save it without changes to add width/height information to the image.
+-->
+![OTBN operational states](otbn_operational_states.svg)
+
+OTBN can be in different operational states.
+OTBN is *busy* for as long it is performing an operation.
+OTBN is *locked* if a fatal error was observed.
+Otherwise OTBN is *idle*.
+
+The current operational state is reflected in the {{< regref "STATUS" >}} register.
+- If OTBN is idle, the {{< regref "STATUS" >}} register is set to `IDLE`.
+- If OTBN is busy, the {{< regref "STATUS" >}} register is set to one of the values starting with `BUSY_`.
+- If OTBN is locked, the {{< regref "STATUS" >}} register is set to `LOCKED`.
+
+OTBN transitions into the busy state as result of host software [issuing a command](#design-details-commands); OTBN is then said to perform an operation.
+OTBN transitions out of the busy state whenever the operation has completed.
+In the {{< regref "STATUS" >}} register the different `BUSY_*` values represent the operation that is currently being performed.
+
+A transition out of the busy state is signaled by the `done` interrupt ({{< regref "INTR_STATE.done" >}}).
+
+The locked state is a terminal state; transitioning out of it requires an OTBN reset.
+
+### Operations and Commands {#design-details-commands}
+
+OTBN understands a set of commands to perform certain operations.
+Commands are issued by writing to the {{< regref "CMD" >}} register.
+
+The `EXECUTE` command starts the [execution of the application](#design-details-software-execution) contained in OTBN's instruction memory.
+
+The `SEC_WIPE_DMEM` command [securely wipes the data memory](#design-details-secure-wipe).
+
+The `SEC_WIPE_IMEM` command [securely wipes the instruction memory](#design-details-secure-wipe).
+
+### Software Execution {#design-details-software-execution}
+
+Software execution on OTBN is triggered by host software by [issuing the `EXECUTE` command](#design-details-commands).
+The software then runs to completion, without the ability for host software to interrupt or inspect the execution.
+
+- OTBN transitions into the busy state, and reflects this by setting {{< regref "STATUS">}} to `BUSY_EXECUTE`.
+- The internal randomness source, which provides random numbers to the `URND` CSR and WSR, is re-seeded from the EDN.
+- The instruction at address zero is fetched and executed.
+- From this point on, all subsequent instructions are executed according to their semantics until either an {{< otbnInsnRef "ECALL" >}} instruction is executed, or an error is detected.
+- A [secure wipe of internal state](#design-details-secure-wipe-internal) is performed.
+- The {{< regref "ERR_BITS" >}} register is set to indicate either a successful execution (value `0`), or to indicate the error that was observed (a non-zero value).
+- OTBN transitions into the [idle state](#design-details-operational-states) (in case of a successful execution, or a recoverable error) or the locked state (in case of a fatal error).
+  This transition is signaled by raising the `done` interrupt ({{< regref "INTR_STATE.done" >}}), and reflected in the {{< regref "STATUS" >}} register.
+
+### Errors {#design-details-errors}
+
+OTBN is able to detect a range of errors, which are classified as *software errors* or *fatal errors*.
+A software error is an error in the code that OTBN executes.
+In the absence of an attacker, these errors are due to a programmer's mistake.
+A fatal error is typically the violation of a security property.
+All errors and their classification are listed in the [List of Errors](#design-details-list-of-errors).
+
 Whenever an error is detected, OTBN reacts locally, and informs the OpenTitan system about it by raising an alert.
-OTBN generally does not try to recover from errors, and provides no error handling support to code that runs on it.
+OTBN generally does not try to recover from errors itself, and provides no error handling support to code that runs on it.
 
-OTBN classifies errors as either *recoverable* or *fatal*.
-Errors which could be caused by a programmer's mistake are typically considered recoverable, while errors which are unlikely or impossible to result from a programmer's mistake are considered fatal.
-The description of the {{< regref "ERR_BITS" >}} register lists all possible error causes; those prefixed with `fatal_` are fatal errors.
+OTBN gives host software the option to recover from some errors by restarting the operation.
+All software errors are treated as recoverable, unless {{< regref "CTRL.software_errs_fatal" >}} is set, and are handled as described in the section [Reaction to Recoverable Errors](#design-details-recoverable-errors).
+When {{< regref "CTRL.software_errs_fatal" >}} is set, software errors become fatal errors.
 
-Recoverable errors terminate the currently active OTBN operation and return control to the host CPU.
-Fatal errors render OTBN unusable until it is reset.
+Fatal errors are treated as described in the section [Reaction to Fatal Errors](#design-details-fatal-errors).
 
-### Recoverable Errors {#design-details-recoverable-errors}
+### Reaction to Recoverable Errors {#design-details-recoverable-errors}
 
 Recoverable errors can be the result of a programming error in OTBN software.
 Recoverable errors can only occur during the execution of software on OTBN, and not in other situations in which OTBN might be busy.
@@ -543,12 +604,13 @@ The following actions are taken when OTBN detects a recoverable error:
    - No more instructions are fetched or executed.
    - A [secure wipe of internal state](#design-details-secure-wipe-internal) is performed.
    - The {{< regref "ERR_BITS" >}} register is set to a non-zero value that describes the error.
-   - The current operation is marked as complete by setting {{< regref "INTR_STATE.done" >}} and clearing {{< regref "STATUS.busy" >}}.
+   - The current operation is marked as complete by setting {{< regref "INTR_STATE.done" >}}.
+   - The {{< regref "STATUS" >}} register is set to `IDLE`.
 2. A [recoverable alert]({{< relref "#alerts" >}}) is raised.
 
 The host software can start another operation on OTBN after a recoverable error was detected.
 
-### Fatal Errors {#design-details-fatal-errors}
+### Reaction to Fatal Errors {#design-details-fatal-errors}
 
 Fatal errors are generally seen as a sign of an intrusion, resulting in more drastic measures to protect the secrets stored within OTBN.
 Fatal errors can occur at any time, even when an OTBN operation isn't in progress.
@@ -556,12 +618,13 @@ Fatal errors can occur at any time, even when an OTBN operation isn't in progres
 The following actions are taken when OTBN detects a fatal error:
 
 1. A [secure wipe of the data memory](#design-details-secure-wipe-dmem) and a [secure wipe of the instruction memory](#design-details-secure-wipe-imem) is initiated.
-2. If OTBN is busy, as indicated by {{< regref "STATUS.busy" >}}, then the currently running operation is terminated, similarly to how an operation ends after an {{< otbnInsnRef "ECALL" >}} instruction [is executed](#writing-otbn-applications-ecall):
+2. If OTBN [is not idle](#design-details-operational-states), then the currently running operation is terminated, similarly to how an operation ends after an {{< otbnInsnRef "ECALL" >}} instruction [is executed](#writing-otbn-applications-ecall):
    - No more instructions are fetched or executed.
    - A [secure wipe of internal state](#design-details-secure-wipe-internal) is performed.
    - The {{< regref "ERR_BITS" >}} register is set to a non-zero value that describes the error.
-   - The current operation is marked as completed by setting {{< regref "INTR_STATE.done" >}} and clearing {{< regref "STATUS.busy" >}}.
-3. A [fatal alert]({{< relref "#alerts" >}}) is raised.
+   - The current operation is marked as complete by setting {{< regref "INTR_STATE.done" >}}.
+3. The {{< regref "STATUS" >}} register is set to `LOCKED`.
+4. A [fatal alert]({{< relref "#alerts" >}}) is raised.
 
 Note that OTBN can detect some errors even when it isn't running.
 One example of this is an error caused by an integrity error when reading or writing OTBN's memories over the bus.
@@ -571,10 +634,87 @@ However, every error that OTBN detects when it isn't running is fatal.
 This means that the cause will be reflected in {{< regref "FATAL_ALERT_CAUSE" >}}, as described below in [Alerts]({{< relref "#alerts" >}}).
 This way, no alert is generated without setting an error code somewhere.
 
+### List of Errors {#design-details-list-of-errors}
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Class</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>BAD_DATA_ADDR<code></td>
+      <td>software</td>
+      <td>A data memory access occurred with an out of bounds or unaligned access.</td>
+    </tr>
+    <tr>
+      <td><code>BAD_INSN_ADDR<code></td>
+      <td>software</td>
+      <td>An instruction memory access occurred with an out of bounds or unaligned access.</td>
+    </tr>
+    <tr>
+      <td><code>CALL_STACK<code></td>
+      <td>software</td>
+      <td>An instruction tried to pop from an empty call stack or push to a full call stack.</td>
+    </tr>
+    <tr>
+      <td><code>ILLEGAL_INSN<code></td>
+      <td>software</td>
+      <td>
+        An illegal instruction was about to be executed.
+      </td>
+    <tr>
+      <td><code>LOOP<code></td>
+      <td>software</td>
+      <td>
+        A loop stack-related error was detected.
+      </td>
+    </tr>
+    <tr>
+      <td><code>IMEM_INTG_VIOLATION<code></td>
+      <td>fatal</td>
+      <td>Data read from the instruction memory failed the integrity checks.</td>
+    </tr>
+    <tr>
+      <td><code>DMEM_INTG_VIOLATION<code></td>
+      <td>fatal</td>
+      <td>Data read from the data memory failed the integrity checks.</td>
+    </tr>
+    <tr>
+      <td><code>REG_INTG_VIOLATION<code></td>
+      <td>fatal</td>
+      <td>Data read from a GPR or WDR failed the integrity checks.</td>
+    </tr>
+    <tr>
+      <td><code>BUS_INTG_VIOLATION<code></td>
+      <td>fatal</td>
+      <td>An incoming bus transaction failed the integrity checks.</td>
+    </tr>
+    <tr>
+      <td><code>ILLEGAL_BUS_ACCESS<code></td>
+      <td>fatal</td>
+      <td>A bus-accessible register or memory was accessed when not allowed.</td>
+    </tr>
+    <tr>
+      <td><code>LIFECYCLE_ESCALATION<code></td>
+      <td>fatal</td>
+      <td>A life cycle escalation request was received.</td>
+    </tr>
+    <tr>
+      <td><code>FATAL_SOFTWARE<code></td>
+      <td>fatal</td>
+      <td>A software error was seen and {{< regref "CTRL.software_errs_fatal" >}} was set.</td>
+    </tr>
+  </tbody>
+</table>
+
 ### Alerts
 
+An alert is a reaction to an error that OTBN detected.
 OTBN has two alerts, one recoverable and one fatal.
-The {{< regref "ERR_BITS" >}} register documentation has a detailed list of error conditions, those with 'fatal' in the name raise a **fatal alert**, otherwise they raise a **recoverable alert**.
 
 A **recoverable alert** is a one-time triggered alert caused by [recoverable errors](#design-details-recoverable-errors).
 The error that caused the alert can be determined by reading the {{< regref "ERR_BITS" >}} register.
@@ -584,19 +724,16 @@ The error that caused the alert can be determined by reading the {{< regref "FAT
 If OTBN was running, this value will also be reflected in the {{< regref "ERR_BITS" >}} register.
 A fatal alert can only be cleared by resetting OTBN through the `rst_ni` line.
 
-### Reaction to Life Cycle Escalation Requests
+### Reaction to Life Cycle Escalation Requests {#design-details-lifecycle-escalation}
 
 OTBN receives and reacts to escalation signals from the [life cycle controller]({{< relref "/hw/ip/lc_ctrl/doc#security-escalation" >}}).
-
-An escalation request signaled through the `lc_escalate_en_i` signal results in the same action as a [fatal error](#design-details-fatal-errors) but does not raise a fatal alert.
+An incoming life cycle escalation is a fatal error of type `lifecycle_escalation` and treated as described in the section [Fatal Errors](#design-details-fatal-errors).
 
 ### Idle
 
 OTBN exposes a single-bit `idle_o` signal, intended to be used by the clock manager to clock-gate the block when it is not in use.
 This signal is in the same clock domain as `clk_i`.
-It is high when OTBN is not running.
-The cycle after a write to {{< regref "CMD.start" >}}, the signal goes low.
-This remains low until the end of the operation (either from an {{< otbnInsnRef "ECALL" >}}) or an error, at which point it goes high again.
+The `idle_o` signal is high when OTBN [is idle](#design-details-operational-states), and low otherwise.
 
 OTBN also exposes another version of the idle signal as `idle_otp_o`.
 This works analogously, but is in the same clock domain as `clk_otp_i`.
@@ -714,27 +851,13 @@ This operation can be applied to:
 - [Instruction memory]({{<relref "#design-details-secure-wipe-imem">}})
 - [Internal state]({{<relref "#design-details-secure-wipe-internal">}})
 
-Secure wipe of data and instruction memories can be triggered on demand from a host software.
-In addition, full or partial secure wipe is triggered automatically by the OTBN in certain situations.
+The three forms of secure wipe can be triggered in different ways.
 
-OTBN does not signal any error while a secure wipe operation is in progress.
+A secure wipe of either the instruction or the data memory can be triggered from from host software by issuing a `SEC_WIPE_DMEM` or `SEC_WIPE_IMEM` [command](#design-details-command).
 
-#### Triggering Secure Wipe
+A secure wipe of instruction memory, data memory, and all internal state is performed automatically when handling a [fatal error](#design-details-fatal-errors).
 
-In the following situations OTBN itself initiates a full secure wipe:
-* The lifecycle controller asks for it through its escalation signal.
-* A fatal alert is issued.
-  In this case, a full secure wipe is performed as a local action.
-
-The internal state secure wipe is automatically triggered when an OTBN operation completes, either successfully, or unsuccessfully due to a recoverable error.
-
-Host software can trigger a data and instruction memory secure wipe by writing `2'b11` to {{< regref "SEC_WIPE">}} (i.e. by setting both individual state wipe bits to 1).
-
-#### Completion of Secure Wipe {#design-details-secure-wipe-completion}
-
-During the secure wipe operation the {{< regref "STATUS.busy">}} flag is set to 1, indicating that the OTBN is busy.
-Once the operation is completed, an {{< regref "INTR_STATE.done" >}} interrupt is raised and {{< regref "STATUS.busy">}} is cleared.
-This effectively means that the host software will get a single done interrupt for a secure wipe operation, independent of how many SEC_WIPE bits the software wrote.
+A secure wipe of the internal state only is triggered automatically when OTBN [ends the software execution](#design-details-software-execution), either successfully, or unsuccessfully due to a [recoverable error](#design-details-recoverable-errors).
 
 #### Data Memory (DMEM) Secure Wipe {#design-details-secure-wipe-dmem}
 
@@ -746,8 +869,7 @@ The key replacement is a two-step process:
 * Request new scrambling parameters from OTP.
   The request takes multiple cycles to complete.
 
-Host software can initiate a data memory secure wipe by writing 1 to the {{< regref "SEC_WIPE.dmem">}} register field.
-If a secure wipe was triggered in this way, [completion]({{<relref "#design-details-secure-wipe-completion">}}) is signaled by raising an {{< regref "INTR_STATE.done" >}} interrupt.
+Host software can initiate a data memory secure wipe by [issuing the `SEC_WIPE_DMEM` command](#design-details-commands).
 
 #### Instruction Memory (IMEM) Secure Wipe {#design-details-secure-wipe-imem}
 
@@ -759,8 +881,7 @@ The key replacement is a two-step process:
 * Request new scrambling parameters from OTP.
   The request takes multiple cycles to complete.
 
-Host software can initiate an instruction memory secure wipe by writing 1 to the {{< regref "SEC_WIPE.imem">}} register field.
-If a secure wipe was triggered in this way, [completion]({{<relref "#design-details-secure-wipe-completion">}}) is signaled by raising an {{< regref "INTR_STATE.done" >}} interrupt.
+Host software can initiate a data memory secure wipe by [issuing the `SEC_WIPE_IMEM` command](#design-details-commands).
 
 #### Internal State Secure Wipe {#design-details-secure-wipe-internal}
 
@@ -778,8 +899,7 @@ The wiping procedure is a two-step process:
 
 Loop and call stack pointers are reset.
 
-Host software can initiate an internal state secure wipe by writing 1 to the {{< regref "SEC_WIPE.internal">}} register field.
-If a secure wipe was triggered in this way, [completion]({{<relref "#design-details-secure-wipe-completion">}}) is signaled by raising an {{< regref "INTR_STATE.done" >}} interrupt.
+Host software cannot explicitly trigger an internal secure wipe; it is performed automatically at the end of an `EXECUTE` operation.
 
 # Running applications on OTBN
 
@@ -793,7 +913,7 @@ The high-level sequence by which the host processor should use OTBN is as follow
 
 1. Write the OTBN application binary to {{< regref "IMEM" >}}, starting at address 0.
 2. Optional: Write constants and input arguments, as mandated by the calling convention of the loaded application, to {{< regref "DMEM" >}}.
-3. Start the operation on OTBN by writing `1` to {{< regref "CMD.start" >}}.
+3. Start the operation on OTBN by [issuing the `EXECUTE` command](#design-details-commands).
    Now neither data nor instruction memory may be accessed from the host CPU.
    After it has been started the OTBN application runs to completion without further interaction with the host.
 4. Wait for the operation to complete (see below).
@@ -802,11 +922,11 @@ The high-level sequence by which the host processor should use OTBN is as follow
 6. Optional: Retrieve results by reading {{< regref "DMEM" >}}, as mandated by the calling convention of the loaded application.
 
 OTBN applications are run to completion.
-The host CPU can determine if an application has completed by either polling {{< regref "STATUS.busy">}} or listening for an interrupt.
+The host CPU can determine if an application has completed by either polling {{< regref "STATUS">}} or listening for an interrupt.
 
-* To poll for a completed operation, software should repeatedly read the {{< regref "STATUS.busy" >}} register.
-  While the operation is in progress, {{< regref "STATUS.busy" >}} reads as `1`.
-  The operation is completed if {{< regref "STATUS.busy" >}} is `0`.
+* To poll for a completed operation, software should repeatedly read the {{< regref "STATUS" >}} register.
+  The operation is complete if {{< regref "STATUS" >}} is `IDLE` or `LOCKED`, otherwise the operation is in progress.
+  When {{< regref "STATUS" >}} has become `LOCKED` a fatal error has occurred and OTBN must be reset to perform further operations.
 * Alternatively, software can listen for the `done` interrupt to determine if the operation has completed.
   The standard sequence of working with interrupts has to be followed, i.e. the interrupt has to be enabled, an interrupt service routine has to be registered, etc.
   The [DIF]({{<relref "#dif" >}}) contains helpers to do so conveniently.
@@ -820,7 +940,9 @@ Depending on the application additional steps might be necessary, such as deleti
 
 ## Driver {#driver}
 
-A higher-level driver for the OTBN block is available at `sw/device/lib/runtime/otbn.h` ([API documentation](/sw/apis/otbn_8h.html)).
+A higher-level driver for the OTBN block is available at `sw/device/lib/runtime/otbn.h` ([API documentation](/sw/apis/lib_2runtime_2otbn_8h.html)).
+
+Another driver for OTBN is part of the silicon creator code at `sw/device/silicon_creator/lib/drivers/otbn.h`.
 
 ## Register Table
 
@@ -849,7 +971,7 @@ Other tools from the RV32 toolchain can be used directly, such as objcopy.
 
 Passing data between the host CPU and OTBN is done through the data memory (DMEM).
 No standard or required calling convention exists, every application is free to pass data in and out of OTBN in whatever format it finds convenient.
-All data passing must be done when OTBN is not running, as indicated by the {{< regref "STATUS.busy" >}} bit; during the OTBN operation both the instruction and the data memory are inaccessible from the host CPU.
+All data passing must be done when OTBN [is idle](#design-details-operational-states); otherwise both the instruction and the data memory are inaccessible from the host CPU.
 
 ## Returning from an application {#writing-otbn-applications-ecall}
 
@@ -860,7 +982,7 @@ Once OTBN has executed the {{< otbnInsnRef "ECALL" >}} instruction, the followin
 - No more instructions are fetched or executed.
 - A [secure wipe of internal state](#design-details-secure-wipe-internal) is performed.
 - The {{< regref "ERR_BITS" >}} register is set to 0, indicating a successful operation.
-- The current operation is marked as completed by setting {{< regref "INTR_STATE.done" >}} and clearing {{< regref "STATUS.busy" >}}.
+- The current operation is marked as complete by setting {{< regref "INTR_STATE.done" >}} and clearing {{< regref "STATUS" >}}.
 
 The DMEM can be used to pass data back to the host processor, e.g. a "return value" or an "exit code".
 Refer to the section [Passing of data between the host CPU and OTBN]({{<relref "#writing-otbn-applications-datapassing" >}}) for more information.

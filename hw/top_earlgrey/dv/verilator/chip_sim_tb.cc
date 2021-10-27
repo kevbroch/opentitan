@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
   MemArea ram(top_scope + ".u_ram1p_ram_main." + ram1p_adv_scope, 0x20000 / 4,
               4);
   MemArea flash(top_scope +
-                    ".u_flash_eflash.u_flash.gen_generic.u_impl_generic."
+                    ".u_flash_ctrl.u_eflash.u_flash.gen_generic.u_impl_generic."
                     "gen_prim_flash_banks[0].u_prim_flash_bank.u_mem."
                     "gen_generic.u_impl_generic",
                 0x100000 / 8, 8);
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
   // to appropriately propagate.
   // The reset duration must be appropriately sized to the divider for clk_aon
   // in chip_earlgrey_verilator.sv.  It must be at least 2 cycles of clk_aon.
-  simctrl.SetInitialResetDelay(500);
+  simctrl.SetInitialResetDelay(10000);
   simctrl.SetResetDuration(10);
 
   std::cout << "Simulation of OpenTitan Earl Grey" << std::endl

@@ -7,7 +7,7 @@ class chip_env_cfg extends cip_base_env_cfg #(.RAL_T(chip_reg_block));
   // Testbench settings
   bit                 stub_cpu;
   bit                 en_uart_logger;
-  int                 uart_baud_rate = uart_agent_pkg::BaudRate1Mbps;
+  uart_agent_pkg::baud_rate_e uart_baud_rate = uart_agent_pkg::BaudRate1Mbps;
   bit                 use_gpio_for_sw_test_status;
   bit                 initialize_ram;
 
@@ -56,6 +56,7 @@ class chip_env_cfg extends cip_base_env_cfg #(.RAL_T(chip_reg_block));
   uint                sw_test_timeout_ns = 5_000_000; // 5ms
   sw_logger_vif       sw_logger_vif;
   sw_test_status_vif  sw_test_status_vif;
+  ast_supply_vif      ast_supply_vif;
 
   // ext component cfgs
   rand uart_agent_cfg       m_uart_agent_cfgs[NUM_UARTS];
@@ -71,7 +72,7 @@ class chip_env_cfg extends cip_base_env_cfg #(.RAL_T(chip_reg_block));
   // TODO: Fixing core clk freq to 50MHz for now.
   // Need to find a way to pass this to the SW test.
   constraint clk_freq_mhz_c {
-    clk_freq_mhz == dv_utils_pkg::ClkFreq50Mhz;
+    clk_freq_mhz == 50;
   }
 
   `uvm_object_new

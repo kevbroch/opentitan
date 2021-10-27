@@ -1,22 +1,22 @@
 diff --git a/sw/device/boot_rom/rom_crt.S b/sw/device/boot_rom/rom_crt.S
-index 538712db1..1c8e29d86 100644
+index 99485c5ff..1c8e29d86 100644
 --- a/sw/device/boot_rom/rom_crt.S
 +++ b/sw/device/boot_rom/rom_crt.S
 @@ -81,19 +81,6 @@ _reset_start:
  _start:
    .globl _start
- 
+
 -  // Enable entropy complex - this is not the full enable
 -  li   a0, TOP_EARLGREY_ENTROPY_SRC_BASE_ADDR
--  li   t0, 0x2
+-  li   t0, 0x55505a
 -  sw   t0, ENTROPY_SRC_CONF_REG_OFFSET(a0)
 -
 -  li   a0, TOP_EARLGREY_CSRNG_BASE_ADDR
--  li   t0, 0xaa
+-  li   t0, 0xaaa
 -  sw   t0, CSRNG_CTRL_REG_OFFSET(a0)
 -
 -  li   a0, TOP_EARLGREY_EDN0_BASE_ADDR
--  li   t0, 0xaa
+-  li   t0, 0x55aa
 -  sw   t0, EDN_CTRL_REG_OFFSET(a0)
 -
    // Request memory scrambling and init
@@ -52,135 +52,131 @@ index 8861f54ba..8442bb896 100644
 -  mmio_region_write32(reg32, reg_offset, reg_value & mask);
  }
 diff --git a/sw/device/sca/aes_serial.c b/sw/device/sca/aes_serial.c
-index 50bee15fa..8f5976a83 100644
+index 5dc1286af..1e2dced96 100644
 --- a/sw/device/sca/aes_serial.c
 +++ b/sw/device/sca/aes_serial.c
-@@ -203,21 +203,13 @@ int main(void) {
-   sca_init();
+@@ -198,18 +198,13 @@ int main(void) {
+   sca_init(kScaTriggerSourceAes, kScaPeripheralAes);
    sca_get_uart(&uart1);
- 
+
 -  LOG_INFO("Running AES serial");
--
--  LOG_INFO("Disabling entropy complex and unneeded clocks to reduce noise.");
--  sca_reduce_noise();
 -
 -  LOG_INFO("Initializing simple serial interface to capture board.");
    simple_serial_init(uart1);
    simple_serial_register_handler('k', aes_serial_set_key);
    simple_serial_register_handler('p', aes_serial_single_encrypt);
    simple_serial_register_handler('b', aes_serial_batch_encrypt);
- 
+
 -  LOG_INFO("Initializing AES unit.");
    init_aes();
- 
+
 -  LOG_INFO("Starting simple serial packet handling.");
    while (true) {
      simple_serial_process_packet();
    }
 diff --git a/sw/device/sca/lib/sca.c b/sw/device/sca/lib/sca.c
-index 9e732a812..ca2bd0ab7 100644
+index 30ca7e0a4..a46911701 100644
 --- a/sw/device/sca/lib/sca.c
 +++ b/sw/device/sca/lib/sca.c
-@@ -50,7 +50,6 @@ enum {
+@@ -56,7 +56,6 @@ enum {
    kRvTimerHart = kTopEarlgreyPlicTargetIbex0,
  };
- 
+
 -static dif_uart_t uart0;
  static dif_uart_t uart1;
  static dif_gpio_t gpio;
  static dif_rv_timer_t timer;
-@@ -72,16 +71,9 @@ static void sca_init_uart(void) {
-       (dif_uart_params_t){
-           .base_addr = mmio_region_from_addr(TOP_EARLGREY_UART0_BASE_ADDR),
-       },
--      &uart0));
+@@ -75,13 +74,9 @@ static void sca_init_uart(void) {
+   };
+
+   IGNORE_RESULT(dif_uart_init(
+-      mmio_region_from_addr(TOP_EARLGREY_UART0_BASE_ADDR), &uart0));
 -  IGNORE_RESULT(dif_uart_configure(&uart0, uart_config));
 -  base_uart_stdout(&uart0);
 -
 -  IGNORE_RESULT(dif_uart_init(
--      (dif_uart_params_t){
--          .base_addr = mmio_region_from_addr(TOP_EARLGREY_UART1_BASE_ADDR),
--      },
-       &uart1));
+-      mmio_region_from_addr(TOP_EARLGREY_UART1_BASE_ADDR), &uart1));
++      mmio_region_from_addr(TOP_EARLGREY_UART0_BASE_ADDR), &uart1));
    IGNORE_RESULT(dif_uart_configure(&uart1, uart_config));
 +  base_uart_stdout(&uart1);
  }
- 
+
  /**
-@@ -137,41 +129,16 @@ void sca_init(void) {
- }
- 
- void sca_reduce_noise() {
--  // Disable/stopping functionality not yet provided by EDN and CSRNG DIFs.
--  mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_EDN0_BASE_ADDR),
--                      EDN_CTRL_REG_OFFSET, EDN_CTRL_REG_RESVAL);
--  mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_EDN1_BASE_ADDR),
--                      EDN_CTRL_REG_OFFSET, EDN_CTRL_REG_RESVAL);
--  mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_CSRNG_BASE_ADDR),
--                      CSRNG_CTRL_REG_OFFSET, CSRNG_CTRL_REG_RESVAL);
--
--  // Disable entropy source through DIF.
--  const dif_entropy_params_t entropy_params = {
--      .base_addr = mmio_region_from_addr(TOP_EARLGREY_ENTROPY_SRC_BASE_ADDR),
--  };
--  dif_entropy_t entropy;
--  IGNORE_RESULT(dif_entropy_init(entropy_params, &entropy) == kDifEntropyOk);
--  IGNORE_RESULT(dif_entropy_disable(&entropy) == kDifEntropyOk);
+@@ -148,25 +143,6 @@ void handler_irq_timer(void) {
+  * @param disable Set of peripherals to disable.
+  */
+ void sca_disable_peripherals(sca_peripherals_t disable) {
+-  if (disable & kScaPeripheralEdn) {
+-    // TODO(#5465): Replace with `dif_edn_stop()` when it is implemented.
+-    mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_EDN0_BASE_ADDR),
+-                        EDN_CTRL_REG_OFFSET, EDN_CTRL_REG_RESVAL);
+-    mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_EDN1_BASE_ADDR),
+-                        EDN_CTRL_REG_OFFSET, EDN_CTRL_REG_RESVAL);
+-  }
+-  if (disable & kScaPeripheralCsrng) {
+-    // TODO(#7837): Replace with `dif_csrng_stop()` when it is implemented.
+-    mmio_region_write32(mmio_region_from_addr(TOP_EARLGREY_CSRNG_BASE_ADDR),
+-                        CSRNG_CTRL_REG_OFFSET, CSRNG_CTRL_REG_RESVAL);
+-  }
+-  if (disable & kScaPeripheralEntropy) {
+-    dif_entropy_src_t entropy;
+-    IGNORE_RESULT(dif_entropy_src_init(
+-        mmio_region_from_addr(TOP_EARLGREY_ENTROPY_SRC_BASE_ADDR), &entropy));
+-    IGNORE_RESULT(dif_entropy_src_disable(&entropy));
+-  }
 -
    // Disable HMAC, KMAC, OTBN and USB clocks through CLKMGR DIF.
-   const dif_clkmgr_params_t clkmgr_params = {
-       .base_addr = mmio_region_from_addr(TOP_EARLGREY_CLKMGR_AON_BASE_ADDR),
-       .last_gateable_clock = CLKMGR_CLK_ENABLES_CLK_USB_PERI_EN_BIT,
--      .last_hintable_clock = CLKMGR_CLK_HINTS_STATUS_CLK_MAIN_OTBN_VAL_BIT};
-+      .last_hintable_clock = CLKMGR_CLK_HINTS_CLK_MAIN_HMAC_HINT_BIT};
    dif_clkmgr_t clkmgr;
-   IGNORE_RESULT(dif_clkmgr_init(clkmgr_params, &clkmgr) == kDifClkmgrOk);
-   IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
-                     &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_HMAC_HINT_BIT,
-                     kDifClkmgrToggleDisabled) == kDifClkmgrOk);
--  IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
--                    &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_KMAC_HINT_BIT,
--                    kDifClkmgrToggleDisabled) == kDifClkmgrOk);
--  IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
--                    &clkmgr, CLKMGR_CLK_HINTS_CLK_IO_DIV4_OTBN_HINT_BIT,
--                    kDifClkmgrToggleDisabled) == kDifClkmgrOk);
--  IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
--                    &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_OTBN_HINT_BIT,
--                    kDifClkmgrToggleDisabled) == kDifClkmgrOk);
-   IGNORE_RESULT(dif_clkmgr_gateable_clock_set_enabled(
-                     &clkmgr, CLKMGR_CLK_ENABLES_CLK_USB_PERI_EN_BIT,
-                     kDifClkmgrToggleDisabled) == kDifClkmgrOk);
-diff --git a/sw/device/tests/dif/dif_aes_smoketest.c b/sw/device/tests/dif/dif_aes_smoketest.c
-index 70c3baaf9..5d69301e2 100644
---- a/sw/device/tests/dif/dif_aes_smoketest.c
-+++ b/sw/device/tests/dif/dif_aes_smoketest.c
+   IGNORE_RESULT(dif_clkmgr_init(
+@@ -180,17 +156,6 @@ void sca_disable_peripherals(sca_peripherals_t disable) {
+     IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
+         &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_HMAC_HINT_BIT, kDifToggleDisabled));
+   }
+-  if (disable & kScaPeripheralKmac) {
+-    IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
+-        &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_KMAC_HINT_BIT, kDifToggleDisabled));
+-  }
+-  if (disable & kScaPeripheralOtbn) {
+-    IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
+-        &clkmgr, CLKMGR_CLK_HINTS_CLK_IO_DIV4_OTBN_HINT_BIT,
+-        kDifToggleDisabled));
+-    IGNORE_RESULT(dif_clkmgr_hintable_clock_set_hint(
+-        &clkmgr, CLKMGR_CLK_HINTS_CLK_MAIN_OTBN_HINT_BIT, kDifToggleDisabled));
+-  }
+   if (disable & kScaPeripheralUsb) {
+     IGNORE_RESULT(dif_clkmgr_gateable_clock_set_enabled(
+         &clkmgr, CLKMGR_CLK_ENABLES_CLK_USB_PERI_EN_BIT, kDifToggleDisabled));
+diff --git a/sw/device/tests/aes_smoketest.c b/sw/device/tests/aes_smoketest.c
+index 1a5fef16c..214e08151 100644
+--- a/sw/device/tests/aes_smoketest.c
++++ b/sw/device/tests/aes_smoketest.c
 @@ -7,7 +7,6 @@
  #include "sw/device/lib/dif/dif_aes.h"
  #include "sw/device/lib/runtime/log.h"
  #include "sw/device/lib/testing/check.h"
 -#include "sw/device/lib/testing/entropy_testutils.h"
- #include "sw/device/lib/testing/test_main.h"
- 
+ #include "sw/device/lib/testing/test_framework/test_main.h"
+
  #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"
-@@ -67,9 +66,6 @@ bool test_main(void) {
- 
+@@ -66,9 +65,6 @@ bool test_main(void) {
+
    LOG_INFO("Running AES test");
- 
+
 -  // First of all, we need to get the entropy complex up and running.
 -  entropy_testutils_boot_mode_init();
 -
    // Initialise AES.
-   dif_aes_params_t params = {
-       .base_addr = mmio_region_from_addr(TOP_EARLGREY_AES_BASE_ADDR),
-diff --git a/sw/device/tests/dif/meson.build b/sw/device/tests/dif/meson.build
-index 7ff797bcb..b9e53a744 100644
---- a/sw/device/tests/dif/meson.build
-+++ b/sw/device/tests/dif/meson.build
-@@ -217,7 +217,6 @@ dif_aes_smoketest_lib = declare_dependency(
+   CHECK_DIF_OK(
+       dif_aes_init(mmio_region_from_addr(TOP_EARLGREY_AES_BASE_ADDR), &aes));
+diff --git a/sw/device/tests/meson.build b/sw/device/tests/meson.build
+index 770328dd9..8aaa642db 100644
+--- a/sw/device/tests/meson.build
++++ b/sw/device/tests/meson.build
+@@ -224,7 +224,6 @@ aes_smoketest_lib = declare_dependency(
        sw_lib_dif_aes,
        sw_lib_mmio,
        sw_lib_runtime_log,
--      sw_lib_testing_entropy_testutils_lib,
+-      sw_lib_testing_entropy_testutils,
        sw_lib_testing_test_status,
      ],
    ),

@@ -2,29 +2,32 @@
 # Licensed under the Apache License, Version 2.0, see LICENSE for details.
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-from . import err_bits
+from .constants import ErrBits
 from .trace import Trace
 
 
 class TraceLoopStart(Trace):
-    def __init__(self, iterations: int, bodysize: int):
+    def __init__(self, depth: int, iterations: int, bodysize: int):
+        self.depth = depth
         self.iterations = iterations
         self.bodysize = bodysize
 
     def trace(self) -> str:
-        return "Starting loop, {} iterations, bodysize: {}".format(
-            self.iterations, self.bodysize)
+        return ("Starting loop {}, {} iterations, bodysize: {}"
+                .format(self.depth, self.iterations, self.bodysize))
 
 
 class TraceLoopIteration(Trace):
-    def __init__(self, iteration: int, total: int):
+    def __init__(self, depth: int, iteration: int, total: int):
+        self.depth = depth
         self.iteration = iteration
         self.total = total
 
     def trace(self) -> str:
-        return "Finished loop iteration {}/{}".format(self.iteration, self.total)
+        return ("Finished iteration {}/{} of loop {}"
+                .format(self.iteration, self.total, self.depth))
 
 
 class LoopLevel:
@@ -84,10 +87,12 @@ class LoopStack:
         assert 0 < insn_count
         assert 0 < loop_count
 
-        if len(self.stack) == LoopStack.stack_depth:
+        depth = len(self.stack)
+
+        if depth == LoopStack.stack_depth:
             self.err_flag = True
 
-        self.trace.append(TraceLoopStart(loop_count, insn_count))
+        self.trace.append(TraceLoopStart(depth, loop_count, insn_count))
         self.stack.append(LoopLevel(start_addr, insn_count, loop_count - 1))
 
     def is_last_insn_in_loop_body(self, pc: int) -> bool:
@@ -107,10 +112,12 @@ class LoopStack:
             # instruction.
             self.err_flag = True
 
-    def step(self, pc: int) -> Optional[int]:
+    def step(self, pc: int, warps: Dict[int, int]) -> Optional[int]:
         '''Update loop stack. If we should loop, return new PC'''
 
         self._pop_stack_on_commit = False
+
+        self.apply_warps(warps)
 
         if self.is_last_insn_in_loop_body(pc):
             assert self.stack
@@ -128,13 +135,14 @@ class LoopStack:
                 top.restarts_left -= 1
                 ret_val = top.start_addr
 
-            self.trace.append(TraceLoopIteration(loop_idx, top.loop_count))
+            self.trace.append(TraceLoopIteration(len(self.stack),
+                                                 loop_idx, top.loop_count))
             return ret_val
 
         return None
 
     def err_bits(self) -> int:
-        return err_bits.LOOP if self.err_flag else 0
+        return ErrBits.LOOP if self.err_flag else 0
 
     def changes(self) -> List[Trace]:
         return self.trace
@@ -150,3 +158,23 @@ class LoopStack:
     def abort(self) -> None:
         self.trace = []
         self.err_flag = False
+
+    def apply_warps(self, warps: Dict[int, int]) -> None:
+        '''Apply any loop warping specified by warps.
+
+        Here, warps maps values for the innermost loop iteration count from
+        what they are currently to what they should be warped to.
+
+        '''
+        if not self.stack:
+            return
+
+        top = self.stack[-1]
+        cur_iter_count = top.loop_count - (1 + top.restarts_left)
+        new_iter_count = warps.get(cur_iter_count)
+        if new_iter_count is None:
+            return
+
+        assert cur_iter_count <= new_iter_count
+        assert new_iter_count + 1 <= top.loop_count
+        top.restarts_left = top.loop_count - new_iter_count - 1

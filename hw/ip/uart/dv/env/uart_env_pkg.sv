@@ -11,6 +11,7 @@ package uart_env_pkg;
   import tl_agent_pkg::*;
   import uart_agent_pkg::*;
   import dv_lib_pkg::*;
+  import dv_base_reg_pkg::*;
   import cip_base_pkg::*;
   import uart_ral_pkg::*;
 
@@ -69,7 +70,7 @@ package uart_env_pkg;
   // if uart baud rate is 1500_000 and IO is 24Mhz, NCO is 'h1_0000, which is over the NCO width
   // use NCO = 'hffff for this case since the error is tolerable. Refer to #4263
   `define CALC_NCO(baud_rate, nco_width, clk_freq_mhz) \
-    (baud_rate == BaudRate1p5Mbps && clk_freq_mhz == ClkFreq24Mhz) ? 16'hffff : \
+    (baud_rate == BaudRate1p5Mbps && clk_freq_mhz == 24) ? 16'hffff : \
         (longint'(baud_rate) * (2**(nco_width+4))) / (clk_freq_mhz * 1000_000)
 
   // calculate the nco

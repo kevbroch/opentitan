@@ -18,7 +18,7 @@
       if r.dv_compact:
         inst_base = r.reg.name.lower()
         for idx, reg in enumerate(r.regs):
-          inst_name = f'{inst_base}[{idx}]' if len(r.regs) > 1 else inst_base
+          inst_name = f'{inst_base}[{idx}]'
           inst_regs[inst_name] = reg
       else:
         for r0 in r.regs:
@@ -85,22 +85,22 @@ ${make_ral_pkg_window_class(dv_base_prefix, esc_if_name, window)}
     // registers
   % for r in rb.all_regs:
 <%
+      # If it's dv_compact, then create it as an array even when it only contains one item
+      count = 0
       if isinstance(r, MultiRegister):
         if r.dv_compact:
           regs = [r.reg]
           count = len(r.regs)
         else:
           regs = r.regs
-          count = 1
       else:
         regs = [r]
-        count = 1
 %>\
     % for r0 in regs:
 <%
       reg_type = gen_dv.rcname(esc_if_name, r0)
       inst_name = r0.name.lower()
-      inst_decl = f'{inst_name}[{count}]' if count > 1 else inst_name
+      inst_decl = f'{inst_name}[{count}]' if count > 0 else inst_name
 %>\
     rand ${reg_type} ${inst_decl};
     % endfor
@@ -133,7 +133,6 @@ ${make_ral_pkg_window_class(dv_base_prefix, esc_if_name, window)}
       end
 % if rb.flat_regs:
       set_hdl_path_root("tb.dut", "BkdrRegPathRtl");
-      set_hdl_path_root("tb.dut", "BkdrRegPathRtlCommitted");
       set_hdl_path_root("tb.dut", "BkdrRegPathRtlShadow");
       // create registers
   % for r in rb.all_regs:
@@ -146,7 +145,7 @@ ${make_ral_pkg_window_class(dv_base_prefix, esc_if_name, window)}
 <%
         if r.dv_compact:
           inst_base = r0.name.lower()
-          inst_name = f'{inst_base}[{idx}]' if len(r.regs) > 1 else inst_base
+          inst_name = f'{inst_base}[{idx}]'
         else:
           inst_name = reg.name.lower()
           reg_type = gen_dv.rcname(esc_if_name, reg)
@@ -326,7 +325,11 @@ reg, mr, reg_idx)">\
 <%
     if compact_field_inst_name:
       reg_field_name = compact_field_inst_name
-      if len(fields) > 1:
+      # If len(fields) > 1, we define generated reg fields as an array and we need an index to
+      # refer to the field object
+      # If start_idx > 0, the fields cross more than one register, we define an array for the
+      # fields even when the last register only contains one field.
+      if len(fields) > 1 or start_idx > 0:
         reg_field_name = reg_field_name + f'[{idx + start_idx}]'
     else:
       reg_field_name = field.name.lower()
@@ -508,20 +511,6 @@ ${_create_reg_field(dv_base_prefix, reg_width, reg_block_path, reg.shadowed, reg
       default_map.add_reg(.rg(${reg_inst}),
                           .offset(${reg_offset}));
 % if reg.shadowed:
-<%
-    if reg.hwext:
-      shadowed_reg_path = ''
-      for tag in reg.tags:
-        parts = tag.split(':')
-        if parts[0] == 'shadowed_reg_path':
-          shadowed_reg_path = parts[1]
-
-      if not shadowed_reg_path:
-        print("ERROR: ext shadow_reg does not have tags for shadowed_reg_path!")
-        assert 0
-
-      bit_idx = reg.fields[-1].bits.msb + 1
-%>\
       % if reg.update_err_alert:
       ${reg_inst}.add_update_err_alert("${reg.update_err_alert}");
       % endif
@@ -531,12 +520,25 @@ ${_create_reg_field(dv_base_prefix, reg_width, reg_block_path, reg.shadowed, reg
       % endif
 
   % if reg.hwext:
+    % for field in reg.fields:
+<%
+      shadowed_reg_path = ''
+      for tag in field.tags:
+        parts = tag.split(':')
+        if parts[0] == 'shadowed_reg_path':
+          shadowed_reg_path = parts[1]
+
+      if not shadowed_reg_path:
+        print("ERROR: ext shadow_reg does not have tags for shadowed_reg_path for each field!")
+        assert 0
+%>\
       ${reg_inst}.add_hdl_path_slice(
           "${shadowed_reg_path}.committed_reg.q",
-          0, ${bit_idx}, 0, "BkdrRegPathRtlCommitted");
+          ${field.bits.lsb}, ${field.bits.width()}, 0, "BkdrRegPathRtl");
       ${reg_inst}.add_hdl_path_slice(
           "${shadowed_reg_path}.shadow_reg.q",
-          0, ${bit_idx}, 0, "BkdrRegPathRtlShadow");
+          ${field.bits.lsb}, ${field.bits.width()}, 0, "BkdrRegPathRtlShadow");
+    % endfor
   % endif
 % endif
 % for field in reg.fields:
@@ -547,8 +549,8 @@ ${_create_reg_field(dv_base_prefix, reg_width, reg_block_path, reg.shadowed, reg
     else:
       reg_field_name = reg_name + "_" + field.name.lower()
 
-    if reg.async_name and not reg.hwext:
-      reg_field_name += ".u_subreg"
+    ##if reg.async_name and not reg.hwext:
+    ##  reg_field_name += ".u_subreg"
 %>\
 %   if ((field.hwaccess.value[1] == HwAccess.NONE and\
        field.swaccess.swrd() == SwRdAccess.RD and\
@@ -557,7 +559,7 @@ ${_create_reg_field(dv_base_prefix, reg_width, reg_block_path, reg.shadowed, reg
       ${reg_inst}.add_hdl_path_slice(
           "${reg_block_path}.${reg_field_name}_qs",
           ${field.bits.lsb}, ${field_size}, 0, "BkdrRegPathRtl");
-%   else:
+%   elif not reg.shadowed:
       ${reg_inst}.add_hdl_path_slice(
           "${reg_block_path}.u_${reg_field_name}.q${"s" if reg.hwext else ""}",
           ${field.bits.lsb}, ${field_size}, 0, "BkdrRegPathRtl");
@@ -565,7 +567,7 @@ ${_create_reg_field(dv_base_prefix, reg_width, reg_block_path, reg.shadowed, reg
 %   if reg.shadowed and not reg.hwext:
       ${reg_inst}.add_hdl_path_slice(
           "${reg_block_path}.u_${reg_field_name}.committed_reg.q",
-          ${field.bits.lsb}, ${field_size}, 0, "BkdrRegPathRtlCommitted");
+          ${field.bits.lsb}, ${field_size}, 0, "BkdrRegPathRtl");
       ${reg_inst}.add_hdl_path_slice(
           "${reg_block_path}.u_${reg_field_name}.shadow_reg.q",
           ${field.bits.lsb}, ${field_size}, 0, "BkdrRegPathRtlShadow");

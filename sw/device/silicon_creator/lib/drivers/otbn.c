@@ -24,9 +24,20 @@ ASSERT_ERR_BIT_MATCH(kOtbnErrBitsBadInsnAddr, OTBN_ERR_BITS_BAD_INSN_ADDR_BIT);
 ASSERT_ERR_BIT_MATCH(kOtbnErrBitsCallStack, OTBN_ERR_BITS_CALL_STACK_BIT);
 ASSERT_ERR_BIT_MATCH(kOtbnErrBitsIllegalInsn, OTBN_ERR_BITS_ILLEGAL_INSN_BIT);
 ASSERT_ERR_BIT_MATCH(kOtbnErrBitsLoop, OTBN_ERR_BITS_LOOP_BIT);
-ASSERT_ERR_BIT_MATCH(kOtbnErrBitsFatalImem, OTBN_ERR_BITS_FATAL_IMEM_BIT);
-ASSERT_ERR_BIT_MATCH(kOtbnErrBitsFatalDmem, OTBN_ERR_BITS_FATAL_DMEM_BIT);
-ASSERT_ERR_BIT_MATCH(kOtbnErrBitsFatalReg, OTBN_ERR_BITS_FATAL_REG_BIT);
+ASSERT_ERR_BIT_MATCH(kOtbnErrBitsImemIntgViolation,
+                     OTBN_ERR_BITS_IMEM_INTG_VIOLATION_BIT);
+ASSERT_ERR_BIT_MATCH(kOtbnErrBitsDmemIntgViolation,
+                     OTBN_ERR_BITS_DMEM_INTG_VIOLATION_BIT);
+ASSERT_ERR_BIT_MATCH(kOtbnErrBitsRegIntgViolation,
+                     OTBN_ERR_BITS_REG_INTG_VIOLATION_BIT);
+ASSERT_ERR_BIT_MATCH(kOtbnErrBitsBusIntgViolation,
+                     OTBN_ERR_BITS_BUS_INTG_VIOLATION_BIT);
+ASSERT_ERR_BIT_MATCH(kOtbnErrBitsIllegalBusAccess,
+                     OTBN_ERR_BITS_ILLEGAL_BUS_ACCESS_BIT);
+ASSERT_ERR_BIT_MATCH(kOtbnErrBitsLifecycleEscalation,
+                     OTBN_ERR_BITS_LIFECYCLE_ESCALATION_BIT);
+ASSERT_ERR_BIT_MATCH(kOtbnErrBitsFatalSoftware,
+                     OTBN_ERR_BITS_FATAL_SOFTWARE_BIT);
 
 const size_t kOtbnDMemSizeBytes = OTBN_DMEM_SIZE_BYTES;
 const size_t kOtbnIMemSizeBytes = OTBN_IMEM_SIZE_BYTES;
@@ -36,38 +47,24 @@ enum { kBase = TOP_EARLGREY_OTBN_BASE_ADDR };
 /**
  * Ensures that `offset_bytes` and `len` are valid for a given `mem_size`.
  */
-static rom_error_t check_offset_len(uint32_t offset_bytes, size_t len,
+static rom_error_t check_offset_len(uint32_t offset_bytes, size_t num_words,
                                     size_t mem_size) {
-  // TODO: Update to use alignment utility functions.
-  // https://github.com/lowRISC/opentitan/issues/6112
-  if (offset_bytes % sizeof(uint32_t) != 0) {
-    return kErrorOtbnBadOffset;
-  }
-  if (offset_bytes + len * sizeof(uint32_t) < len * sizeof(uint32_t) ||
-      offset_bytes + len * sizeof(uint32_t) > mem_size) {
+  if (offset_bytes + num_words * sizeof(uint32_t) <
+          num_words * sizeof(uint32_t) ||
+      offset_bytes + num_words * sizeof(uint32_t) > mem_size) {
     return kErrorOtbnBadOffsetLen;
   }
   return kErrorOk;
 }
 
-rom_error_t otbn_start(uint32_t start_addr) {
-  // TODO: Update to use alignment utility functions.
-  // https://github.com/lowRISC/opentitan/issues/6112
-  if (start_addr % sizeof(uint32_t) != 0 || start_addr >= kOtbnIMemSizeBytes) {
-    return kErrorOtbnInvalidArgument;
-  }
-
-  abs_mmio_write32(kBase + OTBN_START_ADDR_REG_OFFSET, start_addr);
-
-  uint32_t cmd_reg_val = bitfield_bit32_write(0, OTBN_CMD_START_BIT, true);
-  abs_mmio_write32(kBase + OTBN_CMD_REG_OFFSET, cmd_reg_val);
-
+rom_error_t otbn_execute(void) {
+  abs_mmio_write32(kBase + OTBN_CMD_REG_OFFSET, kOtbnCmdExecute);
   return kErrorOk;
 }
 
 bool otbn_is_busy() {
   uint32_t status = abs_mmio_read32(kBase + OTBN_STATUS_REG_OFFSET);
-  return bitfield_bit32_read(status, OTBN_STATUS_BUSY_BIT);
+  return status != kOtbnStatusIdle && status != kOtbnStatusLocked;
 }
 
 void otbn_get_err_bits(otbn_err_bits_t *err_bits) {
@@ -75,32 +72,65 @@ void otbn_get_err_bits(otbn_err_bits_t *err_bits) {
 }
 
 rom_error_t otbn_imem_write(uint32_t offset_bytes, const uint32_t *src,
-                            size_t len) {
-  RETURN_IF_ERROR(check_offset_len(offset_bytes, len, kOtbnIMemSizeBytes));
+                            size_t num_words) {
+  RETURN_IF_ERROR(
+      check_offset_len(offset_bytes, num_words, kOtbnIMemSizeBytes));
 
-  for (size_t i = 0; i < len; ++i, offset_bytes += sizeof(uint32_t)) {
-    abs_mmio_write32(kBase + OTBN_IMEM_REG_OFFSET + offset_bytes, src[i]);
+  for (size_t i = 0; i < num_words; ++i) {
+    abs_mmio_write32(
+        kBase + OTBN_IMEM_REG_OFFSET + offset_bytes + i * sizeof(uint32_t),
+        src[i]);
   }
 
   return kErrorOk;
 }
 
 rom_error_t otbn_dmem_write(uint32_t offset_bytes, const uint32_t *src,
-                            size_t len) {
-  RETURN_IF_ERROR(check_offset_len(offset_bytes, len, kOtbnDMemSizeBytes));
+                            size_t num_words) {
+  RETURN_IF_ERROR(
+      check_offset_len(offset_bytes, num_words, kOtbnDMemSizeBytes));
 
-  for (size_t i = 0; i < len; ++i, offset_bytes += sizeof(uint32_t)) {
-    abs_mmio_write32(kBase + OTBN_DMEM_REG_OFFSET + offset_bytes, src[i]);
+  for (size_t i = 0; i < num_words; ++i) {
+    abs_mmio_write32(
+        kBase + OTBN_DMEM_REG_OFFSET + offset_bytes + i * sizeof(uint32_t),
+        src[i]);
   }
 
   return kErrorOk;
 }
 
-rom_error_t otbn_dmem_read(uint32_t offset_bytes, uint32_t *dest, size_t len) {
-  RETURN_IF_ERROR(check_offset_len(offset_bytes, len, kOtbnDMemSizeBytes));
+rom_error_t otbn_dmem_read(uint32_t offset_bytes, uint32_t *dest,
+                           size_t num_words) {
+  RETURN_IF_ERROR(
+      check_offset_len(offset_bytes, num_words, kOtbnDMemSizeBytes));
 
-  for (size_t i = 0; i < len; ++i, offset_bytes += sizeof(uint32_t)) {
-    dest[i] = abs_mmio_read32(kBase + OTBN_DMEM_REG_OFFSET + offset_bytes);
+  for (size_t i = 0; i < num_words; ++i) {
+    dest[i] = abs_mmio_read32(kBase + OTBN_DMEM_REG_OFFSET + offset_bytes +
+                              i * sizeof(uint32_t));
+  }
+
+  return kErrorOk;
+}
+
+void otbn_zero_dmem(void) {
+  for (size_t i = 0; i < kOtbnDMemSizeBytes; i += sizeof(uint32_t)) {
+    abs_mmio_write32(kBase + OTBN_DMEM_REG_OFFSET + i, 0u);
+  }
+}
+
+rom_error_t otbn_set_ctrl_software_errs_fatal(bool enable) {
+  // Only one bit in the CTRL register so no need to read current value.
+  uint32_t new_ctrl;
+
+  if (enable) {
+    new_ctrl = 1;
+  } else {
+    new_ctrl = 0;
+  }
+
+  abs_mmio_write32(kBase + OTBN_CTRL_REG_OFFSET, new_ctrl);
+  if (abs_mmio_read32(kBase + OTBN_CTRL_REG_OFFSET) != new_ctrl) {
+    return kErrorOtbnUnavailable;
   }
 
   return kErrorOk;

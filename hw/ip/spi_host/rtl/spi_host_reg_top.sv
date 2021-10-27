@@ -9,7 +9,6 @@
 module spi_host_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
 
@@ -213,13 +212,9 @@ module spi_host_reg_top (
   logic [31:0] csid_qs;
   logic [31:0] csid_wd;
   logic command_we;
-  logic [8:0] command_len_qs;
   logic [8:0] command_len_wd;
-  logic command_csaat_qs;
   logic command_csaat_wd;
-  logic [1:0] command_speed_qs;
   logic [1:0] command_speed_wd;
-  logic [1:0] command_direction_qs;
   logic [1:0] command_direction_wd;
   logic error_enable_we;
   logic error_enable_cmdbusy_qs;
@@ -259,7 +254,6 @@ module spi_host_reg_top (
 
   // Register instances
   // R[intr_state]: V(False)
-
   //   F[error]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -284,7 +278,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (intr_state_error_qs)
   );
-
 
   //   F[spi_event]: 1:1
   prim_subreg #(
@@ -313,7 +306,6 @@ module spi_host_reg_top (
 
 
   // R[intr_enable]: V(False)
-
   //   F[error]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -338,7 +330,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (intr_enable_error_qs)
   );
-
 
   //   F[spi_event]: 1:1
   prim_subreg #(
@@ -367,7 +358,6 @@ module spi_host_reg_top (
 
 
   // R[intr_test]: V(True)
-
   //   F[error]: 0:0
   prim_subreg_ext #(
     .DW    (1)
@@ -381,7 +371,6 @@ module spi_host_reg_top (
     .q      (reg2hw.intr_test.error.q),
     .qs     ()
   );
-
 
   //   F[spi_event]: 1:1
   prim_subreg_ext #(
@@ -399,7 +388,6 @@ module spi_host_reg_top (
 
 
   // R[alert_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_alert_test (
@@ -415,7 +403,6 @@ module spi_host_reg_top (
 
 
   // R[control]: V(False)
-
   //   F[rx_watermark]: 7:0
   prim_subreg #(
     .DW      (8),
@@ -440,7 +427,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (control_rx_watermark_qs)
   );
-
 
   //   F[tx_watermark]: 15:8
   prim_subreg #(
@@ -467,7 +453,6 @@ module spi_host_reg_top (
     .qs     (control_tx_watermark_qs)
   );
 
-
   //   F[sw_rst]: 30:30
   prim_subreg #(
     .DW      (1),
@@ -492,7 +477,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (control_sw_rst_qs)
   );
-
 
   //   F[spien]: 31:31
   prim_subreg #(
@@ -521,7 +505,6 @@ module spi_host_reg_top (
 
 
   // R[status]: V(False)
-
   //   F[txqd]: 7:0
   prim_subreg #(
     .DW      (8),
@@ -546,7 +529,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (status_txqd_qs)
   );
-
 
   //   F[rxqd]: 15:8
   prim_subreg #(
@@ -573,7 +555,6 @@ module spi_host_reg_top (
     .qs     (status_rxqd_qs)
   );
 
-
   //   F[rxwm]: 20:20
   prim_subreg #(
     .DW      (1),
@@ -598,7 +579,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (status_rxwm_qs)
   );
-
 
   //   F[byteorder]: 22:22
   prim_subreg #(
@@ -625,7 +605,6 @@ module spi_host_reg_top (
     .qs     (status_byteorder_qs)
   );
 
-
   //   F[rxstall]: 23:23
   prim_subreg #(
     .DW      (1),
@@ -650,7 +629,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (status_rxstall_qs)
   );
-
 
   //   F[rxempty]: 24:24
   prim_subreg #(
@@ -677,7 +655,6 @@ module spi_host_reg_top (
     .qs     (status_rxempty_qs)
   );
 
-
   //   F[rxfull]: 25:25
   prim_subreg #(
     .DW      (1),
@@ -702,7 +679,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (status_rxfull_qs)
   );
-
 
   //   F[txwm]: 26:26
   prim_subreg #(
@@ -729,7 +705,6 @@ module spi_host_reg_top (
     .qs     (status_txwm_qs)
   );
 
-
   //   F[txstall]: 27:27
   prim_subreg #(
     .DW      (1),
@@ -754,7 +729,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (status_txstall_qs)
   );
-
 
   //   F[txempty]: 28:28
   prim_subreg #(
@@ -781,7 +755,6 @@ module spi_host_reg_top (
     .qs     (status_txempty_qs)
   );
 
-
   //   F[txfull]: 29:29
   prim_subreg #(
     .DW      (1),
@@ -807,7 +780,6 @@ module spi_host_reg_top (
     .qs     (status_txfull_qs)
   );
 
-
   //   F[active]: 30:30
   prim_subreg #(
     .DW      (1),
@@ -832,7 +804,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (status_active_qs)
   );
-
 
   //   F[ready]: 31:31
   prim_subreg #(
@@ -860,11 +831,9 @@ module spi_host_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg configopts
   // R[configopts]: V(False)
-
-  // F[clkdiv_0]: 15:0
+  //   F[clkdiv_0]: 15:0
   prim_subreg #(
     .DW      (16),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -889,8 +858,7 @@ module spi_host_reg_top (
     .qs     (configopts_clkdiv_0_qs)
   );
 
-
-  // F[csnidle_0]: 19:16
+  //   F[csnidle_0]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -915,8 +883,7 @@ module spi_host_reg_top (
     .qs     (configopts_csnidle_0_qs)
   );
 
-
-  // F[csntrail_0]: 23:20
+  //   F[csntrail_0]: 23:20
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -941,8 +908,7 @@ module spi_host_reg_top (
     .qs     (configopts_csntrail_0_qs)
   );
 
-
-  // F[csnlead_0]: 27:24
+  //   F[csnlead_0]: 27:24
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -967,8 +933,7 @@ module spi_host_reg_top (
     .qs     (configopts_csnlead_0_qs)
   );
 
-
-  // F[fullcyc_0]: 29:29
+  //   F[fullcyc_0]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -993,8 +958,7 @@ module spi_host_reg_top (
     .qs     (configopts_fullcyc_0_qs)
   );
 
-
-  // F[cpha_0]: 30:30
+  //   F[cpha_0]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -1019,8 +983,7 @@ module spi_host_reg_top (
     .qs     (configopts_cpha_0_qs)
   );
 
-
-  // F[cpol_0]: 31:31
+  //   F[cpol_0]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -1046,9 +1009,7 @@ module spi_host_reg_top (
   );
 
 
-
   // R[csid]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -1074,114 +1035,65 @@ module spi_host_reg_top (
   );
 
 
-  // R[command]: V(False)
-
+  // R[command]: V(True)
   //   F[len]: 8:0
-  prim_subreg #(
-    .DW      (9),
-    .SwAccess(prim_subreg_pkg::SwAccessRW),
-    .RESVAL  (9'h0)
+  prim_subreg_ext #(
+    .DW    (9)
   ) u_command_len (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-
-    // from register interface
+    .re     (1'b0),
     .we     (command_we),
     .wd     (command_len_wd),
-
-    // from internal hardware
-    .de     (1'b0),
     .d      ('0),
-
-    // to internal hardware
+    .qre    (),
     .qe     (reg2hw.command.len.qe),
     .q      (reg2hw.command.len.q),
-
-    // to register interface (read)
-    .qs     (command_len_qs)
+    .qs     ()
   );
-
 
   //   F[csaat]: 9:9
-  prim_subreg #(
-    .DW      (1),
-    .SwAccess(prim_subreg_pkg::SwAccessRW),
-    .RESVAL  (1'h0)
+  prim_subreg_ext #(
+    .DW    (1)
   ) u_command_csaat (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-
-    // from register interface
+    .re     (1'b0),
     .we     (command_we),
     .wd     (command_csaat_wd),
-
-    // from internal hardware
-    .de     (1'b0),
     .d      ('0),
-
-    // to internal hardware
+    .qre    (),
     .qe     (reg2hw.command.csaat.qe),
     .q      (reg2hw.command.csaat.q),
-
-    // to register interface (read)
-    .qs     (command_csaat_qs)
+    .qs     ()
   );
-
 
   //   F[speed]: 11:10
-  prim_subreg #(
-    .DW      (2),
-    .SwAccess(prim_subreg_pkg::SwAccessRW),
-    .RESVAL  (2'h0)
+  prim_subreg_ext #(
+    .DW    (2)
   ) u_command_speed (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-
-    // from register interface
+    .re     (1'b0),
     .we     (command_we),
     .wd     (command_speed_wd),
-
-    // from internal hardware
-    .de     (1'b0),
     .d      ('0),
-
-    // to internal hardware
+    .qre    (),
     .qe     (reg2hw.command.speed.qe),
     .q      (reg2hw.command.speed.q),
-
-    // to register interface (read)
-    .qs     (command_speed_qs)
+    .qs     ()
   );
 
-
   //   F[direction]: 13:12
-  prim_subreg #(
-    .DW      (2),
-    .SwAccess(prim_subreg_pkg::SwAccessRW),
-    .RESVAL  (2'h0)
+  prim_subreg_ext #(
+    .DW    (2)
   ) u_command_direction (
-    .clk_i   (clk_i),
-    .rst_ni  (rst_ni),
-
-    // from register interface
+    .re     (1'b0),
     .we     (command_we),
     .wd     (command_direction_wd),
-
-    // from internal hardware
-    .de     (1'b0),
     .d      ('0),
-
-    // to internal hardware
+    .qre    (),
     .qe     (reg2hw.command.direction.qe),
     .q      (reg2hw.command.direction.q),
-
-    // to register interface (read)
-    .qs     (command_direction_qs)
+    .qs     ()
   );
 
 
   // R[error_enable]: V(False)
-
   //   F[cmdbusy]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -1206,7 +1118,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (error_enable_cmdbusy_qs)
   );
-
 
   //   F[overflow]: 1:1
   prim_subreg #(
@@ -1233,7 +1144,6 @@ module spi_host_reg_top (
     .qs     (error_enable_overflow_qs)
   );
 
-
   //   F[underflow]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -1259,7 +1169,6 @@ module spi_host_reg_top (
     .qs     (error_enable_underflow_qs)
   );
 
-
   //   F[cmdinval]: 3:3
   prim_subreg #(
     .DW      (1),
@@ -1284,7 +1193,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (error_enable_cmdinval_qs)
   );
-
 
   //   F[csidinval]: 4:4
   prim_subreg #(
@@ -1313,7 +1221,6 @@ module spi_host_reg_top (
 
 
   // R[error_status]: V(False)
-
   //   F[cmdbusy]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -1338,7 +1245,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (error_status_cmdbusy_qs)
   );
-
 
   //   F[overflow]: 1:1
   prim_subreg #(
@@ -1365,7 +1271,6 @@ module spi_host_reg_top (
     .qs     (error_status_overflow_qs)
   );
 
-
   //   F[underflow]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -1391,7 +1296,6 @@ module spi_host_reg_top (
     .qs     (error_status_underflow_qs)
   );
 
-
   //   F[cmdinval]: 3:3
   prim_subreg #(
     .DW      (1),
@@ -1416,7 +1320,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (error_status_cmdinval_qs)
   );
-
 
   //   F[csidinval]: 4:4
   prim_subreg #(
@@ -1445,7 +1348,6 @@ module spi_host_reg_top (
 
 
   // R[event_enable]: V(False)
-
   //   F[rxfull]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -1470,7 +1372,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (event_enable_rxfull_qs)
   );
-
 
   //   F[txempty]: 1:1
   prim_subreg #(
@@ -1497,7 +1398,6 @@ module spi_host_reg_top (
     .qs     (event_enable_txempty_qs)
   );
 
-
   //   F[rxwm]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -1522,7 +1422,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (event_enable_rxwm_qs)
   );
-
 
   //   F[txwm]: 3:3
   prim_subreg #(
@@ -1549,7 +1448,6 @@ module spi_host_reg_top (
     .qs     (event_enable_txwm_qs)
   );
 
-
   //   F[ready]: 4:4
   prim_subreg #(
     .DW      (1),
@@ -1575,7 +1473,6 @@ module spi_host_reg_top (
     .qs     (event_enable_ready_qs)
   );
 
-
   //   F[idle]: 5:5
   prim_subreg #(
     .DW      (1),
@@ -1600,7 +1497,6 @@ module spi_host_reg_top (
     // to register interface (read)
     .qs     (event_enable_idle_qs)
   );
-
 
 
 
@@ -1790,10 +1686,10 @@ module spi_host_reg_top (
       end
 
       addr_hit[8]: begin
-        reg_rdata_next[8:0] = command_len_qs;
-        reg_rdata_next[9] = command_csaat_qs;
-        reg_rdata_next[11:10] = command_speed_qs;
-        reg_rdata_next[13:12] = command_direction_qs;
+        reg_rdata_next[8:0] = '0;
+        reg_rdata_next[9] = '0;
+        reg_rdata_next[11:10] = '0;
+        reg_rdata_next[13:12] = '0;
       end
 
       addr_hit[9]: begin
@@ -1827,12 +1723,18 @@ module spi_host_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

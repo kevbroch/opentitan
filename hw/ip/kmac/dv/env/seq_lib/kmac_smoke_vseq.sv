@@ -151,8 +151,8 @@ class kmac_smoke_vseq extends kmac_base_vseq;
           //
           // We disable all error case subprocesses once the valid data transfer has finished as
           // to not cause spurious issues later on in the simulation.
+          `uvm_info(`gfn, "starting kmac_app requests", UVM_HIGH)
           begin : send_kmac_req
-            `uvm_info(`gfn, "starting kmac_app requests", UVM_HIGH)
             send_kmac_app_req(app_mode);
             disable invalid_msgfifo_wr;
             disable sw_cmd_in_app;
@@ -175,9 +175,11 @@ class kmac_smoke_vseq extends kmac_base_vseq;
 
           // This thread will create an error case by writing a SW command to the KMAC
           // while an application interface operation is in progress.
+          //
+          // As per designer comment on https://github.com/lowRISC/opentitan/issues/7716,
+          // the only command that will trigger this particular error is CmdStart.
           if (kmac_err_type == kmac_pkg::ErrSwIssuedCmdInAppActive) begin : sw_cmd_in_app
-            kmac_pkg::kmac_cmd_e invalid_cmd;
-            `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(invalid_cmd, invalid_cmd != kmac_pkg::CmdNone;)
+            kmac_pkg::kmac_cmd_e invalid_cmd = kmac_pkg::CmdStart;
             wait (cfg.m_kmac_app_agent_cfg[app_mode].vif.kmac_data_req.valid);
             cfg.clk_rst_vif.wait_clks($urandom_range(25, 250));
             issue_cmd(invalid_cmd);
@@ -198,7 +200,7 @@ class kmac_smoke_vseq extends kmac_base_vseq;
             end
           end : check_invalid_key_err
         join
-        if (process_key_err_before_app_done) begin
+        if (kmac_err_type != kmac_pkg::ErrNone && process_key_err_before_app_done) begin
           continue;
         end else begin
           // Wait until the KMAC engine has completely finished
@@ -294,6 +296,7 @@ class kmac_smoke_vseq extends kmac_base_vseq;
 
       // Drop the sideloaded key if it was provided to the DUT.
       if (kmac_en && (en_sideload || provide_sideload_key)) begin
+        `uvm_info(`gfn, "dropping sideload key", UVM_HIGH)
         cfg.sideload_vif.drive_sideload_key(0);
       end
 

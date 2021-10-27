@@ -11,9 +11,6 @@ build/
 # build directories with special suffixes
 build*/
 
-# Sphinx result
-_build/
-
 # Generated register headers
 hw/ip/*/sw
 
@@ -65,3 +62,6 @@ hw/top_englishbreakfast/ip/xbar_peri/xbar_peri.core
 # Rust Cargo build system files.
 Cargo.lock
 sw/host/**/target
+
+# Bazel-related cache and output directories
+bazel-*

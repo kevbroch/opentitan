@@ -86,10 +86,10 @@ package keymgr_pkg;
 
   // Enumeration for operations
   typedef enum logic [1:0] {
-    Creator   = 0,
-    OwnerInt  = 1,
-    Owner     = 2,
-    Disable   = 3
+    Creator,
+    OwnerInt,
+    Owner,
+    Disable
   } keymgr_stage_e;
 
   // Enumeration for sideload sel
@@ -99,12 +99,6 @@ package keymgr_pkg;
     Kmac,
     Otbn
   } keymgr_key_dest_e;
-
-  // Enumeration for hardened count style
-  typedef enum logic {
-    CrossCnt, // up count and down count
-    DupCnt    // duplicate counters
-  } keymgr_cnt_style_e;
 
   // Enumeration for key select
   typedef enum logic {
@@ -140,25 +134,63 @@ package keymgr_pkg;
     OpDoneFail = 3
   } keymgr_op_status_e;
 
+  // keymgr has 4 categories of errors
+  // sync errors  - recoverable errors that happen during keymgr operation
+  // async errors - recoverable errors that happen asynchronously
+  // sync faults  - fatal errors that happen during keymgr operation
+  // async faults - fatal errors that happen asynchronously
+
+  typedef enum logic [1:0] {
+    SyncErrInvalidOp,
+    SyncErrInvalidIn,
+    SyncErrLastIdx
+  } keymgr_sync_error_e;
+
+  typedef enum logic [1:0] {
+    AsyncErrShadowUpdate,
+    AsyncErrLastIdx
+  } keymgr_async_error_e;
+
+  typedef enum logic [1:0] {
+    SyncFaultKmacOp,
+    SyncFaultKmacOut,
+    SyncFaultLastIdx
+  } keymgr_sync_fault_e;
+
+  typedef enum logic [3:0] {
+    AsyncFaultKmacCmd,
+    AsyncFaultKmacFsm,
+    AsyncFaultRegIntg,
+    AsyncFaultShadow,
+    AsyncFaultFsmIntg,
+    AsyncFaultCntErr,
+    AsyncFaultRCntErr,
+    AsyncFaultSideErr,
+    AsyncFaultLastIdx
+  } keymgr_async_fault_e;
+
+
   // Bit position of error code
   // Error is encoded as 1 error per bit
   typedef enum logic [2:0] {
     ErrInvalidOp,
-    ErrInvalidStates,
     ErrInvalidIn,
-    ErrInvalidOut,
+    ErrShadowUpdate,
     ErrLastPos
   } keymgr_err_pos_e;
 
   // Bit position of fault status
   typedef enum logic [3:0] {
-    FaultCmd,
+    FaultKmacCmd,
     FaultKmacFsm,
     FaultKmacOp,
-    FaultRegFileIntg,
+    FaultKmacOut,
+    FaultRegIntg,
     FaultShadow,
     FaultCtrlFsm,
     FaultCtrlCnt,
+    FaultReseedCnt,
+    FaultSideFsm,
     FaultLastPos
   } keymgr_fault_pos_e;
 
@@ -167,7 +199,6 @@ package keymgr_pkg;
     KeyUpdateRandom,
     KeyUpdateRoot,
     KeyUpdateKmac,
-    KeyUpdateInvalid,
     KeyUpdateWipe
   } keymgr_key_update_e;
 

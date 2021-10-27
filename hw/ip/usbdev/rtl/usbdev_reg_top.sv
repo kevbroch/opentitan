@@ -9,7 +9,6 @@
 module usbdev_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
 
@@ -572,7 +571,6 @@ module usbdev_reg_top (
 
   // Register instances
   // R[intr_state]: V(False)
-
   //   F[pkt_received]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -597,7 +595,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_state_pkt_received_qs)
   );
-
 
   //   F[pkt_sent]: 1:1
   prim_subreg #(
@@ -624,7 +621,6 @@ module usbdev_reg_top (
     .qs     (intr_state_pkt_sent_qs)
   );
 
-
   //   F[disconnected]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -649,7 +645,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_state_disconnected_qs)
   );
-
 
   //   F[host_lost]: 3:3
   prim_subreg #(
@@ -676,7 +671,6 @@ module usbdev_reg_top (
     .qs     (intr_state_host_lost_qs)
   );
 
-
   //   F[link_reset]: 4:4
   prim_subreg #(
     .DW      (1),
@@ -701,7 +695,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_state_link_reset_qs)
   );
-
 
   //   F[link_suspend]: 5:5
   prim_subreg #(
@@ -728,7 +721,6 @@ module usbdev_reg_top (
     .qs     (intr_state_link_suspend_qs)
   );
 
-
   //   F[link_resume]: 6:6
   prim_subreg #(
     .DW      (1),
@@ -753,7 +745,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_state_link_resume_qs)
   );
-
 
   //   F[av_empty]: 7:7
   prim_subreg #(
@@ -780,7 +771,6 @@ module usbdev_reg_top (
     .qs     (intr_state_av_empty_qs)
   );
 
-
   //   F[rx_full]: 8:8
   prim_subreg #(
     .DW      (1),
@@ -805,7 +795,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_state_rx_full_qs)
   );
-
 
   //   F[av_overflow]: 9:9
   prim_subreg #(
@@ -832,7 +821,6 @@ module usbdev_reg_top (
     .qs     (intr_state_av_overflow_qs)
   );
 
-
   //   F[link_in_err]: 10:10
   prim_subreg #(
     .DW      (1),
@@ -857,7 +845,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_state_link_in_err_qs)
   );
-
 
   //   F[rx_crc_err]: 11:11
   prim_subreg #(
@@ -884,7 +871,6 @@ module usbdev_reg_top (
     .qs     (intr_state_rx_crc_err_qs)
   );
 
-
   //   F[rx_pid_err]: 12:12
   prim_subreg #(
     .DW      (1),
@@ -909,7 +895,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_state_rx_pid_err_qs)
   );
-
 
   //   F[rx_bitstuff_err]: 13:13
   prim_subreg #(
@@ -936,7 +921,6 @@ module usbdev_reg_top (
     .qs     (intr_state_rx_bitstuff_err_qs)
   );
 
-
   //   F[frame]: 14:14
   prim_subreg #(
     .DW      (1),
@@ -962,7 +946,6 @@ module usbdev_reg_top (
     .qs     (intr_state_frame_qs)
   );
 
-
   //   F[connected]: 15:15
   prim_subreg #(
     .DW      (1),
@@ -987,7 +970,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_state_connected_qs)
   );
-
 
   //   F[link_out_err]: 16:16
   prim_subreg #(
@@ -1016,7 +998,6 @@ module usbdev_reg_top (
 
 
   // R[intr_enable]: V(False)
-
   //   F[pkt_received]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -1041,7 +1022,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_enable_pkt_received_qs)
   );
-
 
   //   F[pkt_sent]: 1:1
   prim_subreg #(
@@ -1068,7 +1048,6 @@ module usbdev_reg_top (
     .qs     (intr_enable_pkt_sent_qs)
   );
 
-
   //   F[disconnected]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -1093,7 +1072,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_enable_disconnected_qs)
   );
-
 
   //   F[host_lost]: 3:3
   prim_subreg #(
@@ -1120,7 +1098,6 @@ module usbdev_reg_top (
     .qs     (intr_enable_host_lost_qs)
   );
 
-
   //   F[link_reset]: 4:4
   prim_subreg #(
     .DW      (1),
@@ -1145,7 +1122,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_enable_link_reset_qs)
   );
-
 
   //   F[link_suspend]: 5:5
   prim_subreg #(
@@ -1172,7 +1148,6 @@ module usbdev_reg_top (
     .qs     (intr_enable_link_suspend_qs)
   );
 
-
   //   F[link_resume]: 6:6
   prim_subreg #(
     .DW      (1),
@@ -1197,7 +1172,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_enable_link_resume_qs)
   );
-
 
   //   F[av_empty]: 7:7
   prim_subreg #(
@@ -1224,7 +1198,6 @@ module usbdev_reg_top (
     .qs     (intr_enable_av_empty_qs)
   );
 
-
   //   F[rx_full]: 8:8
   prim_subreg #(
     .DW      (1),
@@ -1249,7 +1222,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_enable_rx_full_qs)
   );
-
 
   //   F[av_overflow]: 9:9
   prim_subreg #(
@@ -1276,7 +1248,6 @@ module usbdev_reg_top (
     .qs     (intr_enable_av_overflow_qs)
   );
 
-
   //   F[link_in_err]: 10:10
   prim_subreg #(
     .DW      (1),
@@ -1301,7 +1272,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_enable_link_in_err_qs)
   );
-
 
   //   F[rx_crc_err]: 11:11
   prim_subreg #(
@@ -1328,7 +1298,6 @@ module usbdev_reg_top (
     .qs     (intr_enable_rx_crc_err_qs)
   );
 
-
   //   F[rx_pid_err]: 12:12
   prim_subreg #(
     .DW      (1),
@@ -1353,7 +1322,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_enable_rx_pid_err_qs)
   );
-
 
   //   F[rx_bitstuff_err]: 13:13
   prim_subreg #(
@@ -1380,7 +1348,6 @@ module usbdev_reg_top (
     .qs     (intr_enable_rx_bitstuff_err_qs)
   );
 
-
   //   F[frame]: 14:14
   prim_subreg #(
     .DW      (1),
@@ -1406,7 +1373,6 @@ module usbdev_reg_top (
     .qs     (intr_enable_frame_qs)
   );
 
-
   //   F[connected]: 15:15
   prim_subreg #(
     .DW      (1),
@@ -1431,7 +1397,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (intr_enable_connected_qs)
   );
-
 
   //   F[link_out_err]: 16:16
   prim_subreg #(
@@ -1460,7 +1425,6 @@ module usbdev_reg_top (
 
 
   // R[intr_test]: V(True)
-
   //   F[pkt_received]: 0:0
   prim_subreg_ext #(
     .DW    (1)
@@ -1474,7 +1438,6 @@ module usbdev_reg_top (
     .q      (reg2hw.intr_test.pkt_received.q),
     .qs     ()
   );
-
 
   //   F[pkt_sent]: 1:1
   prim_subreg_ext #(
@@ -1490,7 +1453,6 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
   //   F[disconnected]: 2:2
   prim_subreg_ext #(
     .DW    (1)
@@ -1504,7 +1466,6 @@ module usbdev_reg_top (
     .q      (reg2hw.intr_test.disconnected.q),
     .qs     ()
   );
-
 
   //   F[host_lost]: 3:3
   prim_subreg_ext #(
@@ -1520,7 +1481,6 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
   //   F[link_reset]: 4:4
   prim_subreg_ext #(
     .DW    (1)
@@ -1534,7 +1494,6 @@ module usbdev_reg_top (
     .q      (reg2hw.intr_test.link_reset.q),
     .qs     ()
   );
-
 
   //   F[link_suspend]: 5:5
   prim_subreg_ext #(
@@ -1550,7 +1509,6 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
   //   F[link_resume]: 6:6
   prim_subreg_ext #(
     .DW    (1)
@@ -1564,7 +1522,6 @@ module usbdev_reg_top (
     .q      (reg2hw.intr_test.link_resume.q),
     .qs     ()
   );
-
 
   //   F[av_empty]: 7:7
   prim_subreg_ext #(
@@ -1580,7 +1537,6 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
   //   F[rx_full]: 8:8
   prim_subreg_ext #(
     .DW    (1)
@@ -1594,7 +1550,6 @@ module usbdev_reg_top (
     .q      (reg2hw.intr_test.rx_full.q),
     .qs     ()
   );
-
 
   //   F[av_overflow]: 9:9
   prim_subreg_ext #(
@@ -1610,7 +1565,6 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
   //   F[link_in_err]: 10:10
   prim_subreg_ext #(
     .DW    (1)
@@ -1624,7 +1578,6 @@ module usbdev_reg_top (
     .q      (reg2hw.intr_test.link_in_err.q),
     .qs     ()
   );
-
 
   //   F[rx_crc_err]: 11:11
   prim_subreg_ext #(
@@ -1640,7 +1593,6 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
   //   F[rx_pid_err]: 12:12
   prim_subreg_ext #(
     .DW    (1)
@@ -1654,7 +1606,6 @@ module usbdev_reg_top (
     .q      (reg2hw.intr_test.rx_pid_err.q),
     .qs     ()
   );
-
 
   //   F[rx_bitstuff_err]: 13:13
   prim_subreg_ext #(
@@ -1670,7 +1621,6 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
   //   F[frame]: 14:14
   prim_subreg_ext #(
     .DW    (1)
@@ -1685,7 +1635,6 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
   //   F[connected]: 15:15
   prim_subreg_ext #(
     .DW    (1)
@@ -1699,7 +1648,6 @@ module usbdev_reg_top (
     .q      (reg2hw.intr_test.connected.q),
     .qs     ()
   );
-
 
   //   F[link_out_err]: 16:16
   prim_subreg_ext #(
@@ -1717,7 +1665,6 @@ module usbdev_reg_top (
 
 
   // R[alert_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_alert_test (
@@ -1733,7 +1680,6 @@ module usbdev_reg_top (
 
 
   // R[usbctrl]: V(False)
-
   //   F[enable]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -1758,7 +1704,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (usbctrl_enable_qs)
   );
-
 
   //   F[device_address]: 22:16
   prim_subreg #(
@@ -1787,7 +1732,6 @@ module usbdev_reg_top (
 
 
   // R[usbstat]: V(True)
-
   //   F[frame]: 10:0
   prim_subreg_ext #(
     .DW    (11)
@@ -1801,7 +1745,6 @@ module usbdev_reg_top (
     .q      (),
     .qs     (usbstat_frame_qs)
   );
-
 
   //   F[host_lost]: 11:11
   prim_subreg_ext #(
@@ -1817,7 +1760,6 @@ module usbdev_reg_top (
     .qs     (usbstat_host_lost_qs)
   );
 
-
   //   F[link_state]: 14:12
   prim_subreg_ext #(
     .DW    (3)
@@ -1831,7 +1773,6 @@ module usbdev_reg_top (
     .q      (),
     .qs     (usbstat_link_state_qs)
   );
-
 
   //   F[sense]: 15:15
   prim_subreg_ext #(
@@ -1847,7 +1788,6 @@ module usbdev_reg_top (
     .qs     (usbstat_sense_qs)
   );
 
-
   //   F[av_depth]: 18:16
   prim_subreg_ext #(
     .DW    (3)
@@ -1861,7 +1801,6 @@ module usbdev_reg_top (
     .q      (),
     .qs     (usbstat_av_depth_qs)
   );
-
 
   //   F[av_full]: 23:23
   prim_subreg_ext #(
@@ -1877,7 +1816,6 @@ module usbdev_reg_top (
     .qs     (usbstat_av_full_qs)
   );
 
-
   //   F[rx_depth]: 26:24
   prim_subreg_ext #(
     .DW    (3)
@@ -1891,7 +1829,6 @@ module usbdev_reg_top (
     .q      (),
     .qs     (usbstat_rx_depth_qs)
   );
-
 
   //   F[rx_empty]: 31:31
   prim_subreg_ext #(
@@ -1909,7 +1846,6 @@ module usbdev_reg_top (
 
 
   // R[avbuffer]: V(False)
-
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -1936,7 +1872,6 @@ module usbdev_reg_top (
 
 
   // R[rxfifo]: V(True)
-
   //   F[buffer]: 4:0
   prim_subreg_ext #(
     .DW    (5)
@@ -1950,7 +1885,6 @@ module usbdev_reg_top (
     .q      (reg2hw.rxfifo.buffer.q),
     .qs     (rxfifo_buffer_qs)
   );
-
 
   //   F[size]: 14:8
   prim_subreg_ext #(
@@ -1966,7 +1900,6 @@ module usbdev_reg_top (
     .qs     (rxfifo_size_qs)
   );
 
-
   //   F[setup]: 19:19
   prim_subreg_ext #(
     .DW    (1)
@@ -1980,7 +1913,6 @@ module usbdev_reg_top (
     .q      (reg2hw.rxfifo.setup.q),
     .qs     (rxfifo_setup_qs)
   );
-
 
   //   F[ep]: 23:20
   prim_subreg_ext #(
@@ -1997,11 +1929,9 @@ module usbdev_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg rxenable_setup
   // R[rxenable_setup]: V(False)
-
-  // F[setup_0]: 0:0
+  //   F[setup_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2026,8 +1956,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_0_qs)
   );
 
-
-  // F[setup_1]: 1:1
+  //   F[setup_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2052,8 +1981,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_1_qs)
   );
 
-
-  // F[setup_2]: 2:2
+  //   F[setup_2]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2078,8 +2006,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_2_qs)
   );
 
-
-  // F[setup_3]: 3:3
+  //   F[setup_3]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2104,8 +2031,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_3_qs)
   );
 
-
-  // F[setup_4]: 4:4
+  //   F[setup_4]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2130,8 +2056,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_4_qs)
   );
 
-
-  // F[setup_5]: 5:5
+  //   F[setup_5]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2156,8 +2081,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_5_qs)
   );
 
-
-  // F[setup_6]: 6:6
+  //   F[setup_6]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2182,8 +2106,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_6_qs)
   );
 
-
-  // F[setup_7]: 7:7
+  //   F[setup_7]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2208,8 +2131,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_7_qs)
   );
 
-
-  // F[setup_8]: 8:8
+  //   F[setup_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2234,8 +2156,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_8_qs)
   );
 
-
-  // F[setup_9]: 9:9
+  //   F[setup_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2260,8 +2181,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_9_qs)
   );
 
-
-  // F[setup_10]: 10:10
+  //   F[setup_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2286,8 +2206,7 @@ module usbdev_reg_top (
     .qs     (rxenable_setup_setup_10_qs)
   );
 
-
-  // F[setup_11]: 11:11
+  //   F[setup_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2313,12 +2232,9 @@ module usbdev_reg_top (
   );
 
 
-
-
   // Subregister 0 of Multireg rxenable_out
   // R[rxenable_out]: V(False)
-
-  // F[out_0]: 0:0
+  //   F[out_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2343,8 +2259,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_0_qs)
   );
 
-
-  // F[out_1]: 1:1
+  //   F[out_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2369,8 +2284,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_1_qs)
   );
 
-
-  // F[out_2]: 2:2
+  //   F[out_2]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2395,8 +2309,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_2_qs)
   );
 
-
-  // F[out_3]: 3:3
+  //   F[out_3]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2421,8 +2334,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_3_qs)
   );
 
-
-  // F[out_4]: 4:4
+  //   F[out_4]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2447,8 +2359,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_4_qs)
   );
 
-
-  // F[out_5]: 5:5
+  //   F[out_5]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2473,8 +2384,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_5_qs)
   );
 
-
-  // F[out_6]: 6:6
+  //   F[out_6]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2499,8 +2409,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_6_qs)
   );
 
-
-  // F[out_7]: 7:7
+  //   F[out_7]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2525,8 +2434,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_7_qs)
   );
 
-
-  // F[out_8]: 8:8
+  //   F[out_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2551,8 +2459,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_8_qs)
   );
 
-
-  // F[out_9]: 9:9
+  //   F[out_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2577,8 +2484,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_9_qs)
   );
 
-
-  // F[out_10]: 10:10
+  //   F[out_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2603,8 +2509,7 @@ module usbdev_reg_top (
     .qs     (rxenable_out_out_10_qs)
   );
 
-
-  // F[out_11]: 11:11
+  //   F[out_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2630,12 +2535,9 @@ module usbdev_reg_top (
   );
 
 
-
-
   // Subregister 0 of Multireg in_sent
   // R[in_sent]: V(False)
-
-  // F[sent_0]: 0:0
+  //   F[sent_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2660,8 +2562,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_0_qs)
   );
 
-
-  // F[sent_1]: 1:1
+  //   F[sent_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2686,8 +2587,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_1_qs)
   );
 
-
-  // F[sent_2]: 2:2
+  //   F[sent_2]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2712,8 +2612,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_2_qs)
   );
 
-
-  // F[sent_3]: 3:3
+  //   F[sent_3]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2738,8 +2637,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_3_qs)
   );
 
-
-  // F[sent_4]: 4:4
+  //   F[sent_4]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2764,8 +2662,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_4_qs)
   );
 
-
-  // F[sent_5]: 5:5
+  //   F[sent_5]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2790,8 +2687,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_5_qs)
   );
 
-
-  // F[sent_6]: 6:6
+  //   F[sent_6]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2816,8 +2712,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_6_qs)
   );
 
-
-  // F[sent_7]: 7:7
+  //   F[sent_7]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2842,8 +2737,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_7_qs)
   );
 
-
-  // F[sent_8]: 8:8
+  //   F[sent_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2868,8 +2762,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_8_qs)
   );
 
-
-  // F[sent_9]: 9:9
+  //   F[sent_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2894,8 +2787,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_9_qs)
   );
 
-
-  // F[sent_10]: 10:10
+  //   F[sent_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2920,8 +2812,7 @@ module usbdev_reg_top (
     .qs     (in_sent_sent_10_qs)
   );
 
-
-  // F[sent_11]: 11:11
+  //   F[sent_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -2947,12 +2838,9 @@ module usbdev_reg_top (
   );
 
 
-
-
   // Subregister 0 of Multireg stall
   // R[stall]: V(False)
-
-  // F[stall_0]: 0:0
+  //   F[stall_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2977,8 +2865,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_0_qs)
   );
 
-
-  // F[stall_1]: 1:1
+  //   F[stall_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3003,8 +2890,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_1_qs)
   );
 
-
-  // F[stall_2]: 2:2
+  //   F[stall_2]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3029,8 +2915,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_2_qs)
   );
 
-
-  // F[stall_3]: 3:3
+  //   F[stall_3]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3055,8 +2940,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_3_qs)
   );
 
-
-  // F[stall_4]: 4:4
+  //   F[stall_4]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3081,8 +2965,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_4_qs)
   );
 
-
-  // F[stall_5]: 5:5
+  //   F[stall_5]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3107,8 +2990,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_5_qs)
   );
 
-
-  // F[stall_6]: 6:6
+  //   F[stall_6]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3133,8 +3015,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_6_qs)
   );
 
-
-  // F[stall_7]: 7:7
+  //   F[stall_7]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3159,8 +3040,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_7_qs)
   );
 
-
-  // F[stall_8]: 8:8
+  //   F[stall_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3185,8 +3065,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_8_qs)
   );
 
-
-  // F[stall_9]: 9:9
+  //   F[stall_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3211,8 +3090,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_9_qs)
   );
 
-
-  // F[stall_10]: 10:10
+  //   F[stall_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3237,8 +3115,7 @@ module usbdev_reg_top (
     .qs     (stall_stall_10_qs)
   );
 
-
-  // F[stall_11]: 11:11
+  //   F[stall_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3264,12 +3141,9 @@ module usbdev_reg_top (
   );
 
 
-
-
   // Subregister 0 of Multireg configin
   // R[configin_0]: V(False)
-
-  // F[buffer_0]: 4:0
+  //   F[buffer_0]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3294,8 +3168,7 @@ module usbdev_reg_top (
     .qs     (configin_0_buffer_0_qs)
   );
 
-
-  // F[size_0]: 14:8
+  //   F[size_0]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3320,8 +3193,7 @@ module usbdev_reg_top (
     .qs     (configin_0_size_0_qs)
   );
 
-
-  // F[pend_0]: 30:30
+  //   F[pend_0]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -3346,8 +3218,7 @@ module usbdev_reg_top (
     .qs     (configin_0_pend_0_qs)
   );
 
-
-  // F[rdy_0]: 31:31
+  //   F[rdy_0]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3375,8 +3246,7 @@ module usbdev_reg_top (
 
   // Subregister 1 of Multireg configin
   // R[configin_1]: V(False)
-
-  // F[buffer_1]: 4:0
+  //   F[buffer_1]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3401,8 +3271,7 @@ module usbdev_reg_top (
     .qs     (configin_1_buffer_1_qs)
   );
 
-
-  // F[size_1]: 14:8
+  //   F[size_1]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3427,8 +3296,7 @@ module usbdev_reg_top (
     .qs     (configin_1_size_1_qs)
   );
 
-
-  // F[pend_1]: 30:30
+  //   F[pend_1]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -3453,8 +3321,7 @@ module usbdev_reg_top (
     .qs     (configin_1_pend_1_qs)
   );
 
-
-  // F[rdy_1]: 31:31
+  //   F[rdy_1]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3482,8 +3349,7 @@ module usbdev_reg_top (
 
   // Subregister 2 of Multireg configin
   // R[configin_2]: V(False)
-
-  // F[buffer_2]: 4:0
+  //   F[buffer_2]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3508,8 +3374,7 @@ module usbdev_reg_top (
     .qs     (configin_2_buffer_2_qs)
   );
 
-
-  // F[size_2]: 14:8
+  //   F[size_2]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3534,8 +3399,7 @@ module usbdev_reg_top (
     .qs     (configin_2_size_2_qs)
   );
 
-
-  // F[pend_2]: 30:30
+  //   F[pend_2]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -3560,8 +3424,7 @@ module usbdev_reg_top (
     .qs     (configin_2_pend_2_qs)
   );
 
-
-  // F[rdy_2]: 31:31
+  //   F[rdy_2]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3589,8 +3452,7 @@ module usbdev_reg_top (
 
   // Subregister 3 of Multireg configin
   // R[configin_3]: V(False)
-
-  // F[buffer_3]: 4:0
+  //   F[buffer_3]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3615,8 +3477,7 @@ module usbdev_reg_top (
     .qs     (configin_3_buffer_3_qs)
   );
 
-
-  // F[size_3]: 14:8
+  //   F[size_3]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3641,8 +3502,7 @@ module usbdev_reg_top (
     .qs     (configin_3_size_3_qs)
   );
 
-
-  // F[pend_3]: 30:30
+  //   F[pend_3]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -3667,8 +3527,7 @@ module usbdev_reg_top (
     .qs     (configin_3_pend_3_qs)
   );
 
-
-  // F[rdy_3]: 31:31
+  //   F[rdy_3]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3696,8 +3555,7 @@ module usbdev_reg_top (
 
   // Subregister 4 of Multireg configin
   // R[configin_4]: V(False)
-
-  // F[buffer_4]: 4:0
+  //   F[buffer_4]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3722,8 +3580,7 @@ module usbdev_reg_top (
     .qs     (configin_4_buffer_4_qs)
   );
 
-
-  // F[size_4]: 14:8
+  //   F[size_4]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3748,8 +3605,7 @@ module usbdev_reg_top (
     .qs     (configin_4_size_4_qs)
   );
 
-
-  // F[pend_4]: 30:30
+  //   F[pend_4]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -3774,8 +3630,7 @@ module usbdev_reg_top (
     .qs     (configin_4_pend_4_qs)
   );
 
-
-  // F[rdy_4]: 31:31
+  //   F[rdy_4]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3803,8 +3658,7 @@ module usbdev_reg_top (
 
   // Subregister 5 of Multireg configin
   // R[configin_5]: V(False)
-
-  // F[buffer_5]: 4:0
+  //   F[buffer_5]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3829,8 +3683,7 @@ module usbdev_reg_top (
     .qs     (configin_5_buffer_5_qs)
   );
 
-
-  // F[size_5]: 14:8
+  //   F[size_5]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3855,8 +3708,7 @@ module usbdev_reg_top (
     .qs     (configin_5_size_5_qs)
   );
 
-
-  // F[pend_5]: 30:30
+  //   F[pend_5]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -3881,8 +3733,7 @@ module usbdev_reg_top (
     .qs     (configin_5_pend_5_qs)
   );
 
-
-  // F[rdy_5]: 31:31
+  //   F[rdy_5]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3910,8 +3761,7 @@ module usbdev_reg_top (
 
   // Subregister 6 of Multireg configin
   // R[configin_6]: V(False)
-
-  // F[buffer_6]: 4:0
+  //   F[buffer_6]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3936,8 +3786,7 @@ module usbdev_reg_top (
     .qs     (configin_6_buffer_6_qs)
   );
 
-
-  // F[size_6]: 14:8
+  //   F[size_6]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3962,8 +3811,7 @@ module usbdev_reg_top (
     .qs     (configin_6_size_6_qs)
   );
 
-
-  // F[pend_6]: 30:30
+  //   F[pend_6]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -3988,8 +3836,7 @@ module usbdev_reg_top (
     .qs     (configin_6_pend_6_qs)
   );
 
-
-  // F[rdy_6]: 31:31
+  //   F[rdy_6]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4017,8 +3864,7 @@ module usbdev_reg_top (
 
   // Subregister 7 of Multireg configin
   // R[configin_7]: V(False)
-
-  // F[buffer_7]: 4:0
+  //   F[buffer_7]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4043,8 +3889,7 @@ module usbdev_reg_top (
     .qs     (configin_7_buffer_7_qs)
   );
 
-
-  // F[size_7]: 14:8
+  //   F[size_7]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4069,8 +3914,7 @@ module usbdev_reg_top (
     .qs     (configin_7_size_7_qs)
   );
 
-
-  // F[pend_7]: 30:30
+  //   F[pend_7]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -4095,8 +3939,7 @@ module usbdev_reg_top (
     .qs     (configin_7_pend_7_qs)
   );
 
-
-  // F[rdy_7]: 31:31
+  //   F[rdy_7]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4124,8 +3967,7 @@ module usbdev_reg_top (
 
   // Subregister 8 of Multireg configin
   // R[configin_8]: V(False)
-
-  // F[buffer_8]: 4:0
+  //   F[buffer_8]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4150,8 +3992,7 @@ module usbdev_reg_top (
     .qs     (configin_8_buffer_8_qs)
   );
 
-
-  // F[size_8]: 14:8
+  //   F[size_8]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4176,8 +4017,7 @@ module usbdev_reg_top (
     .qs     (configin_8_size_8_qs)
   );
 
-
-  // F[pend_8]: 30:30
+  //   F[pend_8]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -4202,8 +4042,7 @@ module usbdev_reg_top (
     .qs     (configin_8_pend_8_qs)
   );
 
-
-  // F[rdy_8]: 31:31
+  //   F[rdy_8]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4231,8 +4070,7 @@ module usbdev_reg_top (
 
   // Subregister 9 of Multireg configin
   // R[configin_9]: V(False)
-
-  // F[buffer_9]: 4:0
+  //   F[buffer_9]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4257,8 +4095,7 @@ module usbdev_reg_top (
     .qs     (configin_9_buffer_9_qs)
   );
 
-
-  // F[size_9]: 14:8
+  //   F[size_9]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4283,8 +4120,7 @@ module usbdev_reg_top (
     .qs     (configin_9_size_9_qs)
   );
 
-
-  // F[pend_9]: 30:30
+  //   F[pend_9]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -4309,8 +4145,7 @@ module usbdev_reg_top (
     .qs     (configin_9_pend_9_qs)
   );
 
-
-  // F[rdy_9]: 31:31
+  //   F[rdy_9]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4338,8 +4173,7 @@ module usbdev_reg_top (
 
   // Subregister 10 of Multireg configin
   // R[configin_10]: V(False)
-
-  // F[buffer_10]: 4:0
+  //   F[buffer_10]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4364,8 +4198,7 @@ module usbdev_reg_top (
     .qs     (configin_10_buffer_10_qs)
   );
 
-
-  // F[size_10]: 14:8
+  //   F[size_10]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4390,8 +4223,7 @@ module usbdev_reg_top (
     .qs     (configin_10_size_10_qs)
   );
 
-
-  // F[pend_10]: 30:30
+  //   F[pend_10]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -4416,8 +4248,7 @@ module usbdev_reg_top (
     .qs     (configin_10_pend_10_qs)
   );
 
-
-  // F[rdy_10]: 31:31
+  //   F[rdy_10]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4445,8 +4276,7 @@ module usbdev_reg_top (
 
   // Subregister 11 of Multireg configin
   // R[configin_11]: V(False)
-
-  // F[buffer_11]: 4:0
+  //   F[buffer_11]: 4:0
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4471,8 +4301,7 @@ module usbdev_reg_top (
     .qs     (configin_11_buffer_11_qs)
   );
 
-
-  // F[size_11]: 14:8
+  //   F[size_11]: 14:8
   prim_subreg #(
     .DW      (7),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4497,8 +4326,7 @@ module usbdev_reg_top (
     .qs     (configin_11_size_11_qs)
   );
 
-
-  // F[pend_11]: 30:30
+  //   F[pend_11]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -4523,8 +4351,7 @@ module usbdev_reg_top (
     .qs     (configin_11_pend_11_qs)
   );
 
-
-  // F[rdy_11]: 31:31
+  //   F[rdy_11]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4550,12 +4377,9 @@ module usbdev_reg_top (
   );
 
 
-
-
   // Subregister 0 of Multireg iso
   // R[iso]: V(False)
-
-  // F[iso_0]: 0:0
+  //   F[iso_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4580,8 +4404,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_0_qs)
   );
 
-
-  // F[iso_1]: 1:1
+  //   F[iso_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4606,8 +4429,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_1_qs)
   );
 
-
-  // F[iso_2]: 2:2
+  //   F[iso_2]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4632,8 +4454,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_2_qs)
   );
 
-
-  // F[iso_3]: 3:3
+  //   F[iso_3]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4658,8 +4479,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_3_qs)
   );
 
-
-  // F[iso_4]: 4:4
+  //   F[iso_4]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4684,8 +4504,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_4_qs)
   );
 
-
-  // F[iso_5]: 5:5
+  //   F[iso_5]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4710,8 +4529,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_5_qs)
   );
 
-
-  // F[iso_6]: 6:6
+  //   F[iso_6]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4736,8 +4554,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_6_qs)
   );
 
-
-  // F[iso_7]: 7:7
+  //   F[iso_7]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4762,8 +4579,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_7_qs)
   );
 
-
-  // F[iso_8]: 8:8
+  //   F[iso_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4788,8 +4604,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_8_qs)
   );
 
-
-  // F[iso_9]: 9:9
+  //   F[iso_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4814,8 +4629,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_9_qs)
   );
 
-
-  // F[iso_10]: 10:10
+  //   F[iso_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4840,8 +4654,7 @@ module usbdev_reg_top (
     .qs     (iso_iso_10_qs)
   );
 
-
-  // F[iso_11]: 11:11
+  //   F[iso_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4867,12 +4680,9 @@ module usbdev_reg_top (
   );
 
 
-
-
   // Subregister 0 of Multireg data_toggle_clear
   // R[data_toggle_clear]: V(False)
-
-  // F[clear_0]: 0:0
+  //   F[clear_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -4897,8 +4707,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_1]: 1:1
+  //   F[clear_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -4923,8 +4732,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_2]: 2:2
+  //   F[clear_2]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -4949,8 +4757,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_3]: 3:3
+  //   F[clear_3]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -4975,8 +4782,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_4]: 4:4
+  //   F[clear_4]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -5001,8 +4807,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_5]: 5:5
+  //   F[clear_5]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -5027,8 +4832,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_6]: 6:6
+  //   F[clear_6]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -5053,8 +4857,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_7]: 7:7
+  //   F[clear_7]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -5079,8 +4882,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_8]: 8:8
+  //   F[clear_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -5105,8 +4907,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_9]: 9:9
+  //   F[clear_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -5131,8 +4932,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_10]: 10:10
+  //   F[clear_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -5157,8 +4957,7 @@ module usbdev_reg_top (
     .qs     ()
   );
 
-
-  // F[clear_11]: 11:11
+  //   F[clear_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessWO),
@@ -5184,9 +4983,7 @@ module usbdev_reg_top (
   );
 
 
-
   // R[phy_pins_sense]: V(True)
-
   //   F[rx_dp_i]: 0:0
   prim_subreg_ext #(
     .DW    (1)
@@ -5200,7 +4997,6 @@ module usbdev_reg_top (
     .q      (),
     .qs     (phy_pins_sense_rx_dp_i_qs)
   );
-
 
   //   F[rx_dn_i]: 1:1
   prim_subreg_ext #(
@@ -5216,7 +5012,6 @@ module usbdev_reg_top (
     .qs     (phy_pins_sense_rx_dn_i_qs)
   );
 
-
   //   F[rx_d_i]: 2:2
   prim_subreg_ext #(
     .DW    (1)
@@ -5230,7 +5025,6 @@ module usbdev_reg_top (
     .q      (),
     .qs     (phy_pins_sense_rx_d_i_qs)
   );
-
 
   //   F[tx_dp_o]: 8:8
   prim_subreg_ext #(
@@ -5246,7 +5040,6 @@ module usbdev_reg_top (
     .qs     (phy_pins_sense_tx_dp_o_qs)
   );
 
-
   //   F[tx_dn_o]: 9:9
   prim_subreg_ext #(
     .DW    (1)
@@ -5260,7 +5053,6 @@ module usbdev_reg_top (
     .q      (),
     .qs     (phy_pins_sense_tx_dn_o_qs)
   );
-
 
   //   F[tx_d_o]: 10:10
   prim_subreg_ext #(
@@ -5276,7 +5068,6 @@ module usbdev_reg_top (
     .qs     (phy_pins_sense_tx_d_o_qs)
   );
 
-
   //   F[tx_se0_o]: 11:11
   prim_subreg_ext #(
     .DW    (1)
@@ -5290,7 +5081,6 @@ module usbdev_reg_top (
     .q      (),
     .qs     (phy_pins_sense_tx_se0_o_qs)
   );
-
 
   //   F[tx_oe_o]: 12:12
   prim_subreg_ext #(
@@ -5306,7 +5096,6 @@ module usbdev_reg_top (
     .qs     (phy_pins_sense_tx_oe_o_qs)
   );
 
-
   //   F[suspend_o]: 13:13
   prim_subreg_ext #(
     .DW    (1)
@@ -5320,7 +5109,6 @@ module usbdev_reg_top (
     .q      (),
     .qs     (phy_pins_sense_suspend_o_qs)
   );
-
 
   //   F[pwr_sense]: 16:16
   prim_subreg_ext #(
@@ -5338,7 +5126,6 @@ module usbdev_reg_top (
 
 
   // R[phy_pins_drive]: V(False)
-
   //   F[dp_o]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -5363,7 +5150,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (phy_pins_drive_dp_o_qs)
   );
-
 
   //   F[dn_o]: 1:1
   prim_subreg #(
@@ -5390,7 +5176,6 @@ module usbdev_reg_top (
     .qs     (phy_pins_drive_dn_o_qs)
   );
 
-
   //   F[d_o]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -5415,7 +5200,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (phy_pins_drive_d_o_qs)
   );
-
 
   //   F[se0_o]: 3:3
   prim_subreg #(
@@ -5442,7 +5226,6 @@ module usbdev_reg_top (
     .qs     (phy_pins_drive_se0_o_qs)
   );
 
-
   //   F[oe_o]: 4:4
   prim_subreg #(
     .DW      (1),
@@ -5467,7 +5250,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (phy_pins_drive_oe_o_qs)
   );
-
 
   //   F[tx_mode_se_o]: 5:5
   prim_subreg #(
@@ -5494,7 +5276,6 @@ module usbdev_reg_top (
     .qs     (phy_pins_drive_tx_mode_se_o_qs)
   );
 
-
   //   F[dp_pullup_en_o]: 6:6
   prim_subreg #(
     .DW      (1),
@@ -5519,7 +5300,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (phy_pins_drive_dp_pullup_en_o_qs)
   );
-
 
   //   F[dn_pullup_en_o]: 7:7
   prim_subreg #(
@@ -5546,7 +5326,6 @@ module usbdev_reg_top (
     .qs     (phy_pins_drive_dn_pullup_en_o_qs)
   );
 
-
   //   F[suspend_o]: 8:8
   prim_subreg #(
     .DW      (1),
@@ -5571,7 +5350,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (phy_pins_drive_suspend_o_qs)
   );
-
 
   //   F[en]: 16:16
   prim_subreg #(
@@ -5600,7 +5378,6 @@ module usbdev_reg_top (
 
 
   // R[phy_config]: V(False)
-
   //   F[rx_differential_mode]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -5625,7 +5402,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (phy_config_rx_differential_mode_qs)
   );
-
 
   //   F[tx_differential_mode]: 1:1
   prim_subreg #(
@@ -5652,7 +5428,6 @@ module usbdev_reg_top (
     .qs     (phy_config_tx_differential_mode_qs)
   );
 
-
   //   F[eop_single_bit]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -5677,7 +5452,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (phy_config_eop_single_bit_qs)
   );
-
 
   //   F[override_pwr_sense_en]: 3:3
   prim_subreg #(
@@ -5704,7 +5478,6 @@ module usbdev_reg_top (
     .qs     (phy_config_override_pwr_sense_en_qs)
   );
 
-
   //   F[override_pwr_sense_val]: 4:4
   prim_subreg #(
     .DW      (1),
@@ -5729,7 +5502,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (phy_config_override_pwr_sense_val_qs)
   );
-
 
   //   F[pinflip]: 5:5
   prim_subreg #(
@@ -5756,7 +5528,6 @@ module usbdev_reg_top (
     .qs     (phy_config_pinflip_qs)
   );
 
-
   //   F[usb_ref_disable]: 6:6
   prim_subreg #(
     .DW      (1),
@@ -5781,7 +5552,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (phy_config_usb_ref_disable_qs)
   );
-
 
   //   F[tx_osc_test_mode]: 7:7
   prim_subreg #(
@@ -5810,7 +5580,6 @@ module usbdev_reg_top (
 
 
   // R[wake_config]: V(False)
-
   //   F[wake_en]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -5835,7 +5604,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (wake_config_wake_en_qs)
   );
-
 
   //   F[wake_ack]: 1:1
   prim_subreg #(
@@ -5864,7 +5632,6 @@ module usbdev_reg_top (
 
 
   // R[wake_debug]: V(False)
-
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -5888,7 +5655,6 @@ module usbdev_reg_top (
     // to register interface (read)
     .qs     (wake_debug_qs)
   );
-
 
 
 
@@ -6707,12 +6473,18 @@ module usbdev_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

@@ -18,9 +18,11 @@ class keymgr_env_cfg extends cip_base_env_cfg #(.RAL_T(keymgr_reg_block));
     list_of_alerts = keymgr_env_pkg::LIST_OF_ALERTS;
     tl_intg_alert_name = "fatal_fault_err";
     has_edn = 1;
+    has_shadowed_regs = 1;
     super.initialize(csr_base_addr);
-    tl_intg_alert_fields[ral.err_code.invalid_states] = 1;
     tl_intg_alert_fields[ral.fault_status.regfile_intg] = 1;
+    shadow_update_err_status_fields[ral.err_code.invalid_shadow_update] = 1;
+    shadow_storage_err_status_fields[ral.fault_status.shadow] = 1;
 
     m_keymgr_kmac_agent_cfg = kmac_app_agent_cfg::type_id::create("m_keymgr_kmac_agent_cfg");
     m_keymgr_kmac_agent_cfg.if_mode = dv_utils_pkg::Device;
@@ -36,6 +38,9 @@ class keymgr_env_cfg extends cip_base_env_cfg #(.RAL_T(keymgr_reg_block));
         num_interrupts = ral.intr_state.get_n_used_bits();
       end
     end
+
+    // only support 1 outstanding TL item
+    m_tl_agent_cfg.max_outstanding_req = 1;
   endfunction
 
 endclass

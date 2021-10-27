@@ -48,8 +48,12 @@ OT_DEP_SOURCES=(
     "$LR_SYNTH_SRC_DIR"/../tlul/rtl/tlul_err.sv
     "$LR_SYNTH_SRC_DIR"/../tlul/rtl/tlul_cmd_intg_chk.sv
     "$LR_SYNTH_SRC_DIR"/../tlul/rtl/tlul_rsp_intg_gen.sv
+    "$LR_SYNTH_SRC_DIR"/../tlul/rtl/tlul_data_integ_dec.sv
+    "$LR_SYNTH_SRC_DIR"/../tlul/rtl/tlul_data_integ_enc.sv
     "$LR_SYNTH_SRC_DIR"/../prim/rtl/prim_secded_64_57_dec.sv
     "$LR_SYNTH_SRC_DIR"/../prim/rtl/prim_secded_64_57_enc.sv
+    "$LR_SYNTH_SRC_DIR"/../prim/rtl/prim_secded_39_32_dec.sv
+    "$LR_SYNTH_SRC_DIR"/../prim/rtl/prim_secded_39_32_enc.sv
     "$LR_SYNTH_SRC_DIR"/../prim/rtl/prim_subreg.sv
     "$LR_SYNTH_SRC_DIR"/../prim/rtl/prim_subreg_ext.sv
     "$LR_SYNTH_SRC_DIR"/../prim/rtl/prim_subreg_shadow.sv
@@ -62,6 +66,7 @@ OT_DEP_SOURCES=(
     "$LR_SYNTH_SRC_DIR"/../prim/rtl/prim_packer_fifo.sv
     "$LR_SYNTH_SRC_DIR"/../prim/rtl/prim_lfsr.sv
     "$LR_SYNTH_SRC_DIR"/../prim_generic/rtl/prim_generic_flop_2sync.sv
+    "$LR_SYNTH_SRC_DIR"/../prim_generic/rtl/prim_generic_flop.sv
     "$LR_SYNTH_SRC_DIR"/../prim_xilinx/rtl/prim_xilinx_flop.sv
     "$LR_SYNTH_SRC_DIR"/../prim_xilinx/rtl/prim_xilinx_flop_en.sv
     "$LR_SYNTH_SRC_DIR"/../prim_xilinx/rtl/prim_xilinx_buf.sv
@@ -76,6 +81,7 @@ OT_DEP_PACKAGES=(
     "$LR_SYNTH_SRC_DIR"/../lc_ctrl/rtl/*_pkg.sv
     "$LR_SYNTH_SRC_DIR"/../tlul/rtl/*_pkg.sv
     "$LR_SYNTH_SRC_DIR"/../prim/rtl/*_pkg.sv
+    "$LR_SYNTH_SRC_DIR"/../keymgr/rtl/*_pkg.sv
 )
 
 # Convert OpenTitan dependency sources.
@@ -98,7 +104,9 @@ for file in ${OT_DEP_SOURCES[@]}; do
     # where available.
     sed -i 's/prim_flop_2sync/prim_generic_flop_2sync/g' $LR_SYNTH_OUT_DIR/generated/${module}.v
     sed -i 's/prim_flop/prim_xilinx_flop/g'              $LR_SYNTH_OUT_DIR/generated/${module}.v
+    sed -i 's/prim_sec_anchor_flop/prim_xilinx_flop/g'   $LR_SYNTH_OUT_DIR/generated/${module}.v
     sed -i 's/prim_buf/prim_xilinx_buf/g'                $LR_SYNTH_OUT_DIR/generated/${module}.v
+    sed -i 's/prim_sec_anchor_buf/prim_xilinx_buf/g'     $LR_SYNTH_OUT_DIR/generated/${module}.v
     sed -i 's/prim_xor2/prim_xilinx_xor2/g'              $LR_SYNTH_OUT_DIR/generated/${module}.v
 done
 
@@ -123,7 +131,9 @@ for file in "$LR_SYNTH_SRC_DIR"/rtl/*.sv; do
     # where available.
     sed -i 's/prim_flop_2sync/prim_generic_flop_2sync/g' $LR_SYNTH_OUT_DIR/generated/${module}.v
     sed -i 's/prim_flop/prim_xilinx_flop/g'              $LR_SYNTH_OUT_DIR/generated/${module}.v
+    sed -i 's/prim_sec_anchor_flop/prim_xilinx_flop/g'   $LR_SYNTH_OUT_DIR/generated/${module}.v
     sed -i 's/prim_buf/prim_xilinx_buf/g'                $LR_SYNTH_OUT_DIR/generated/${module}.v
+    sed -i 's/prim_sec_anchor_buf/prim_xilinx_buf/g'     $LR_SYNTH_OUT_DIR/generated/${module}.v
     sed -i 's/prim_xor2/prim_xilinx_xor2/g'              $LR_SYNTH_OUT_DIR/generated/${module}.v
 done
 

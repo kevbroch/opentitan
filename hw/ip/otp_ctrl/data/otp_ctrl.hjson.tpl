@@ -177,6 +177,14 @@
   /////////////////////////////
 
   inter_signal_list: [
+    // OTP dedicated power connection from AST
+    { struct:  ""
+      type:    "io"
+      name:    "otp_ext_voltage_h"
+      act:     "none"
+      default: "'0"
+      package: "",
+    }
     // Power sequencing signals to AST
     { struct:  "otp_ast_req"
       type:    "uni"
@@ -214,6 +222,14 @@
       act:     "rsp"
       default: "'0"
       package: "pwrmgr_pkg"
+    }
+    // Macro-specific test signals to/from LC TAP
+    { struct:  "lc_otp_vendor_test"
+      type:    "req_rsp"
+      name:    "lc_otp_vendor_test"
+      act:     "rsp"
+      default: "'0"
+      package: "otp_ctrl_pkg"
     }
     // LC transition command
     { struct:  "lc_otp_program"
@@ -324,6 +340,7 @@
         swaccess: "ro",
         hwaccess: "hwo",
         hwext:    "true",
+        resval:   0,
         tags: [ // OTP internal HW can modify status register
                 "excl:CsrAllTests:CsrExclCheck"],
         fields: [
@@ -410,6 +427,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "AGENT",
+          resval:    0,
           tags: [ // OTP internal HW can modify the error code registers
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [
@@ -518,6 +536,7 @@
         hwaccess: "hro",
         hwqe:     "true",
         hwext:    "true",
+        resval:   0,
         regwen:   "DIRECT_ACCESS_REGWEN",
         tags: [ // Write to DIRECT_ACCESS_CMD randomly might cause OTP_ERRORs and illegal sequences
                 "excl:CsrNonInitTests:CsrExclWrite"],
@@ -552,6 +571,7 @@
         swaccess: "rw",
         hwaccess: "hro",
         hwqe:     "false",
+        resval:   0,
         regwen:   "DIRECT_ACCESS_REGWEN",
         tags: [ // The enable register "DIRECT_ACCESS_REGWEN" is HW controlled,
                 // so not able to predict this register value automatically
@@ -581,6 +601,7 @@
           hwqe:     "false",
           regwen:   "DIRECT_ACCESS_REGWEN",
           cname:    "WORD",
+          resval:   0,
           tags: [ // The value of this register is written from "DIRECT_ACCESS_RDATA",
                   // so could not predict this register value automatically
                   "excl:CsrAllTests:CsrExclCheck"],
@@ -601,6 +622,7 @@
           hwaccess: "hwo",
           hwext:    "true",
           cname:    "WORD",
+          resval:   0,
           fields: [
             { bits: "31:0"
             }
@@ -633,6 +655,7 @@
         hwaccess: "hro",
         hwqe:     "true",
         hwext:    "true",
+        resval:   0,
         regwen:   "CHECK_TRIGGER_REGWEN",
         fields: [
           { bits: "0",
@@ -786,6 +809,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "WORD",
+          resval:    0,
           tags: [ // OTP internal HW will update status so can not auto-predict its value.
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [
@@ -807,6 +831,7 @@
           hwaccess:  "hwo",
           hwext:     "true",
           cname:     "WORD",
+          resval:    0,
           tags: [ // OTP internal HW will update status so can not auto-predict its value.
                   "excl:CsrAllTests:CsrExclCheck"],
           fields: [

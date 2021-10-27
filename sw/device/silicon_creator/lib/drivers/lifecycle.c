@@ -9,7 +9,7 @@
 
 #include "sw/device/lib/base/bitfield.h"
 #include "sw/device/lib/base/memory.h"
-#include "sw/device/silicon_creator/lib/base/abs_mmio.h"
+#include "sw/device/silicon_creator/lib/base/sec_mmio.h"
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"
 #include "lc_ctrl_regs.h"
@@ -78,9 +78,19 @@ enum {
 };
 
 lifecycle_state_t lifecycle_state_get(void) {
-  // TODO(lowRISC/opentitan#7026): Convert to use sec_mmio.
   uint32_t value = bitfield_field32_read(
-      abs_mmio_read32(kBase + LC_CTRL_LC_STATE_REG_OFFSET),
+      sec_mmio_read32(kBase + LC_CTRL_LC_STATE_REG_OFFSET),
       LC_CTRL_LC_STATE_STATE_FIELD);
   return (lifecycle_state_t)value;
+}
+
+void lifecycle_device_id_get(lifecycle_device_id_t *device_id) {
+  static_assert(
+      kLifecycleDeviceIdNumWords == LC_CTRL_PARAM_NUM_DEVICE_ID_WORDS,
+      "length of the device_id array does not match the length in hardware");
+
+  for (size_t i = 0; i < kLifecycleDeviceIdNumWords; ++i) {
+    device_id->device_id[i] = sec_mmio_read32(
+        kBase + LC_CTRL_DEVICE_ID_0_REG_OFFSET + i * sizeof(uint32_t));
+  }
 }

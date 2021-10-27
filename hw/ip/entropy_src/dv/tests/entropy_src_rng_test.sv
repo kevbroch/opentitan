@@ -10,7 +10,8 @@ class entropy_src_rng_test extends entropy_src_base_test;
   function void configure_env();
     super.configure_env();
 
-    // TODO: Modify cfg_knob randomization to include both lfsr/hardware
+    // TODO: single-bit mode needs debugging
+    // cfg.rng_bit_enable_pct = 100;
 
     `DV_CHECK_RANDOMIZE_FATAL(cfg)
     `uvm_info(`gfn, $sformatf("%s", cfg.convert2string()), UVM_LOW)

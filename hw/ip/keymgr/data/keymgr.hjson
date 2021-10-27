@@ -382,6 +382,7 @@
       desc: "sideload key slots clear"
       swaccess: "rw",
       hwaccess: "hro",
+      regwen: "CFG_REGWEN",
       fields: [
         { bits: "2:0",
           name: "VAL",
@@ -422,11 +423,27 @@
       ]
     },
 
+    { name: "RESEED_INTERVAL_REGWEN",
+      desc: "regwen for reseed interval",
+      swaccess: "rw0c",
+      hwaccess: "none",
+      fields: [
+        { bits: "0",
+          name: "EN",
+          resval: "1"
+          desc: '''
+            Configuration enable for reseed interval
+          '''
+        },
+      ]
+    },
+
     { name: "RESEED_INTERVAL_SHADOWED",
-      desc: "reseed interval for key manager entropy reseed",
+      desc: "Reseed interval for key manager entropy reseed",
       shadowed: "true",
       update_err_alert: "recov_operation_err",
       storage_err_alert: "fatal_fault_err",
+      regwen: "RESEED_INTERVAL_REGWEN",
       swaccess: "rw",
       hwaccess: "hro",
       fields: [
@@ -464,8 +481,6 @@
           '''
         },
       ]
-      tags: [// when it's set, it can't be modified until the next advance operation completes
-             "excl:CsrNonInitTests:CsrExclWrite"]
     },
 
     { multireg: {
@@ -705,6 +720,10 @@
               resval: "0"
             },
         ],
+        tags: [// HW-update reg
+               // When a fault happens (e.g. when we test TL integrity error), this CSR will be
+               // wiped with random value.
+               "excl:CsrNonInitTests:CsrExclCheck"]
       },
     },
 
@@ -729,6 +748,10 @@
               resval: "0"
             },
         ],
+        tags: [// HW-update reg
+               // When a fault happens (e.g. when we test TL integrity error), this CSR will be
+               // wiped with random value.
+               "excl:CsrNonInitTests:CsrExclCheck"]
       },
     },
 
@@ -847,80 +870,94 @@
       desc: '''
         Key manager error code.
         This register must be explicitly cleared by software.
-        Software clears by writing back whatever it reads.
+
+        This register represents both synchronous and asynchronous recoverable
+        errors.
+
+        Synchronous errors refer to those that only happen when a keymgr operation is
+        invoked, while asynchronous refers to errors that can happen at any time.
       ''',
       swaccess: "rw1c",
-      hwaccess: "hrw",
+      hwaccess: "hwo",
       fields: [
         { bits: "0",
           name: "INVALID_OP",
           resval: "0x0"
-          desc: "Invalid operation issued to key manager",
+          desc: "Invalid operation issued to key manager, synchronous error",
         },
         { bits: "1",
-          name: "INVALID_STATES",
-          resval: "0x0"
-          desc: "Invalid states that occur in keymgr. These are suspected faults.  Please see !!FAULT_STATUS for a closer breakdown",
-        },
-        { bits: "2",
           name: "INVALID_KMAC_INPUT",
           resval: "0x0"
-          desc: "Invalid data issued to kmac interface",
+          desc: "Invalid data issued to kmac interface, synchronous error",
         },
-        { bits: "3",
-          name: "INVALID_KMAC_DATA",
-          resval: "0x0"
-          desc: "Invalid data returned from kmac interface.",
-        },
-        { bits: "4",
+        { bits: "2",
           name: "INVALID_SHADOW_UPDATE",
           resval: "0x0"
-          desc: "An error observed during shadow register updates.",
+          desc: "An error observed during shadow register updates, asynchronous error",
         },
       ]
     },
 
     { name: "FAULT_STATUS",
       desc: '''
-        Detailed per bit breakdown of the INVALID_STATES field in !!ERR_CODE
+        This register represents both synchronous and asynchronous fatal faults.
+
+        Synchronous faults refer to those that only happen when a keymgr operation is
+        invoked, while asynchronous refers to faults that can happen at any time.
+
       ''',
       swaccess: "ro",
-      hwaccess: "hwo",
+      hwaccess: "hrw",
       fields: [
         { bits: "0",
           name: "CMD",
           resval: "0x0"
-          desc: "A non-onehot command was sent from keymgr to kmac",
+          desc: "A non-onehot command was seen in kmac, asynchronous fault.",
         },
         { bits: "1",
           name: "KMAC_FSM",
           resval: "0x0"
-          desc: "The kmac transfer interface is in an error state",
+          desc: "The kmac transfer interface is in an error state, asynchronous fault.",
         },
         { bits: "2",
           name: "KMAC_OP",
           resval: "0x0"
-          desc: "KMAC reported an error during keymgr usage, this should never happen",
+          desc: "KMAC reported an error during keymgr usage, this should never happen - synchronous fault.",
         },
         { bits: "3",
-          name: "REGFILE_INTG",
+          name: "KMAC_OUT",
           resval: "0x0"
-          desc: "Register file integrity error.",
+          desc: "KMAC data returned as all 0's or all 1's - synchronous fault",
         },
         { bits: "4",
-          name: "SHADOW",
+          name: "REGFILE_INTG",
           resval: "0x0"
-          desc: "Shadow copy storage error.",
+          desc: "Register file integrity error, asynchronous fault",
         },
         { bits: "5",
-          name: "CTRL_FSM_INTG",
+          name: "SHADOW",
           resval: "0x0"
-          desc: "Control FSM integrity error.",
+          desc: "Shadow copy storage error, asynchronous fault",
         },
         { bits: "6",
+          name: "CTRL_FSM_INTG",
+          resval: "0x0"
+          desc: "Control FSM integrity error, asynchronous fault",
+        },
+        { bits: "7",
           name: "CTRL_FSM_CNT",
           resval: "0x0"
-          desc: "Control FSM counter integrity error.",
+          desc: "Control FSM counter integrity error, asynchronous fault",
+        },
+        { bits: "8",
+          name: "RESEED_CNT",
+          resval: "0x0"
+          desc: "Reseed counter integrity error, asynchronous fault",
+        },
+        { bits: "9",
+          name: "SIDE_CTRL_FSM",
+          resval: "0x0"
+          desc: "Sideload control FSM integrity error, asynchronous fault",
         },
       ]
     },

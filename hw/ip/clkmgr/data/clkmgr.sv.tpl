@@ -6,8 +6,6 @@
 
 `include "prim_assert.sv"
 
-
-
   module clkmgr
     import clkmgr_pkg::*;
     import clkmgr_reg_pkg::*;
@@ -24,9 +22,7 @@
   // These are the source clocks for the system
 % for src in clocks.srcs.values():
   input clk_${src.name}_i,
-  % if not src.aon:
   input rst_${src.name}_ni,
-  % endif
 % endfor
 
   // Resets for derived clocks
@@ -65,6 +61,9 @@
   // jittery enable
   output logic jitter_en_o,
 
+  // clock gated indications going to alert handlers
+  output clkmgr_cg_en_t cg_en_o,
+
   // clock output interface
 % for intf in cfg['exported_clks']:
   output clkmgr_${intf}_out_t clocks_${intf}_o,
@@ -73,49 +72,8 @@
 
 );
 
-  ////////////////////////////////////////////////////
-  // Register Interface
-  ////////////////////////////////////////////////////
-
-  logic [NumAlerts-1:0] alert_test, alerts;
-  clkmgr_reg_pkg::clkmgr_reg2hw_t reg2hw;
-  clkmgr_reg_pkg::clkmgr_hw2reg_t hw2reg;
-
-  clkmgr_reg_top u_reg (
-    .clk_i,
-    .rst_ni,
-    .tl_i,
-    .tl_o,
-    .reg2hw,
-    .hw2reg,
-    .intg_err_o(alerts[0]),
-    .devmode_i(1'b1)
-  );
-
-  ////////////////////////////////////////////////////
-  // Alerts
-  ////////////////////////////////////////////////////
-
-  assign alert_test = {
-    reg2hw.alert_test.q &
-    reg2hw.alert_test.qe
-  };
-
-  for (genvar i = 0; i < NumAlerts; i++) begin : gen_alert_tx
-    prim_alert_sender #(
-      .AsyncOn(AlertAsyncOn[i]),
-      .IsFatal(1'b1)
-    ) u_prim_alert_sender (
-      .clk_i,
-      .rst_ni,
-      .alert_test_i  ( alert_test[i] ),
-      .alert_req_i   ( alerts[0]     ),
-      .alert_ack_o   (               ),
-      .alert_state_o (               ),
-      .alert_rx_i    ( alert_rx_i[i] ),
-      .alert_tx_o    ( alert_tx_o[i] )
-    );
-  end
+  import prim_mubi_pkg::MuBi4False;
+  import prim_mubi_pkg::MuBi4True;
 
   ////////////////////////////////////////////////////
   // Divided clocks
@@ -154,6 +112,69 @@
 % endfor
 
   ////////////////////////////////////////////////////
+  // Register Interface
+  ////////////////////////////////////////////////////
+
+  logic [NumAlerts-1:0] alert_test, alerts;
+  clkmgr_reg_pkg::clkmgr_reg2hw_t reg2hw;
+  clkmgr_reg_pkg::clkmgr_hw2reg_t hw2reg;
+
+  clkmgr_reg_top u_reg (
+    .clk_i,
+    .rst_ni,
+% for src in typed_clocks.rg_srcs:
+    .clk_${src}_i,
+    .rst_${src}_ni,
+% endfor
+    .tl_i,
+    .tl_o,
+    .reg2hw,
+    .hw2reg,
+    .intg_err_o(hw2reg.fatal_err_code.de),
+    .devmode_i(1'b1)
+  );
+  assign hw2reg.fatal_err_code.d = 1'b1;
+
+
+  ////////////////////////////////////////////////////
+  // Alerts
+  ////////////////////////////////////////////////////
+
+  assign alert_test = {
+    reg2hw.alert_test.fatal_fault.q & reg2hw.alert_test.fatal_fault.qe,
+    reg2hw.alert_test.recov_fault.q & reg2hw.alert_test.recov_fault.qe
+  };
+
+  logic recov_alert;
+  assign recov_alert =
+% for src in typed_clocks.rg_srcs:
+    hw2reg.recov_err_code.${src}_measure_err.de${";" if loop.last else " |"}
+% endfor
+
+  assign alerts = {
+    |reg2hw.fatal_err_code,
+    recov_alert
+  };
+
+  localparam logic [NumAlerts-1:0] AlertFatal = {1'b1, 1'b0};
+
+  for (genvar i = 0; i < NumAlerts; i++) begin : gen_alert_tx
+    prim_alert_sender #(
+      .AsyncOn(AlertAsyncOn[i]),
+      .IsFatal(AlertFatal[i])
+    ) u_prim_alert_sender (
+      .clk_i,
+      .rst_ni,
+      .alert_test_i  ( alert_test[i] ),
+      .alert_req_i   ( alerts[i]     ),
+      .alert_ack_o   (               ),
+      .alert_state_o (               ),
+      .alert_rx_i    ( alert_rx_i[i] ),
+      .alert_tx_o    ( alert_tx_o[i] )
+    );
+  end
+
+  ////////////////////////////////////////////////////
   // Clock bypass request
   ////////////////////////////////////////////////////
 
@@ -163,7 +184,8 @@
     .clk_i,
     .rst_ni,
     .en_i(lc_dft_en_i),
-    .byp_req(lc_tx_t'(reg2hw.extclk_sel.q)),
+    .byp_req_i(lc_tx_t'(reg2hw.extclk_ctrl.sel.q)),
+    .step_down_req_i(lc_tx_t'(reg2hw.extclk_ctrl.step_down.q)),
     .ast_clk_byp_req_o,
     .ast_clk_byp_ack_i,
     .lc_clk_byp_req_i,
@@ -183,6 +205,9 @@
     .clk_i(clk_${v.src.name}_i),
     .clk_o(clocks_o.${k})
   );
+
+  // clock gated indication for alert handler: these clocks are never gated.
+  assign cg_en_o.${k.split('clk_')[-1]} = MuBi4False;
 % endfor
 
   ////////////////////////////////////////////////////
@@ -286,10 +311,63 @@
   assign pwr_o.clk_status = clk_status;
 
   ////////////////////////////////////////////////////
+  // Clock Measurement for the roots
+  ////////////////////////////////////////////////////
+
+<% aon_freq = clocks.all_srcs['aon'].freq %>\
+% for src in typed_clocks.rg_srcs:
+  logic ${src}_fast_err;
+  logic ${src}_slow_err;
+  <%
+   freq = clocks.all_srcs[src].freq
+   cnt = int(freq*2 / aon_freq)
+  %>\
+  prim_clock_meas #(
+    .Cnt(${cnt}),
+    .RefCnt(1)
+  ) u_${src}_meas (
+    .clk_i(clk_${src}_i),
+    .rst_ni(rst_${src}_ni),
+    .clk_ref_i(clk_aon_i),
+    .rst_ref_ni(rst_aon_ni),
+    .en_i(clk_${src}_en & reg2hw.${src}_measure_ctrl.en.q),
+    .max_cnt(reg2hw.${src}_measure_ctrl.max_thresh.q),
+    .min_cnt(reg2hw.${src}_measure_ctrl.min_thresh.q),
+    .valid_o(),
+    .fast_o(${src}_fast_err),
+    .slow_o(${src}_slow_err)
+  );
+
+  logic synced_${src}_err;
+  prim_pulse_sync u_${src}_err_sync (
+    .clk_src_i(clk_${src}_i),
+    .rst_src_ni(rst_${src}_ni),
+    .src_pulse_i(${src}_fast_err | ${src}_slow_err),
+    .clk_dst_i(clk_i),
+    .rst_dst_ni(rst_ni),
+    .dst_pulse_o(synced_${src}_err)
+  );
+
+  assign hw2reg.recov_err_code.${src}_measure_err.d = 1'b1;
+  assign hw2reg.recov_err_code.${src}_measure_err.de = synced_${src}_err;
+
+% endfor
+
+  ////////////////////////////////////////////////////
   // Clocks with only root gate
   ////////////////////////////////////////////////////
 % for k,v in typed_clocks.rg_clks.items():
   assign clocks_o.${k} = clk_${v.src.name}_root;
+
+  // clock gated indication for alert handler
+  prim_mubi4_sender #(
+    .ResetValue(MuBi4True)
+  ) u_prim_mubi4_sender_${k} (
+    .clk_i(clk_${v.src.name}_i),
+    .rst_ni(rst_${v.src.name}_ni),
+    .mubi_i(((clk_${v.src.name}_en) ? MuBi4False : MuBi4True)),
+    .mubi_o(cg_en_o.${k.split('clk_')[-1]})
+  );
 % endfor
 
   ////////////////////////////////////////////////////
@@ -321,13 +399,25 @@
     .lc_en_o(${k}_scanmode)
   );
 
+  logic ${k}_combined_en;
+  assign ${k}_combined_en = ${k}_sw_en & clk_${v.src.name}_en;
   prim_clock_gating #(
-    .NoFpgaGate(1'b1)
+    .FpgaBufGlobal(1'b1) // This clock spans across multiple clock regions.
   ) u_${k}_cg (
     .clk_i(clk_${v.src.name}_root),
-    .en_i(${k}_sw_en & clk_${v.src.name}_en),
+    .en_i(${k}_combined_en),
     .test_en_i(${k}_scanmode == lc_ctrl_pkg::On),
     .clk_o(clocks_o.${k})
+  );
+
+  // clock gated indication for alert handler
+  prim_mubi4_sender #(
+    .ResetValue(MuBi4True)
+  ) u_prim_mubi4_sender_${k} (
+    .clk_i(clk_${v.src.name}_i),
+    .rst_ni(rst_${v.src.name}_ni),
+    .mubi_i(((${k}_combined_en) ? MuBi4False : MuBi4True)),
+    .mubi_o(cg_en_o.${k.split('clk_')[-1]})
   );
 
 % endfor
@@ -366,13 +456,31 @@
     .lc_en_o(${clk}_scanmode)
   );
 
+  // Add a prim buf here to make sure the CG and the lc sender inputs
+  // are derived from the same physical signal.
+  logic ${clk}_combined_en;
+  prim_buf u_prim_buf_${clk}_en (
+    .in_i(${clk}_en & clk_${sig.src.name}_en),
+    .out_o(${clk}_combined_en)
+  );
+
   prim_clock_gating #(
-    .NoFpgaGate(1'b1)
+    .FpgaBufGlobal(1'b0) // This clock is used primarily locally.
   ) u_${clk}_cg (
     .clk_i(clk_${sig.src.name}_root),
-    .en_i(${clk}_en & clk_${sig.src.name}_en),
+    .en_i(${clk}_combined_en),
     .test_en_i(${clk}_scanmode == lc_ctrl_pkg::On),
     .clk_o(clocks_o.${clk})
+  );
+
+  // clock gated indication for alert handler
+  prim_mubi4_sender #(
+    .ResetValue(MuBi4True)
+  ) u_prim_mubi4_sender_${clk} (
+    .clk_i(clk_${sig.src.name}_i),
+    .rst_ni(rst_${sig.src.name}_ni),
+    .mubi_i(((${clk}_combined_en) ? MuBi4False : MuBi4True)),
+    .mubi_o(cg_en_o.${clk.split('clk_')[-1]})
   );
 
 % endfor
@@ -412,5 +520,6 @@
   `ASSERT_KNOWN(ExportClocksKownO_A, clocks_${intf}_o)
 % endfor
   `ASSERT_KNOWN(ClocksKownO_A, clocks_o)
+  `ASSERT_KNOWN(CgEnKnownO_A, cg_en_o)
 
 endmodule // clkmgr

@@ -4,11 +4,18 @@
 
 use anyhow::{anyhow, Result};
 use bitflags::bitflags;
+use erased_serde::Serialize;
+use std::any::Any;
+use std::path::PathBuf;
+use std::rc::Rc;
+use thiserror::Error;
 
-use crate::io::gpio::Gpio;
+use crate::io::gpio::GpioPin;
 use crate::io::spi::Target;
 use crate::io::uart::Uart;
 
+pub mod cw310;
+pub mod ultradebug;
 pub mod verilator;
 
 bitflags! {
@@ -57,6 +64,15 @@ impl Capabilities {
     }
 }
 
+/// Errors related to the SPI interface and SPI transactions.
+#[derive(Error, Debug)]
+pub enum TransportError {
+    #[error("This transport does not support {0} instance {1}")]
+    InvalidInstance(&'static str, String),
+    #[error("This transport does not support the requested operation")]
+    UnsupportedOperation,
+}
+
 /// A transport object is a factory for the low-level interfaces provided
 /// by a given communications backend.
 pub trait Transport {
@@ -65,17 +81,30 @@ pub trait Transport {
     fn capabilities(&self) -> Capabilities;
 
     /// Returns a SPI [`Target`] implementation.
-    fn spi(&self) -> Result<Box<dyn Target>> {
+    fn spi(&self, _instance: &str) -> Result<Rc<dyn Target>> {
         unimplemented!();
     }
     /// Returns a [`Uart`] implementation.
-    fn uart(&self) -> Result<Box<dyn Uart>> {
+    fn uart(&self, _instance: &str) -> Result<Rc<dyn Uart>> {
         unimplemented!();
     }
-    /// Returns a [`Gpio`] implementation.
-    fn gpio(&self) -> Result<Box<dyn Gpio>> {
+    /// Returns a [`GpioPin`] implementation.
+    fn gpio_pin(&self, _instance: &str) -> Result<Rc<dyn GpioPin>> {
         unimplemented!();
     }
+    /// Invoke non-standard functionality of some Transport implementations.
+    fn dispatch(&self, _action: &dyn Any) -> Result<Option<Box<dyn Serialize>>> {
+        Err(TransportError::UnsupportedOperation.into())
+    }
+}
+
+/// Used by Transport implementations dealing with emulated OpenTitan
+/// chips, allowing e.g. more efficient direct means of programming
+/// emulated flash storage.  (As opposed to running an actual
+/// bootloater on the emulated target, which would receive data via
+/// SPI to be flashed.)
+pub struct Bootstrap {
+    pub image_path: PathBuf,
 }
 
 /// An `EmptyTransport` provides no communications backend.

@@ -22,7 +22,7 @@ __TOOL_REQUIREMENTS__ = {
         'as_needed': True
     },
     'verilator': {
-        'min_version': '4.104',
+        'min_version': '4.210',
         'as_needed': True
     },
     'hugo_extended': {
@@ -38,7 +38,7 @@ __TOOL_REQUIREMENTS__ = {
         'as_needed': True
     },
     'rust': {
-        'min_version': '1.52.1',
+        'min_version': '1.55.0',
         'as_needed': True
     },
     'vivado': {

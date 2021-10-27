@@ -5,6 +5,11 @@
 class chip_sw_base_vseq extends chip_base_vseq;
   `uvm_object_utils(chip_sw_base_vseq)
 
+  // Default only iterate through SW code once.
+  constraint num_trans_c {
+    num_trans == 1;
+  }
+
   `uvm_object_new
 
   virtual task dut_init(string reset_kind = "HARD");
@@ -57,6 +62,7 @@ class chip_sw_base_vseq extends chip_base_vseq;
   endtask
 
   virtual task body();
+    cfg.sw_test_status_vif.set_num_iterations(num_trans);
     // Initialize the CPU to kick off the sw test.
     cpu_init();
   endtask
@@ -157,7 +163,7 @@ class chip_sw_base_vseq extends chip_base_vseq;
   // TODO: bootstrap mode not supported.
   // TODO: Need to deal with scrambling.
   virtual function void sw_symbol_backdoor_overwrite(input string symbol,
-                                                     inout byte data[],
+                                                     inout bit [7:0] data[],
                                                      input chip_mem_e mem = FlashBank0Data,
                                                      input sw_type_e sw_type = SwTypeTest);
 

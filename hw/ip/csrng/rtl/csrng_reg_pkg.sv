@@ -7,7 +7,7 @@
 package csrng_reg_pkg;
 
   // Param list
-  parameter int NumAlerts = 1;
+  parameter int NumAlerts = 2;
 
   // Address widths within the block
   parameter int BlockAw = 7;
@@ -66,8 +66,14 @@ package csrng_reg_pkg;
   } csrng_reg2hw_intr_test_reg_t;
 
   typedef struct packed {
-    logic        q;
-    logic        qe;
+    struct packed {
+      logic        q;
+      logic        qe;
+    } recov_alert;
+    struct packed {
+      logic        q;
+      logic        qe;
+    } fatal_alert;
   } csrng_reg2hw_alert_test_reg_t;
 
   typedef struct packed {
@@ -77,6 +83,9 @@ package csrng_reg_pkg;
     struct packed {
       logic [3:0]  q;
     } sw_app_enable;
+    struct packed {
+      logic [3:0]  q;
+    } read_int_state;
   } csrng_reg2hw_ctrl_reg_t;
 
   typedef struct packed {
@@ -159,6 +168,21 @@ package csrng_reg_pkg;
     logic [14:0] d;
     logic        de;
   } csrng_hw2reg_hw_exc_sts_reg_t;
+
+  typedef struct packed {
+    struct packed {
+      logic        d;
+      logic        de;
+    } enable_field_alert;
+    struct packed {
+      logic        d;
+      logic        de;
+    } sw_app_enable_field_alert;
+    struct packed {
+      logic        d;
+      logic        de;
+    } read_int_state_field_alert;
+  } csrng_hw2reg_recov_alert_sts_reg_t;
 
   typedef struct packed {
     struct packed {
@@ -284,11 +308,11 @@ package csrng_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    csrng_reg2hw_intr_state_reg_t intr_state; // [137:134]
-    csrng_reg2hw_intr_enable_reg_t intr_enable; // [133:130]
-    csrng_reg2hw_intr_test_reg_t intr_test; // [129:122]
-    csrng_reg2hw_alert_test_reg_t alert_test; // [121:120]
-    csrng_reg2hw_ctrl_reg_t ctrl; // [119:112]
+    csrng_reg2hw_intr_state_reg_t intr_state; // [143:140]
+    csrng_reg2hw_intr_enable_reg_t intr_enable; // [139:136]
+    csrng_reg2hw_intr_test_reg_t intr_test; // [135:128]
+    csrng_reg2hw_alert_test_reg_t alert_test; // [127:124]
+    csrng_reg2hw_ctrl_reg_t ctrl; // [123:112]
     csrng_reg2hw_cmd_req_reg_t cmd_req; // [111:79]
     csrng_reg2hw_genbits_reg_t genbits; // [78:46]
     csrng_reg2hw_int_state_num_reg_t int_state_num; // [45:41]
@@ -299,12 +323,13 @@ package csrng_reg_pkg;
 
   // HW -> register type
   typedef struct packed {
-    csrng_hw2reg_intr_state_reg_t intr_state; // [179:172]
-    csrng_hw2reg_sw_cmd_sts_reg_t sw_cmd_sts; // [171:168]
-    csrng_hw2reg_genbits_vld_reg_t genbits_vld; // [167:166]
-    csrng_hw2reg_genbits_reg_t genbits; // [165:134]
-    csrng_hw2reg_int_state_val_reg_t int_state_val; // [133:102]
-    csrng_hw2reg_hw_exc_sts_reg_t hw_exc_sts; // [101:86]
+    csrng_hw2reg_intr_state_reg_t intr_state; // [185:178]
+    csrng_hw2reg_sw_cmd_sts_reg_t sw_cmd_sts; // [177:174]
+    csrng_hw2reg_genbits_vld_reg_t genbits_vld; // [173:172]
+    csrng_hw2reg_genbits_reg_t genbits; // [171:140]
+    csrng_hw2reg_int_state_val_reg_t int_state_val; // [139:108]
+    csrng_hw2reg_hw_exc_sts_reg_t hw_exc_sts; // [107:92]
+    csrng_hw2reg_recov_alert_sts_reg_t recov_alert_sts; // [91:86]
     csrng_hw2reg_err_code_reg_t err_code; // [85:36]
     csrng_hw2reg_tracking_sm_obs_reg_t tracking_sm_obs; // [35:0]
   } csrng_hw2reg_t;
@@ -323,10 +348,11 @@ package csrng_reg_pkg;
   parameter logic [BlockAw-1:0] CSRNG_INT_STATE_NUM_OFFSET = 7'h 28;
   parameter logic [BlockAw-1:0] CSRNG_INT_STATE_VAL_OFFSET = 7'h 2c;
   parameter logic [BlockAw-1:0] CSRNG_HW_EXC_STS_OFFSET = 7'h 30;
-  parameter logic [BlockAw-1:0] CSRNG_ERR_CODE_OFFSET = 7'h 34;
-  parameter logic [BlockAw-1:0] CSRNG_ERR_CODE_TEST_OFFSET = 7'h 38;
-  parameter logic [BlockAw-1:0] CSRNG_SEL_TRACKING_SM_OFFSET = 7'h 3c;
-  parameter logic [BlockAw-1:0] CSRNG_TRACKING_SM_OBS_OFFSET = 7'h 40;
+  parameter logic [BlockAw-1:0] CSRNG_RECOV_ALERT_STS_OFFSET = 7'h 34;
+  parameter logic [BlockAw-1:0] CSRNG_ERR_CODE_OFFSET = 7'h 38;
+  parameter logic [BlockAw-1:0] CSRNG_ERR_CODE_TEST_OFFSET = 7'h 3c;
+  parameter logic [BlockAw-1:0] CSRNG_SEL_TRACKING_SM_OFFSET = 7'h 40;
+  parameter logic [BlockAw-1:0] CSRNG_TRACKING_SM_OBS_OFFSET = 7'h 44;
 
   // Reset values for hwext registers and their fields
   parameter logic [3:0] CSRNG_INTR_TEST_RESVAL = 4'h 0;
@@ -334,7 +360,8 @@ package csrng_reg_pkg;
   parameter logic [0:0] CSRNG_INTR_TEST_CS_ENTROPY_REQ_RESVAL = 1'h 0;
   parameter logic [0:0] CSRNG_INTR_TEST_CS_HW_INST_EXC_RESVAL = 1'h 0;
   parameter logic [0:0] CSRNG_INTR_TEST_CS_FATAL_ERR_RESVAL = 1'h 0;
-  parameter logic [0:0] CSRNG_ALERT_TEST_RESVAL = 1'h 0;
+  parameter logic [1:0] CSRNG_ALERT_TEST_RESVAL = 2'h 0;
+  parameter logic [0:0] CSRNG_ALERT_TEST_RECOV_ALERT_RESVAL = 1'h 0;
   parameter logic [0:0] CSRNG_ALERT_TEST_FATAL_ALERT_RESVAL = 1'h 0;
   parameter logic [1:0] CSRNG_GENBITS_VLD_RESVAL = 2'h 0;
   parameter logic [31:0] CSRNG_GENBITS_RESVAL = 32'h 0;
@@ -355,6 +382,7 @@ package csrng_reg_pkg;
     CSRNG_INT_STATE_NUM,
     CSRNG_INT_STATE_VAL,
     CSRNG_HW_EXC_STS,
+    CSRNG_RECOV_ALERT_STS,
     CSRNG_ERR_CODE,
     CSRNG_ERR_CODE_TEST,
     CSRNG_SEL_TRACKING_SM,
@@ -362,13 +390,13 @@ package csrng_reg_pkg;
   } csrng_id_e;
 
   // Register width information to check illegal writes
-  parameter logic [3:0] CSRNG_PERMIT [17] = '{
+  parameter logic [3:0] CSRNG_PERMIT [18] = '{
     4'b 0001, // index[ 0] CSRNG_INTR_STATE
     4'b 0001, // index[ 1] CSRNG_INTR_ENABLE
     4'b 0001, // index[ 2] CSRNG_INTR_TEST
     4'b 0001, // index[ 3] CSRNG_ALERT_TEST
     4'b 0001, // index[ 4] CSRNG_REGWEN
-    4'b 0001, // index[ 5] CSRNG_CTRL
+    4'b 0011, // index[ 5] CSRNG_CTRL
     4'b 1111, // index[ 6] CSRNG_CMD_REQ
     4'b 0001, // index[ 7] CSRNG_SW_CMD_STS
     4'b 0001, // index[ 8] CSRNG_GENBITS_VLD
@@ -376,10 +404,11 @@ package csrng_reg_pkg;
     4'b 0001, // index[10] CSRNG_INT_STATE_NUM
     4'b 1111, // index[11] CSRNG_INT_STATE_VAL
     4'b 0011, // index[12] CSRNG_HW_EXC_STS
-    4'b 1111, // index[13] CSRNG_ERR_CODE
-    4'b 0001, // index[14] CSRNG_ERR_CODE_TEST
-    4'b 0001, // index[15] CSRNG_SEL_TRACKING_SM
-    4'b 1111  // index[16] CSRNG_TRACKING_SM_OBS
+    4'b 0001, // index[13] CSRNG_RECOV_ALERT_STS
+    4'b 1111, // index[14] CSRNG_ERR_CODE
+    4'b 0001, // index[15] CSRNG_ERR_CODE_TEST
+    4'b 0001, // index[16] CSRNG_SEL_TRACKING_SM
+    4'b 1111  // index[17] CSRNG_TRACKING_SM_OBS
   };
 
 endpackage

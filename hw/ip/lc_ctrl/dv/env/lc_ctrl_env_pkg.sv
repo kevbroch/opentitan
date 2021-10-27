@@ -8,6 +8,7 @@ package lc_ctrl_env_pkg;
   import top_pkg::*;
   import dv_utils_pkg::*;
   import dv_lib_pkg::*;
+  import dv_base_reg_pkg::*;
   import tl_agent_pkg::*;
   import cip_base_pkg::*;
   import csr_utils_pkg::*;
@@ -19,6 +20,7 @@ package lc_ctrl_env_pkg;
   import alert_esc_agent_pkg::*;
   import jtag_riscv_agent_pkg::*;
   import lc_ctrl_dv_utils_pkg::*;
+  import prim_mubi_pkg::MuBi8True;
 
   // macro includes
   `include "uvm_macros.svh"
@@ -29,7 +31,7 @@ package lc_ctrl_env_pkg;
                                        "fatal_state_error",
                                        "fatal_bus_integ_error"};
   parameter uint   NUM_ALERTS = 3;
-  parameter uint   CLAIM_TRANS_VAL = 'ha5;
+  parameter uint   CLAIM_TRANS_VAL = MuBi8True;
   parameter uint   NUM_STATES = 24;
 
   // lc_otp_program host data width: lc_state_e width + lc_cnt_e width

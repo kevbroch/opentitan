@@ -32,17 +32,24 @@ class entropy_src_base_vseq extends cip_base_vseq #(
 
   // setup basic entropy_src features
   virtual task entropy_src_init();
-    // Set fuse
-    cfg.efuse_es_sw_reg_en_vif.drive_pin(.idx(0), .val(cfg.efuse_es_sw_reg_en));
+    // Fuses
+    cfg.otp_en_es_fw_read_vif.drive(.val(cfg.otp_en_es_fw_read));
+    cfg.otp_en_es_fw_over_vif.drive(.val(cfg.otp_en_es_fw_over));
 
-    // Set entropy_src controls
+    // Register write enable 
+    csr_wr(.ptr(ral.regwen), .value(cfg.regwen));
+
+    // Controls
     ral.entropy_control.es_type.set(cfg.type_bypass);
     ral.entropy_control.es_route.set(cfg.route_software);
     csr_update(.csr(ral.entropy_control));
 
-    // Enable entropy_src in ptrng or lfsr mode
-    ral.conf.enable.set(cfg.mode);
+    // Enables
+    ral.conf.enable.set(cfg.enable);
+    ral.conf.entropy_data_reg_enable.set(cfg.entropy_data_reg_enable);
     ral.conf.boot_bypass_disable.set(cfg.boot_bypass_disable);
+    ral.conf.rng_bit_enable.set(cfg.rng_bit_enable);
+    ral.conf.rng_bit_sel.set(cfg.rng_bit_sel);
     csr_update(.csr(ral.conf));
 
   endtask

@@ -20,6 +20,7 @@ package clkmgr_pkg;
     HintMainOtbn = 4
   } hint_names_e;
 
+  // clocks generated and broadcast
   typedef struct packed {
     logic clk_io_div4_powerup;
     logic clk_aon_powerup;
@@ -27,6 +28,7 @@ package clkmgr_pkg;
     logic clk_io_powerup;
     logic clk_usb_powerup;
     logic clk_io_div2_powerup;
+    logic clk_aon_infra;
     logic clk_aon_secure;
     logic clk_aon_peri;
     logic clk_aon_timers;
@@ -37,29 +39,51 @@ package clkmgr_pkg;
     logic clk_io_div4_otbn;
     logic clk_io_div4_infra;
     logic clk_main_infra;
+    logic clk_io_infra;
+    logic clk_io_div2_infra;
     logic clk_io_div4_secure;
     logic clk_main_secure;
+    logic clk_usb_secure;
     logic clk_io_div4_timers;
-    logic clk_main_timers;
-    logic clk_proc_main;
     logic clk_io_div4_peri;
     logic clk_io_div2_peri;
     logic clk_io_peri;
     logic clk_usb_peri;
-
   } clkmgr_out_t;
 
+  // clock gating indication for alert handler
   typedef struct packed {
-    logic clk_ast_usbdev_io_div4_peri;
-    logic clk_ast_usbdev_aon_peri;
-    logic clk_ast_usbdev_usb_peri;
-    logic clk_ast_adc_ctrl_aon_io_div4_peri;
-    logic clk_ast_adc_ctrl_aon_aon_peri;
-    logic clk_ast_ast_io_div4_secure;
-    logic clk_ast_sensor_ctrl_aon_io_div4_secure;
-    logic clk_ast_entropy_src_main_secure;
-    logic clk_ast_edn0_main_secure;
-  } clkmgr_ast_out_t;
+    prim_mubi_pkg::mubi4_t io_div4_powerup;
+    prim_mubi_pkg::mubi4_t aon_powerup;
+    prim_mubi_pkg::mubi4_t main_powerup;
+    prim_mubi_pkg::mubi4_t io_powerup;
+    prim_mubi_pkg::mubi4_t usb_powerup;
+    prim_mubi_pkg::mubi4_t io_div2_powerup;
+    prim_mubi_pkg::mubi4_t aon_infra;
+    prim_mubi_pkg::mubi4_t aon_secure;
+    prim_mubi_pkg::mubi4_t aon_peri;
+    prim_mubi_pkg::mubi4_t aon_timers;
+    prim_mubi_pkg::mubi4_t main_aes;
+    prim_mubi_pkg::mubi4_t main_hmac;
+    prim_mubi_pkg::mubi4_t main_kmac;
+    prim_mubi_pkg::mubi4_t main_otbn;
+    prim_mubi_pkg::mubi4_t io_div4_otbn;
+    prim_mubi_pkg::mubi4_t io_div4_infra;
+    prim_mubi_pkg::mubi4_t main_infra;
+    prim_mubi_pkg::mubi4_t io_infra;
+    prim_mubi_pkg::mubi4_t io_div2_infra;
+    prim_mubi_pkg::mubi4_t io_div4_secure;
+    prim_mubi_pkg::mubi4_t main_secure;
+    prim_mubi_pkg::mubi4_t usb_secure;
+    prim_mubi_pkg::mubi4_t io_div4_timers;
+    prim_mubi_pkg::mubi4_t io_div4_peri;
+    prim_mubi_pkg::mubi4_t io_div2_peri;
+    prim_mubi_pkg::mubi4_t io_peri;
+    prim_mubi_pkg::mubi4_t usb_peri;
+  } clkmgr_cg_en_t;
+
+  parameter int NumOutputClk = 27;
+
 
   typedef struct packed {
     logic [5-1:0] idle;

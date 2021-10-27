@@ -7,7 +7,9 @@
 module pwm
   import pwm_reg_pkg::*;
 #(
-  parameter logic [NumAlerts-1:0] AlertAsyncOn = {NumAlerts{1'b1}}
+  parameter logic [NumAlerts-1:0] AlertAsyncOn = {NumAlerts{1'b1}},
+  parameter int PhaseCntDw = 16,
+  parameter int BeatCntDw = 27
 ) (
   input                       clk_i,
   input                       rst_ni,
@@ -25,20 +27,18 @@ module pwm
   output logic [NOutputs-1:0] cio_pwm_en_o
 );
 
-  // TODO: Deal with Regen in this block, on TLUL clock domain
-  logic                     unused_regen;
   pwm_reg_pkg::pwm_reg2hw_t reg2hw;
   logic [NumAlerts-1:0] alert_test, alerts;
-
-  assign unused_regen = reg2hw.regen.q;
 
   pwm_reg_top u_reg (
     .clk_i,
     .rst_ni,
-    .tl_i,
-    .tl_o,
-    .reg2hw,
-    .intg_err_o(alerts[0]),
+    .clk_core_i,
+    .rst_core_ni,
+    .tl_i       (tl_i),
+    .tl_o       (tl_o),
+    .reg2hw     (reg2hw),
+    .intg_err_o (alerts[0]),
     .devmode_i  (1'b1)
   );
 
@@ -65,7 +65,11 @@ module pwm
 
   assign cio_pwm_en_o = {NOutputs{1'b1}};
 
-  pwm_core #(.NOutputs(NOutputs)) u_pwm_core (
+  pwm_core #(
+    .NOutputs(NOutputs),
+    .PhaseCntDw(PhaseCntDw),
+    .BeatCntDw(BeatCntDw)
+  ) u_pwm_core (
     .clk_core_i,
     .rst_core_ni,
     .reg2hw,

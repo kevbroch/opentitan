@@ -55,9 +55,7 @@ Code Quality  | [LINT_PASS][]           | Done        |
 Code Quality  | [CDC_SETUP][]           | N/A         | Pending CDC tool availability
 Code Quality  | [FPGA_TIMING][]         | Done        |
 Code Quality  | [CDC_SYNCMACRO][]       | Done        |
-Security      | [SEC_CM_IMPLEMENTED][]  | N/A         | Partially impelmented, security milestone after D2
-Security      | [SEC_NON_RESET_FLOPS][] | N/A         |
-Security      | [SEC_SHADOW_REGS][]     | Done        |
+Security      | [SEC_CM_DOCUMENTED][]   | N/A         | Partially impelmented, security milestone after D2
 Security      | [SEC_RND_CNST][]        | Done        |
 
 [NEW_FEATURES]:        {{<relref "/doc/project/checklist.md#new_features" >}}
@@ -75,9 +73,7 @@ Security      | [SEC_RND_CNST][]        | Done        |
 [CDC_SETUP]:           {{<relref "/doc/project/checklist.md#cdc_setup" >}}
 [FPGA_TIMING]:         {{<relref "/doc/project/checklist.md#fpga_timing" >}}
 [CDC_SYNCMACRO]:       {{<relref "/doc/project/checklist.md#cdc_syncmacro" >}}
-[SEC_CM_IMPLEMENTED]:  {{<relref "/doc/project/checklist.md#sec_cm_implemented" >}}
-[SEC_NON_RESET_FLOPS]: {{<relref "/doc/project/checklist.md#sec_non_reset_flops" >}}
-[SEC_SHADOW_REGS]:     {{<relref "/doc/project/checklist.md#sec_shadow_regs" >}}
+[SEC_CM_DOCUMENTED]:   {{<relref "/doc/project/checklist.md#sec_cm_documented" >}}
 [SEC_RND_CNST]:        {{<relref "/doc/project/checklist.md#sec_rnd_cnst" >}}
 
 ### D3
@@ -94,6 +90,9 @@ Review        | [REVIEW_SW_CSR][]       | Not Started |
 Review        | [REVIEW_SW_FATAL_ERR][] | Not Started |
 Review        | [REVIEW_SW_CHANGE][]    | Not Started |
 Review        | [REVIEW_SW_ERRATA][]    | Not Started |
+Security      | [SEC_CM_IMPLEMENTED][]  | Not Started |
+Security      | [SEC_NON_RESET_FLOPS][] | Not Started |
+Security      | [SEC_SHADOW_REGS][]     | Not Started |
 Review        | Reviewer(s)             | Not Started |
 Review        | Signoff date            | Not Started |
 
@@ -108,6 +107,9 @@ Review        | Signoff date            | Not Started |
 [REVIEW_SW_FATAL_ERR]:  {{<relref "/doc/project/checklist.md#review_sw_fatal_err" >}}
 [REVIEW_SW_CHANGE]:     {{<relref "/doc/project/checklist.md#review_sw_change" >}}
 [REVIEW_SW_ERRATA]:     {{<relref "/doc/project/checklist.md#review_sw_errata" >}}
+[SEC_CM_IMPLEMENTED]:   {{<relref "/doc/project/checklist.md#sec_cm_implemented" >}}
+[SEC_NON_RESET_FLOPS]:  {{<relref "/doc/project/checklist.md#sec_non_reset_flops" >}}
+[SEC_SHADOW_REGS]:      {{<relref "/doc/project/checklist.md#sec_shadow_regs" >}}
 
 ## Verification Checklist
 
@@ -165,27 +167,27 @@ Review        | [V2_CHECKLIST_SCOPED][]               | Done        |
 
  Type         | Item                                    | Resolution  | Note/Collaterals
 --------------|-----------------------------------------|-------------|------------------
-Documentation | [DESIGN_DELTAS_CAPTURED_V2][]           | Not Started |
-Documentation | [DV_DOC_COMPLETED][]                    | Not Started |
-Testbench     | [FUNCTIONAL_COVERAGE_IMPLEMENTED][]     | Not Started |
-Testbench     | [ALL_INTERFACES_EXERCISED][]            | Not Started |
-Testbench     | [ALL_ASSERTION_CHECKS_ADDED][]          | Not Started |
-Testbench     | [SIM_TB_ENV_COMPLETED][]                | Not Started |
-Tests         | [SIM_ALL_TESTS_PASSING][]               | Not Started |
-Tests         | [FPV_ALL_ASSERTIONS_WRITTEN][]          | Not Started |
-Tests         | [FPV_ALL_ASSUMPTIONS_REVIEWED][]        | Not Started |
-Tests         | [SIM_FW_SIMULATED][]                    | Not Started |
-Regression    | [SIM_NIGHTLY_REGRESSION_V2][]           | Not Started |
-Coverage      | [SIM_CODE_COVERAGE_V2][]                | Not Started |
-Coverage      | [SIM_FUNCTIONAL_COVERAGE_V2][]          | Not Started |
-Coverage      | [FPV_CODE_COVERAGE_V2][]                | Not Started |
-Coverage      | [FPV_COI_COVERAGE_V2][]                 | Not Started |
-Code Quality  | [TB_LINT_PASS][]                        | Not Started |
-Integration   | [PRE_VERIFIED_SUB_MODULES_V2][]         | Not Started |
-Issues        | [NO_HIGH_PRIORITY_ISSUES_PENDING][]     | Not Started |
-Issues        | [ALL_LOW_PRIORITY_ISSUES_ROOT_CAUSED][] | Not Started |
-Review        | [DV_DOC_TESTPLAN_REVIEWED][]            | Not Started |
-Review        | [V3_CHECKLIST_SCOPED][]                 | Not Started |
+Documentation | [DESIGN_DELTAS_CAPTURED_V2][]           | Done        |
+Documentation | [DV_DOC_COMPLETED][]                    | Done        |
+Testbench     | [FUNCTIONAL_COVERAGE_IMPLEMENTED][]     | Done        |
+Testbench     | [ALL_INTERFACES_EXERCISED][]            | Done        |
+Testbench     | [ALL_ASSERTION_CHECKS_ADDED][]          | Done        |
+Testbench     | [SIM_TB_ENV_COMPLETED][]                | Done        |
+Tests         | [SIM_ALL_TESTS_PASSING][]               | Done        |
+Tests         | [FPV_ALL_ASSERTIONS_WRITTEN][]          | N/A         |
+Tests         | [FPV_ALL_ASSUMPTIONS_REVIEWED][]        | N/A         |
+Tests         | [SIM_FW_SIMULATED][]                    | N/A         |
+Regression    | [SIM_NIGHTLY_REGRESSION_V2][]           | Done        |
+Coverage      | [SIM_CODE_COVERAGE_V2][]                | Done        |
+Coverage      | [SIM_FUNCTIONAL_COVERAGE_V2][]          | Done        |
+Coverage      | [FPV_CODE_COVERAGE_V2][]                | N/A         |
+Coverage      | [FPV_COI_COVERAGE_V2][]                 | N/A         |
+Code Quality  | [TB_LINT_PASS][]                        | Done        |
+Integration   | [PRE_VERIFIED_SUB_MODULES_V2][]         | N/A         |
+Issues        | [NO_HIGH_PRIORITY_ISSUES_PENDING][]     | Done        |
+Issues        | [ALL_LOW_PRIORITY_ISSUES_ROOT_CAUSED][] | Done        |
+Review        | [DV_DOC_TESTPLAN_REVIEWED][]            | Done        |
+Review        | [V3_CHECKLIST_SCOPED][]                 | Done        |
 
 [DESIGN_DELTAS_CAPTURED_V2]:          {{<relref "/doc/project/checklist.md#design_deltas_captured_v2" >}}
 [DV_DOC_COMPLETED]:                   {{<relref "/doc/project/checklist.md#dv_doc_completed" >}}

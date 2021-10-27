@@ -26,13 +26,32 @@ extern const size_t kOtbnDMemSizeBytes;
 extern const size_t kOtbnIMemSizeBytes;
 
 /**
- * Start the execution of the application loaded into OTBN at the start address.
+ * OTBN commands
+ */
+typedef enum dif_otbn_cmd {
+  kOtbnCmdExecute = 0xd8,
+  kOtbnCmdSecWipeDmem = 0xc3,
+  kOtbnCmdSecWipeImem = 0x1e,
+} otbn_cmd_t;
+
+/**
+ * OTBN status
+ */
+typedef enum otbn_status {
+  kOtbnStatusIdle = 0x00,
+  kOtbnStatusBusyExecute = 0x01,
+  kOtbnStatusBusySecWipeDmem = 0x02,
+  kOtbnStatusBusySecWipeImem = 0x03,
+  kOtbnStatusLocked = 0xFF,
+} otbn_status_t;
+
+/**
+ * Start the execution of the application loaded into OTBN
  *
- * @param start_addr The IMEM byte address to start the execution at.
- * @return `kErrorOtbInvalidArgument` if `start_addr` is invalid, `kErrorOk`
+ * @return `kErrorOtbnInvalidArgument` if `start_addr` is invalid, `kErrorOk`
  *         otherwise.
  */
-rom_error_t otbn_start(uint32_t start_addr);
+rom_error_t otbn_execute(void);
 
 /**
  * Is OTBN busy executing an application?
@@ -50,22 +69,30 @@ bool otbn_is_busy(void);
  */
 typedef enum otbn_err_bits {
   kOtbnErrBitsNoError = 0,
-  /** Load or store to invalid address. */
+  /** A BAD_DATA_ADDR error was observed. */
   kOtbnErrBitsBadDataAddr = (1 << 0),
-  /** Instruction fetch from invalid address. */
+  /** A BAD_INSN_ADDR error was observed. */
   kOtbnErrBitsBadInsnAddr = (1 << 1),
-  /** Call stack underflow or overflow. */
+  /** A CALL_STACK error was observed. */
   kOtbnErrBitsCallStack = (1 << 2),
-  /** Illegal instruction execution attempted */
+  /** An ILLEGAL_INSN error was observed. */
   kOtbnErrBitsIllegalInsn = (1 << 3),
-  /** LOOP[I] related error */
+  /** A LOOP error was observed. */
   kOtbnErrBitsLoop = (1 << 4),
-  /** Error seen in Imem read */
-  kOtbnErrBitsFatalImem = (1 << 5),
-  /** Error seen in Dmem read */
-  kOtbnErrBitsFatalDmem = (1 << 6),
-  /** Error seen in RF read */
-  kOtbnErrBitsFatalReg = (1 << 7)
+  /** A IMEM_INTG_VIOLATION error was observed. */
+  kOtbnErrBitsImemIntgViolation = (1 << 16),
+  /** A DMEM_INTG_VIOLATION error was observed. */
+  kOtbnErrBitsDmemIntgViolation = (1 << 17),
+  /** A REG_INTG_VIOLATION error was observed. */
+  kOtbnErrBitsRegIntgViolation = (1 << 18),
+  /** A BUS_INTG_VIOLATION error was observed. */
+  kOtbnErrBitsBusIntgViolation = (1 << 19),
+  /** An ILLEGAL_BUS_ACCESS error was observed. */
+  kOtbnErrBitsIllegalBusAccess = (1 << 20),
+  /** A LIFECYCLE_ESCALATION error was observed. */
+  kOtbnErrBitsLifecycleEscalation = (1 << 21),
+  /** A FATAL_SOFTWARE error was observed. */
+  kOtbnErrBitsFatalSoftware = (1 << 22),
 } otbn_err_bits_t;
 
 /**
@@ -115,6 +142,23 @@ rom_error_t otbn_dmem_write(uint32_t offset_bytes, const uint32_t *src,
  * `kErrorOtbnBadOffsetLen` if `len` is invalid , `kErrorOk` otherwise.
  */
 rom_error_t otbn_dmem_read(uint32_t offset_bytes, uint32_t *dest, size_t len);
+
+/**
+ * Zero out the contents of OTBN's data memory (DMEM).
+ */
+void otbn_zero_dmem(void);
+
+/**
+ * Sets the software errors are fatal bit in the control register.
+ *
+ * When set any software error becomes a fatal error. The bit can only be
+ * changed when the OTBN status is IDLE.
+ *
+ * @param enable Enable or disable whether software errors are fatal.
+ * @return `kErrorOtbnUnavailable` if the requested change cannot be made or
+ * `kErrorOk` otherwise.
+ */
+rom_error_t otbn_set_ctrl_software_errs_fatal(bool enable);
 
 #ifdef __cplusplus
 }

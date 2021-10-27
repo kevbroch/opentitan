@@ -9,7 +9,6 @@
 module pwrmgr_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -163,7 +162,6 @@ module pwrmgr_reg_top (
 
   // Register instances
   // R[intr_state]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -190,7 +188,6 @@ module pwrmgr_reg_top (
 
 
   // R[intr_enable]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -217,7 +214,6 @@ module pwrmgr_reg_top (
 
 
   // R[intr_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_intr_test (
@@ -233,7 +229,6 @@ module pwrmgr_reg_top (
 
 
   // R[ctrl_cfg_regwen]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_ctrl_cfg_regwen (
@@ -249,7 +244,6 @@ module pwrmgr_reg_top (
 
 
   // R[control]: V(False)
-
   //   F[low_power_hint]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -274,7 +268,6 @@ module pwrmgr_reg_top (
     // to register interface (read)
     .qs     (control_low_power_hint_qs)
   );
-
 
   //   F[core_clk_en]: 4:4
   prim_subreg #(
@@ -301,7 +294,6 @@ module pwrmgr_reg_top (
     .qs     (control_core_clk_en_qs)
   );
 
-
   //   F[io_clk_en]: 5:5
   prim_subreg #(
     .DW      (1),
@@ -326,7 +318,6 @@ module pwrmgr_reg_top (
     // to register interface (read)
     .qs     (control_io_clk_en_qs)
   );
-
 
   //   F[usb_clk_en_lp]: 6:6
   prim_subreg #(
@@ -353,7 +344,6 @@ module pwrmgr_reg_top (
     .qs     (control_usb_clk_en_lp_qs)
   );
 
-
   //   F[usb_clk_en_active]: 7:7
   prim_subreg #(
     .DW      (1),
@@ -378,7 +368,6 @@ module pwrmgr_reg_top (
     // to register interface (read)
     .qs     (control_usb_clk_en_active_qs)
   );
-
 
   //   F[main_pd_n]: 8:8
   prim_subreg #(
@@ -407,7 +396,6 @@ module pwrmgr_reg_top (
 
 
   // R[cfg_cdc_sync]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -434,7 +422,6 @@ module pwrmgr_reg_top (
 
 
   // R[wakeup_en_regwen]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -460,10 +447,8 @@ module pwrmgr_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg wakeup_en
   // R[wakeup_en]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -489,10 +474,8 @@ module pwrmgr_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg wake_status
   // R[wake_status]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -519,7 +502,6 @@ module pwrmgr_reg_top (
 
 
   // R[reset_en_regwen]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -545,10 +527,8 @@ module pwrmgr_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg reset_en
   // R[reset_en]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -574,10 +554,8 @@ module pwrmgr_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg reset_status
   // R[reset_status]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -604,7 +582,6 @@ module pwrmgr_reg_top (
 
 
   // R[wake_info_capture_dis]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -631,7 +608,6 @@ module pwrmgr_reg_top (
 
 
   // R[wake_info]: V(True)
-
   //   F[reasons]: 0:0
   prim_subreg_ext #(
     .DW    (1)
@@ -645,7 +621,6 @@ module pwrmgr_reg_top (
     .q      (reg2hw.wake_info.reasons.q),
     .qs     (wake_info_reasons_qs)
   );
-
 
   //   F[fall_through]: 1:1
   prim_subreg_ext #(
@@ -661,7 +636,6 @@ module pwrmgr_reg_top (
     .qs     (wake_info_fall_through_qs)
   );
 
-
   //   F[abort]: 2:2
   prim_subreg_ext #(
     .DW    (1)
@@ -675,7 +649,6 @@ module pwrmgr_reg_top (
     .q      (reg2hw.wake_info.abort.q),
     .qs     (wake_info_abort_qs)
   );
-
 
 
 
@@ -841,12 +814,18 @@ module pwrmgr_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

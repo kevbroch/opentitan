@@ -17,15 +17,26 @@
   reset: rst_main_ni
   reset_connections:
   {
-    rst_main_ni: sys
-    rst_fixed_ni: sys_io_div4
+    rst_main_ni:
+    {
+      name: sys
+      domain: "0"
+    }
+    rst_fixed_ni:
+    {
+      name: sys_io_div4
+      domain: "0"
+    }
   }
   clock_connections:
   {
     clk_main_i: clkmgr_aon_clocks.clk_main_infra
     clk_fixed_i: clkmgr_aon_clocks.clk_io_div4_infra
   }
-  domain: "0"
+  domain:
+  [
+    "0"
+  ]
   connections:
   {
     rv_core_ibex.corei:
@@ -33,7 +44,7 @@
       rom_ctrl.rom
       rv_dm.rom
       sram_ctrl_main.ram
-      eflash
+      flash_ctrl.mem
     ]
     rv_core_ibex.cored:
     [
@@ -42,10 +53,10 @@
       rv_dm.rom
       rv_dm.regs
       sram_ctrl_main.ram
-      eflash
       peri
       flash_ctrl.core
       flash_ctrl.prim
+      flash_ctrl.mem
       aes
       entropy_src
       csrng
@@ -65,10 +76,10 @@
       rom_ctrl.regs
       rv_dm.regs
       sram_ctrl_main.ram
-      eflash
       peri
       flash_ctrl.core
       flash_ctrl.prim
+      flash_ctrl.mem
       aes
       entropy_src
       csrng
@@ -165,7 +176,7 @@
       [
         {
           base_addr: 0x8000
-          size_byte: 0x4000
+          size_byte: 0x8000
         }
       ]
       xbar: false
@@ -184,24 +195,6 @@
         {
           base_addr: 0x411e0000
           size_byte: 0x1000
-        }
-      ]
-      xbar: false
-      stub: false
-      pipeline_byp: "true"
-    }
-    {
-      name: eflash
-      type: device
-      clock: clk_main_i
-      reset: rst_main_ni
-      pipeline: "false"
-      inst_type: eflash
-      addr_range:
-      [
-        {
-          base_addr: 0x20000000
-          size_byte: 0x100000
         }
       ]
       xbar: false
@@ -255,6 +248,24 @@
         {
           base_addr: 0x41008000
           size_byte: 0x1000
+        }
+      ]
+      xbar: false
+      stub: false
+      pipeline: "true"
+    }
+    {
+      name: flash_ctrl.mem
+      type: device
+      clock: clk_main_i
+      reset: rst_main_ni
+      pipeline_byp: "false"
+      inst_type: flash_ctrl
+      addr_range:
+      [
+        {
+          base_addr: 0x20000000
+          size_byte: 0x100000
         }
       ]
       xbar: false
@@ -397,8 +408,8 @@
       addr_range:
       [
         {
-          base_addr: 0x41010000
-          size_byte: 0x1000
+          base_addr: 0x48000000
+          size_byte: 0x8000000
         }
       ]
       xbar: false
@@ -415,7 +426,7 @@
       addr_range:
       [
         {
-          base_addr: 0x411d0000
+          base_addr: 0x41130000
           size_byte: 0x10000
         }
       ]
@@ -433,7 +444,7 @@
       addr_range:
       [
         {
-          base_addr: 0x41130000
+          base_addr: 0x41140000
           size_byte: 0x1000
         }
       ]

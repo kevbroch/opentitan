@@ -95,6 +95,7 @@ package otp_ctrl_part_pkg;
     logic hw_digest;  // Whether the partition has a hardware digest
     logic write_lock; // Whether the partition is write lockable (via digest)
     logic read_lock;  // Whether the partition is read lockable (via digest)
+    logic ecc_fatal;  // Whether the an ECC uncorrectable error leads to a fatal alert
   } part_info_t;
 
   parameter part_info_t PartInfoDefault = '{
@@ -105,7 +106,8 @@ package otp_ctrl_part_pkg;
       secret:     1'b0,
       hw_digest:  1'b0,
       write_lock: 1'b0,
-      read_lock:  1'b0
+      read_lock:  1'b0,
+      ecc_fatal:  1'b0
   };
 
   ////////////////////////
@@ -113,38 +115,53 @@ package otp_ctrl_part_pkg;
   ////////////////////////
 
   localparam part_info_t PartInfo [NumPart] = '{
-    // CREATOR_SW_CFG
+    // VENDOR_TEST
     '{
       variant:    Unbuffered,
       offset:     11'd0,
-      size:       768,
+      size:       64,
       key_sel:    key_sel_e'('0),
       secret:     1'b0,
       hw_digest:  1'b0,
       write_lock: 1'b1,
-      read_lock:  1'b0
+      read_lock:  1'b0,
+      ecc_fatal:  1'b0
+    },
+    // CREATOR_SW_CFG
+    '{
+      variant:    Unbuffered,
+      offset:     11'd64,
+      size:       800,
+      key_sel:    key_sel_e'('0),
+      secret:     1'b0,
+      hw_digest:  1'b0,
+      write_lock: 1'b1,
+      read_lock:  1'b0,
+      ecc_fatal:  1'b1
     },
     // OWNER_SW_CFG
     '{
       variant:    Unbuffered,
-      offset:     11'd768,
-      size:       768,
+      offset:     11'd864,
+      size:       800,
       key_sel:    key_sel_e'('0),
       secret:     1'b0,
       hw_digest:  1'b0,
       write_lock: 1'b1,
-      read_lock:  1'b0
+      read_lock:  1'b0,
+      ecc_fatal:  1'b1
     },
     // HW_CFG
     '{
       variant:    Buffered,
-      offset:     11'd1536,
-      size:       208,
+      offset:     11'd1664,
+      size:       80,
       key_sel:    key_sel_e'('0),
       secret:     1'b0,
       hw_digest:  1'b1,
       write_lock: 1'b1,
-      read_lock:  1'b0
+      read_lock:  1'b0,
+      ecc_fatal:  1'b1
     },
     // SECRET0
     '{
@@ -155,7 +172,8 @@ package otp_ctrl_part_pkg;
       secret:     1'b1,
       hw_digest:  1'b1,
       write_lock: 1'b1,
-      read_lock:  1'b1
+      read_lock:  1'b1,
+      ecc_fatal:  1'b1
     },
     // SECRET1
     '{
@@ -166,7 +184,8 @@ package otp_ctrl_part_pkg;
       secret:     1'b1,
       hw_digest:  1'b1,
       write_lock: 1'b1,
-      read_lock:  1'b1
+      read_lock:  1'b1,
+      ecc_fatal:  1'b1
     },
     // SECRET2
     '{
@@ -177,7 +196,8 @@ package otp_ctrl_part_pkg;
       secret:     1'b1,
       hw_digest:  1'b1,
       write_lock: 1'b1,
-      read_lock:  1'b1
+      read_lock:  1'b1,
+      ecc_fatal:  1'b1
     },
     // LIFE_CYCLE
     '{
@@ -188,11 +208,13 @@ package otp_ctrl_part_pkg;
       secret:     1'b0,
       hw_digest:  1'b0,
       write_lock: 1'b0,
-      read_lock:  1'b0
+      read_lock:  1'b0,
+      ecc_fatal:  1'b1
     }
   };
 
   typedef enum {
+    VendorTestIdx,
     CreatorSwCfgIdx,
     OwnerSwCfgIdx,
     HwCfgIdx,
@@ -214,7 +236,7 @@ package otp_ctrl_part_pkg;
   // Breakout types for easier access of individual items.
   typedef struct packed {
       logic [63:0] hw_cfg_digest;
-      logic [1055:0] unallocated;
+      logic [31:0] unallocated;
       logic [7:0] en_entropy_src_fw_over;
       logic [7:0] en_entropy_src_fw_read;
       logic [7:0] en_csrng_sw_app_read;
@@ -225,14 +247,14 @@ package otp_ctrl_part_pkg;
 
   // default value used for intermodule
   parameter otp_hw_cfg_data_t OTP_HW_CFG_DATA_DEFAULT = '{
-    hw_cfg_digest: 64'hFA602470308055C4,
-    unallocated: 1056'h0,
+    hw_cfg_digest: 64'h2CD09F705F291B7A,
+    unallocated: 32'h0,
     en_entropy_src_fw_over: 8'h0,
     en_entropy_src_fw_read: 8'h0,
     en_csrng_sw_app_read: 8'h0,
     en_sram_ifetch: 8'h0,
-    manuf_state: 256'hABFF25A58087D34A37E5AE39A58FACEE41389646B3968A3B128F4AF0AFFC1AAC,
-    device_id: 256'h77ADEFF42376E09D523D5C06786AAC34FA53B8058E157CB69F1F413E87242971
+    manuf_state: 256'h41389646B3968A3B128F4AF0AFFC1AAC77ADEFF42376E09D523D5C06786AAC34,
+    device_id: 256'hFA53B8058E157CB69F1F413E87242971B6B52A656A1CAB7FEBF21E5BF1F45EDD
   };
 
   typedef struct packed {
@@ -250,39 +272,39 @@ package otp_ctrl_part_pkg;
   // OTP invalid partition default for buffered partitions.
   parameter logic [16383:0] PartInvDefault = 16384'({
     704'({
-      320'hDC793769D983D0577127F60790BB5D2CD09F705F291B7A39EB436F1D5AF2D77D7EA64D850E128D,
-      384'h1D00E175E3739EC1DAAF8720F255C5C84D1D9C10648A878DB1D5ABE9610E8395490EC23C0A1EDCCE280E8ECA88CEA2E9
+      320'hDAAF8720F255C5C84D1D9C10648A878DB1D5ABE9610E8395490EC23C0A1EDCCE280E8ECA88CEA2E9,
+      384'h9470329E17324EDB1E2960279AB8F882A991BEA2CF16541724A52D80A891BCD52BE973D4C5752E3A6912899150240B3A
     }),
     704'({
-      64'h9470329E17324EDB,
-      256'h1E2960279AB8F882A991BEA2CF16541724A52D80A891BCD52BE973D4C5752E3A,
-      256'h6912899150240B3AD53651B6259AF2A4FB9DCA186AE168595B637FF7F7BF2E7C,
-      128'h26917DDC15EB6827A1AFEC939D240482
+      64'h39C052C50C63C3FB,
+      256'hD53651B6259AF2A4FB9DCA186AE168595B637FF7F7BF2E7C26917DDC15EB6827,
+      256'hA1AFEC939D240482026740905E57CA6C1D96CF9CAB089A9CF80423F61EC116FD,
+      128'h7CB3D374E7DF05B66C61869C02BC1100
     }),
     704'({
-      64'h26740905E57CA6C,
-      128'h1D96CF9CAB089A9CF80423F61EC116FD,
-      256'h7CB3D374E7DF05B66C61869C02BC11008561BFB99BAFAFC47DED6F942A7014DD,
-      256'h9A0656978D66A3C419617EDF0BD69B2320EA378AE9812F1F53911418BCBBCCCA
+      64'hDC793769D983D0,
+      128'h8561BFB99BAFAFC47DED6F942A7014DD,
+      256'h9A0656978D66A3C419617EDF0BD69B2320EA378AE9812F1F53911418BCBBCCCA,
+      256'h9F4C41511001F6AD24DEEF385A7B3CA65869574E09B5710738066DCD7EF4BB9B
     }),
     320'({
-      64'h9F4C41511001F6AD,
-      128'h24DEEF385A7B3CA65869574E09B57107,
-      128'h38066DCD7EF4BB9BC48FDBD8A0031C11
+      64'h577127F60790BB5D,
+      128'hC48FDBD8A0031C11FA602470308055C4,
+      128'hABFF25A58087D34A37E5AE39A58FACEE
     }),
-    1664'({
-      64'hFA602470308055C4,
-      1056'h0, // unallocated space
+    640'({
+      64'h2CD09F705F291B7A,
+      32'h0, // unallocated space
       8'h0,
       8'h0,
       8'h0,
       8'h0,
-      256'hABFF25A58087D34A37E5AE39A58FACEE41389646B3968A3B128F4AF0AFFC1AAC,
-      256'h77ADEFF42376E09D523D5C06786AAC34FA53B8058E157CB69F1F413E87242971
+      256'h41389646B3968A3B128F4AF0AFFC1AAC77ADEFF42376E09D523D5C06786AAC34,
+      256'hFA53B8058E157CB69F1F413E87242971B6B52A656A1CAB7FEBF21E5BF1F45EDD
     }),
-    6144'({
-      64'hB6B52A656A1CAB7F,
-      2080'h0, // unallocated space
+    6400'({
+      64'h39EB436F1D5AF2D7,
+      2336'h0, // unallocated space
       512'h0,
       128'h0,
       128'h0,
@@ -294,13 +316,17 @@ package otp_ctrl_part_pkg;
       32'h0,
       32'h0
     }),
-    6144'({
-      64'hEBF21E5BF1F45EDD,
-      3904'h0, // unallocated space
+    6400'({
+      64'h7D7EA64D850E128D,
+      4160'h0, // unallocated space
       64'h0,
       32'h0,
       32'h0,
       2048'h0
+    }),
+    512'({
+      64'h1D00E175E3739EC1,
+      448'h0
     })});
 
 endpackage : otp_ctrl_part_pkg

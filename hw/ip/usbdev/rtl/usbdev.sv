@@ -684,7 +684,7 @@ module usbdev
 
     .tl_i        (tl_sram_h2d),
     .tl_o        (tl_sram_d2h),
-    .en_ifetch_i (tlul_pkg::InstrDis),
+    .en_ifetch_i (prim_mubi_pkg::MuBi4False),
     .req_o       (mem_a_req),
     .req_type_o  (),
     .gnt_i       (mem_a_req),  //Always grant when request
@@ -1059,8 +1059,8 @@ module usbdev
   assign cio_rx_enable_en_o  = 1'b1;
 
   // Pullup
-  assign cio_dp_pullup_o     = 1'b1;
-  assign cio_dn_pullup_o     = 1'b1;
+  assign cio_dp_pullup_o     = cio_dp_pullup_en_o;
+  assign cio_dn_pullup_o     = cio_dn_pullup_en_o;
 
   /////////////////////////////////////////
   // SOF Reference for Clock Calibration //

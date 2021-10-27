@@ -22,14 +22,14 @@ TEST_APPS_SELFCHECKING = [
         "name": "crt_test",
     },
     {
-        "name": "dif_otbn_smoketest_rtl",
-        "binary_name": "dif_otbn_smoketest",
+        "name": "otbn_smoketest_rtl",
+        "binary_name": "otbn_smoketest",
         "verilator_extra_args": ['+OTBN_USE_MODEL=0'],
         "targets": ["sim_verilator"],
     },
     {
-        "name": "dif_otbn_smoketest_model",
-        "binary_name": "dif_otbn_smoketest",
+        "name": "otbn_smoketest_model",
+        "binary_name": "otbn_smoketest",
         "verilator_extra_args": ['+OTBN_USE_MODEL=1'],
         "targets": ["sim_verilator"],
     },
@@ -50,59 +50,60 @@ TEST_APPS_SELFCHECKING = [
         "targets": ["fpga_cw310"],
     },
     {
-        "name": "dif_aes_smoketest",
+        "name": "aes_smoketest",
         "targets": ["sim_verilator", "fpga_cw310", "fpga_nexysvideo"],
     },
     {
-        "name": "dif_aon_timer_smoketest",
+        "name": "aon_timer_smoketest",
         "targets": ["sim_verilator", "fpga_cw310"],
     },
     {
-        "name": "dif_otp_ctrl_smoketest",
+        "name": "otp_ctrl_smoketest",
         "targets": ["sim_verilator", "fpga_cw310"],
     },
     {
-        "name": "dif_plic_smoketest",
+        "name": "rv_plic_smoketest",
         "targets": ["sim_verilator", "fpga_cw310"],
     },
     # TODO(#6656): AST is not instantiated in chip_earlgrey_verilator.
     # {
-    #     "name": "dif_pwrmgr_smoketest",
+    #     "name": "pwrmgr_smoketest",
     # },
     {
-        "name": "dif_rstmgr_smoketest",
+        "name": "rstmgr_smoketest",
         "targets": ["sim_verilator", "fpga_cw310", "fpga_nexysvideo"],
     },
     {
-        "name": "dif_rv_timer_smoketest",
+        "name": "rv_timer_smoketest",
         "targets": ["sim_verilator", "fpga_cw310"],
     },
     {
-        "name": "dif_uart_smoketest",
+        "name": "uart_smoketest",
         "targets": ["sim_verilator", "fpga_cw310", "fpga_nexysvideo"],
     },
     {
-        "name": "dif_clkmgr_smoketest",
+        "name": "clkmgr_smoketest",
         "targets": ["sim_verilator", "fpga_cw310", "fpga_nexysvideo"],
     },
     # TODO(lowrisc/opentitan#7505): Debug CSRNG generate bits mismatch.
     # {
-    #    "name": "dif_csrng_smoketest",
+    #    "name": "csrng_smoketest",
     #   "targets": ["sim_verilator", "fpga_cw310"],
     # },
+    # TODO(lowrisc/opentitan#8114):
+    # {
+    #     "name": "entropy_src_smoketest",
+    #     "targets": ["sim_verilator", "fpga_cw310"],
+    # },
     {
-        "name": "dif_entropy_smoketest",
+        "name": "kmac_smoketest",
         "targets": ["sim_verilator", "fpga_cw310"],
     },
     {
-        "name": "dif_kmac_smoketest",
-        "targets": ["sim_verilator", "fpga_cw310"],
+        "name": "kmac_mode_cshake_test",
     },
     {
-        "name": "dif_kmac_cshake_smoketest",
-    },
-    {
-        "name": "dif_kmac_kmac_smoketest",
+        "name": "kmac_mode_kmac_test",
     },
     {
         "name": "flash_ctrl_test",
@@ -122,7 +123,7 @@ TEST_APPS_SELFCHECKING = [
     },
     # Cannot run on sim_verilator due to the differences in the top level.
     {
-        "name": "dif_gpio_smoketest",
+        "name": "gpio_smoketest",
         "targets": ["fpga_cw310", "fpga_nexysvideo"],
     },
     {
@@ -131,6 +132,10 @@ TEST_APPS_SELFCHECKING = [
     },
     {
         "name": "sw_silicon_creator_lib_driver_uart_functest",
+        "test_dir": "sw/device/silicon_creator/testing",
+    },
+    {
+        "name": "sw_silicon_creator_lib_driver_retention_sram_functest",
         "test_dir": "sw/device/silicon_creator/testing",
     },
     {
@@ -146,10 +151,17 @@ TEST_APPS_SELFCHECKING = [
         "test_dir": "sw/device/silicon_creator/testing",
         # Not running on sim_verilator because this test takes a long time to complete.
         "targets": ["fpga_cw310", "fpga_nexysvideo"],
-
     },
     {
         "name": "sw_silicon_creator_lib_driver_watchdog_functest",
+        "test_dir": "sw/device/silicon_creator/testing",
+        # TODO(lowRISC/opentitan#6965) This test resets the chip and appears to
+        # cause a test failure on FPGA boards.  Restrict this test to
+        # verilator for now.
+        "targets": ["sim_verilator"],
+    },
+    {
+        "name": "sw_silicon_creator_lib_irq_asm_functest",
         "test_dir": "sw/device/silicon_creator/testing",
         # TODO(lowRISC/opentitan#6965) This test resets the chip and appears to
         # cause a test failure on FPGA boards.  Restrict this test to

@@ -15,6 +15,7 @@ package csrng_env_pkg;
   import csr_utils_pkg::*;
   import csrng_ral_pkg::*;
   import aes_model_dpi_pkg::*;
+  import prim_mubi_pkg::*;
 
   // macro includes
   `include "uvm_macros.svh"
@@ -22,8 +23,8 @@ package csrng_env_pkg;
 
   // parameters
   parameter uint     NUM_HW_APPS      = 2;
-  parameter string   LIST_OF_ALERTS[] = {"fatal_alert"};
-  parameter uint     NUM_ALERTS       = 1;
+  parameter string   LIST_OF_ALERTS[] = {"recov_alert","fatal_alert"};
+  parameter uint     NUM_ALERTS       = 2;
   parameter uint     KEY_LEN          = 256;
   parameter uint     BLOCK_LEN        = 128;
   parameter uint     CTR_LEN          = 32;

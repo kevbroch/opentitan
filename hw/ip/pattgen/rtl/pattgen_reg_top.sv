@@ -9,7 +9,6 @@
 module pattgen_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -163,7 +162,6 @@ module pattgen_reg_top (
 
   // Register instances
   // R[intr_state]: V(False)
-
   //   F[done_ch0]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -188,7 +186,6 @@ module pattgen_reg_top (
     // to register interface (read)
     .qs     (intr_state_done_ch0_qs)
   );
-
 
   //   F[done_ch1]: 1:1
   prim_subreg #(
@@ -217,7 +214,6 @@ module pattgen_reg_top (
 
 
   // R[intr_enable]: V(False)
-
   //   F[done_ch0]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -242,7 +238,6 @@ module pattgen_reg_top (
     // to register interface (read)
     .qs     (intr_enable_done_ch0_qs)
   );
-
 
   //   F[done_ch1]: 1:1
   prim_subreg #(
@@ -271,7 +266,6 @@ module pattgen_reg_top (
 
 
   // R[intr_test]: V(True)
-
   //   F[done_ch0]: 0:0
   prim_subreg_ext #(
     .DW    (1)
@@ -285,7 +279,6 @@ module pattgen_reg_top (
     .q      (reg2hw.intr_test.done_ch0.q),
     .qs     ()
   );
-
 
   //   F[done_ch1]: 1:1
   prim_subreg_ext #(
@@ -303,7 +296,6 @@ module pattgen_reg_top (
 
 
   // R[alert_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_alert_test (
@@ -319,7 +311,6 @@ module pattgen_reg_top (
 
 
   // R[ctrl]: V(False)
-
   //   F[enable_ch0]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -344,7 +335,6 @@ module pattgen_reg_top (
     // to register interface (read)
     .qs     (ctrl_enable_ch0_qs)
   );
-
 
   //   F[enable_ch1]: 1:1
   prim_subreg #(
@@ -371,7 +361,6 @@ module pattgen_reg_top (
     .qs     (ctrl_enable_ch1_qs)
   );
 
-
   //   F[polarity_ch0]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -396,7 +385,6 @@ module pattgen_reg_top (
     // to register interface (read)
     .qs     (ctrl_polarity_ch0_qs)
   );
-
 
   //   F[polarity_ch1]: 3:3
   prim_subreg #(
@@ -425,7 +413,6 @@ module pattgen_reg_top (
 
 
   // R[prediv_ch0]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -452,7 +439,6 @@ module pattgen_reg_top (
 
 
   // R[prediv_ch1]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -478,10 +464,8 @@ module pattgen_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg data_ch0
   // R[data_ch0_0]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -506,9 +490,9 @@ module pattgen_reg_top (
     .qs     (data_ch0_0_qs)
   );
 
+
   // Subregister 1 of Multireg data_ch0
   // R[data_ch0_1]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -534,10 +518,8 @@ module pattgen_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg data_ch1
   // R[data_ch1_0]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -562,9 +544,9 @@ module pattgen_reg_top (
     .qs     (data_ch1_0_qs)
   );
 
+
   // Subregister 1 of Multireg data_ch1
   // R[data_ch1_1]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -591,7 +573,6 @@ module pattgen_reg_top (
 
 
   // R[size]: V(False)
-
   //   F[len_ch0]: 5:0
   prim_subreg #(
     .DW      (6),
@@ -616,7 +597,6 @@ module pattgen_reg_top (
     // to register interface (read)
     .qs     (size_len_ch0_qs)
   );
-
 
   //   F[reps_ch0]: 15:6
   prim_subreg #(
@@ -643,7 +623,6 @@ module pattgen_reg_top (
     .qs     (size_reps_ch0_qs)
   );
 
-
   //   F[len_ch1]: 21:16
   prim_subreg #(
     .DW      (6),
@@ -669,7 +648,6 @@ module pattgen_reg_top (
     .qs     (size_len_ch1_qs)
   );
 
-
   //   F[reps_ch1]: 31:22
   prim_subreg #(
     .DW      (10),
@@ -694,7 +672,6 @@ module pattgen_reg_top (
     // to register interface (read)
     .qs     (size_reps_ch1_qs)
   );
-
 
 
 
@@ -855,12 +832,18 @@ module pattgen_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

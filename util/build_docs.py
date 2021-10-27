@@ -55,7 +55,7 @@ config = {
     "hardware_definitions": [
         "hw/ip/aes/data/aes.hjson",
         "hw/ip/aon_timer/data/aon_timer.hjson",
-        "hw/top_earlgrey/ip/alert_handler/data/autogen/alert_handler.hjson",
+        "hw/top_earlgrey/ip_autogen/alert_handler/data/alert_handler.hjson",
         "hw/ip/entropy_src/data/entropy_src.hjson",
         "hw/ip/csrng/data/csrng.hjson",
         "hw/ip/adc_ctrl/data/adc_ctrl.hjson",
@@ -77,7 +77,7 @@ config = {
         "hw/top_earlgrey/ip/pwrmgr/data/autogen/pwrmgr.hjson",
         "hw/top_earlgrey/ip/rstmgr/data/autogen/rstmgr.hjson",
         "hw/top_earlgrey/ip/sensor_ctrl/data/sensor_ctrl.hjson",
-        "hw/top_earlgrey/ip/rv_plic/data/autogen/rv_plic.hjson",
+        "hw/top_earlgrey/ip_autogen/rv_plic/data/rv_plic.hjson",
         "hw/ip/rv_core_ibex/data/rv_core_ibex.hjson",
         "hw/ip/rv_timer/data/rv_timer.hjson",
         "hw/ip/spi_host/data/spi_host.hjson",
@@ -93,14 +93,17 @@ config = {
     "dashboard_definitions": {
         "comportable": [
             "hw/ip",
-            "hw/top_earlgrey/ip/sensor_ctrl"
+        ],
+        "top_earlgrey": [
+            "hw/top_earlgrey/ip",
+            "hw/top_earlgrey/ip_autogen",
         ],
     },
 
     # Pre-generate testplan fragments from these files.
     "testplan_definitions": [
         "hw/ip/aes/data/aes_testplan.hjson",
-        "hw/ip/alert_handler/data/alert_handler_testplan.hjson",
+        "hw/top_earlgrey/ip_autogen/alert_handler/data/alert_handler_testplan.hjson",
         "hw/ip/aon_timer/data/aon_timer_testplan.hjson",
         "hw/ip/clkmgr/data/clkmgr_testplan.hjson",
         "hw/ip/entropy_src/data/entropy_src_testplan.hjson",
@@ -121,7 +124,7 @@ config = {
         "hw/ip/pwrmgr/data/pwrmgr_testplan.hjson",
         "hw/ip/rom_ctrl/data/rom_ctrl_testplan.hjson",
         "hw/ip/rstmgr/data/rstmgr_testplan.hjson",
-        "hw/ip/rv_plic/data/rv_plic_fpv_testplan.hjson",
+        "hw/top_earlgrey/ip_autogen/rv_plic/data/rv_plic_fpv_testplan.hjson",
         "hw/ip/rv_timer/data/rv_timer_testplan.hjson",
         "hw/ip/spi_device/data/spi_device_testplan.hjson",
         "hw/ip/spi_host/data/spi_host_testplan.hjson",

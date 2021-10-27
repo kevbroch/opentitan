@@ -15,8 +15,10 @@
 #include "sw/device/lib/runtime/hart.h"
 #include "sw/device/lib/runtime/log.h"
 #include "sw/device/lib/runtime/print.h"
-#include "sw/device/lib/testing/test_status.h"
+#include "sw/device/lib/testing/test_framework/test_status.h"
 #include "sw/device/silicon_creator/lib/base/abs_mmio.h"
+#include "sw/device/silicon_creator/lib/base/sec_mmio.h"
+#include "sw/device/silicon_creator/lib/drivers/flash_ctrl.h"
 #include "sw/device/silicon_creator/lib/drivers/uart.h"
 #include "sw/device/silicon_creator/lib/epmp_test_unlock.h"
 #include "sw/device/silicon_creator/mask_rom/mask_rom_epmp.h"
@@ -33,6 +35,15 @@
  * blocked unless the unlock function has been called with a region containing
  * the address of the access.
  */
+
+/**
+ * Secure MMIO context.
+ *
+ * This is placed at a fixed location in memory within the .static_critical
+ * section. The location of this data is known to ROM_EXT.
+ */
+__attribute__((section(".static_critical.sec_mmio_ctx")))  //
+volatile sec_mmio_ctx_t sec_mmio_ctx;
 
 /**
  * Exception types that may be encountered.
@@ -357,6 +368,10 @@ static void test_unlock_exec_eflash(epmp_state_t *epmp) {
 void mask_rom_main(void) {
   // Initialize pinmux configuration so we can use the UART.
   pinmux_init();
+
+  // Enable execution of code in flash.
+  flash_ctrl_init();
+  flash_ctrl_exec_set(kFlashCtrlExecEnable);
 
   // Configure UART0 as stdout.
   uart_init(kUartNCOValue);

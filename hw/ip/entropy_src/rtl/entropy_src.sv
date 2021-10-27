@@ -10,6 +10,7 @@
 module entropy_src
   import entropy_src_pkg::*;
   import entropy_src_reg_pkg::*;
+  import prim_mubi_pkg::mubi8_t;
 #(
   parameter bit Stub = 1'b0,
   parameter logic [NumAlerts-1:0] AlertAsyncOn = {NumAlerts{1'b1}},
@@ -23,8 +24,8 @@ module entropy_src
   output tlul_pkg::tl_d2h_t tl_o,
 
   // OTP Interface
-  input  otp_ctrl_pkg::otp_en_t otp_en_entropy_src_fw_read_i,
-  input  otp_ctrl_pkg::otp_en_t otp_en_entropy_src_fw_over_i,
+  input  mubi8_t otp_en_entropy_src_fw_read_i,
+  input  mubi8_t otp_en_entropy_src_fw_over_i,
 
   // RNG Interface
   output logic rng_fips_o,
@@ -73,6 +74,8 @@ module entropy_src
   entropy_src_xht_req_t core_xht;
   logic core_intr_es_entropy_valid;
   logic core_intr_es_health_test_failed;
+  // TODO: add intrp
+//  logic core_intr_es_ebus_check_failed;
   logic core_intr_es_observe_fifo_ready;
   logic core_intr_es_fatal_err;
   logic [NumAlerts-1:0] core_alert_test;
@@ -123,11 +126,13 @@ module entropy_src
     .devmode_i(1'b1)
   );
 
+  import prim_mubi_pkg::mubi8_test_true_strict;
+
   logic efuse_es_sw_reg_en;
   logic efuse_es_sw_ov_en;
-  assign efuse_es_sw_reg_en = (otp_en_entropy_src_fw_read_i == otp_ctrl_pkg::Enabled);
+  assign efuse_es_sw_reg_en = mubi8_test_true_strict(otp_en_entropy_src_fw_read_i);
 
-  assign efuse_es_sw_ov_en = (otp_en_entropy_src_fw_over_i == otp_ctrl_pkg::Enabled);
+  assign efuse_es_sw_ov_en = mubi8_test_true_strict(otp_en_entropy_src_fw_over_i);
 
   entropy_src_core #(
     .EsFifoDepth(EsFifoDepth)
@@ -209,7 +214,6 @@ module entropy_src
       stub_hw2reg = '0;
 
       // as long as enable is 1, do not allow registers to be written
-      stub_hw2reg.regwen.d = ~|reg2hw.conf.enable.q;
       stub_hw2reg.fw_ov_rd_data.d = stub_lfsr_value[31:0];
       stub_hw2reg.entropy_data.d = stub_lfsr_value[31:0];
       stub_hw2reg.debug_status.main_sm_idle.d = 1'b1;

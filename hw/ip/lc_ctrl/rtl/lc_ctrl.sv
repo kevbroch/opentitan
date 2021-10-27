@@ -49,6 +49,9 @@ module lc_ctrl
   // Power manager interface (inputs are synced to lifecycle clock domain).
   input  pwrmgr_pkg::pwr_lc_req_t                    pwr_lc_i,
   output pwrmgr_pkg::pwr_lc_rsp_t                    pwr_lc_o,
+  // Macro-specific test registers going to lifecycle TAP
+  output otp_ctrl_pkg::lc_otp_vendor_test_req_t      lc_otp_vendor_test_o,
+  input  otp_ctrl_pkg::lc_otp_vendor_test_rsp_t      lc_otp_vendor_test_i,
   // Life cycle transition command interface.
   // No sync required since LC and OTP are in the same clock domain.
   output otp_ctrl_pkg::lc_otp_program_req_t          lc_otp_program_o,
@@ -89,6 +92,11 @@ module lc_ctrl
   // Hardware config input, needed for the MANUF_STATE field.
   input  otp_ctrl_pkg::otp_device_id_t               otp_manuf_state_i
 );
+
+  import prim_mubi_pkg::mubi8_t;
+  import prim_mubi_pkg::MuBi8False;
+  import prim_mubi_pkg::mubi8_test_true_strict;
+  import prim_mubi_pkg::mubi8_test_false_loose;
 
   ////////////////////////
   // Integration Checks //
@@ -205,19 +213,21 @@ module lc_ctrl
     .clk_i,
     .rst_ni,
     // do not make a request unless there is room for the response
-    .req_i      ( dmi_req_valid & dmi_resp_ready         ),
-    .gnt_o      ( dmi_req_ready                          ),
-    .addr_i     ( top_pkg::TL_AW'({dmi_req.addr, 2'b00}) ),
-    .we_i       ( dmi_req.op == dm::DTM_WRITE            ),
-    .wdata_i    ( dmi_req.data                           ),
-    .be_i       ( {top_pkg::TL_DBW{1'b1}}                ),
-    .type_i     ( tlul_pkg::DataType                     ),
-    .valid_o    ( dmi_resp_valid                         ),
-    .rdata_o    ( dmi_resp.data                          ),
-    .err_o      (                                        ),
-    .intg_err_o (                                        ),
-    .tl_o       ( tap_tl_h2d                             ),
-    .tl_i       ( tap_tl_d2h                             )
+    .req_i        ( dmi_req_valid & dmi_resp_ready         ),
+    .gnt_o        ( dmi_req_ready                          ),
+    .addr_i       ( top_pkg::TL_AW'({dmi_req.addr, 2'b00}) ),
+    .we_i         ( dmi_req.op == dm::DTM_WRITE            ),
+    .wdata_i      ( dmi_req.data                           ),
+    .wdata_intg_i ('0                                      ),
+    .be_i         ( {top_pkg::TL_DBW{1'b1}}                ),
+    .instr_type_i ( prim_mubi_pkg::MuBi4False              ),
+    .valid_o      ( dmi_resp_valid                         ),
+    .rdata_o      ( dmi_resp.data                          ),
+    .rdata_intg_o (                                        ),
+    .err_o        (                                        ),
+    .intg_err_o   (                                        ),
+    .tl_o         ( tap_tl_h2d                             ),
+    .tl_i         ( tap_tl_d2h                             )
   );
 
   // TL-UL to DMI transducing
@@ -248,8 +258,8 @@ module lc_ctrl
   logic          otp_prog_error_d, fatal_prog_error_q;
   logic          state_invalid_error_d, fatal_state_error_q;
   logic          otp_part_error_q;
-  logic [7:0]    sw_claim_transition_if_d, sw_claim_transition_if_q;
-  logic [7:0]    tap_claim_transition_if_d, tap_claim_transition_if_q;
+  mubi8_t        sw_claim_transition_if_d, sw_claim_transition_if_q;
+  mubi8_t        tap_claim_transition_if_d, tap_claim_transition_if_q;
   logic          transition_cmd;
   lc_token_t     transition_token_d, transition_token_q;
   dec_lc_state_e transition_target_d, transition_target_q;
@@ -262,7 +272,8 @@ module lc_ctrl
 
   // OTP Vendor control bits
   logic use_ext_clock_d, use_ext_clock_q;
-  logic [CsrOtpTestCtrlWidth-1:0] otp_test_ctrl_d, otp_test_ctrl_q;
+  logic [CsrOtpTestCtrlWidth-1:0] otp_vendor_test_ctrl_d, otp_vendor_test_ctrl_q;
+  logic [CsrOtpTestStatusWidth-1:0] otp_vendor_test_status;
 
   always_comb begin : p_csr_assign_outputs
     hw2reg = '0;
@@ -288,21 +299,23 @@ module lc_ctrl
 
     // Assignments gated by mutex.
     hw2reg.claim_transition_if = sw_claim_transition_if_q;
-    if (sw_claim_transition_if_q == 8'hA5) begin
+    if (mubi8_test_true_strict(sw_claim_transition_if_q)) begin
+      hw2reg.transition_ctrl   = use_ext_clock_q;
       hw2reg.transition_token  = transition_token_q;
       hw2reg.transition_target = transition_target_q;
       hw2reg.transition_regwen = lc_idle_d;
-      hw2reg.otp_test_ctrl.val = otp_test_ctrl_q;
-      hw2reg.otp_test_ctrl.ext_clock = use_ext_clock_q;
+      hw2reg.otp_vendor_test_ctrl     = otp_vendor_test_ctrl_q;
+      hw2reg.otp_vendor_test_status   = otp_vendor_test_status;
     end
 
     tap_hw2reg.claim_transition_if = tap_claim_transition_if_q;
-    if (tap_claim_transition_if_q == 8'hA5) begin
+    if (mubi8_test_true_strict(tap_claim_transition_if_q)) begin
+      tap_hw2reg.transition_ctrl   = use_ext_clock_q;
       tap_hw2reg.transition_token  = transition_token_q;
       tap_hw2reg.transition_target = transition_target_q;
       tap_hw2reg.transition_regwen = lc_idle_d;
-      tap_hw2reg.otp_test_ctrl.val = otp_test_ctrl_q;
-      tap_hw2reg.otp_test_ctrl.ext_clock = use_ext_clock_q;
+      tap_hw2reg.otp_vendor_test_ctrl     = otp_vendor_test_ctrl_q;
+      tap_hw2reg.otp_vendor_test_status   = otp_vendor_test_status;
     end
   end
 
@@ -312,25 +325,29 @@ module lc_ctrl
     transition_token_d        = transition_token_q;
     transition_target_d       = transition_target_q;
     transition_cmd            = 1'b0;
-    otp_test_ctrl_d           = otp_test_ctrl_q;
+    otp_vendor_test_ctrl_d    = otp_vendor_test_ctrl_q;
     use_ext_clock_d           = use_ext_clock_q;
 
     // SW mutex claim.
-    if (tap_claim_transition_if_q != 8'hA5 &&
+    if (mubi8_test_false_loose(tap_claim_transition_if_q) &&
         reg2hw.claim_transition_if.qe) begin
-      sw_claim_transition_if_d = reg2hw.claim_transition_if.q;
+      sw_claim_transition_if_d = mubi8_t'(reg2hw.claim_transition_if.q);
     end
     // TAP mutex claim. This has prio over SW above.
-    if (sw_claim_transition_if_q != 8'hA5 &&
+    if (mubi8_test_false_loose(sw_claim_transition_if_q) &&
         tap_reg2hw.claim_transition_if.qe) begin
-      tap_claim_transition_if_d = tap_reg2hw.claim_transition_if.q;
+      tap_claim_transition_if_d = mubi8_t'(tap_reg2hw.claim_transition_if.q);
     end
 
     // The idle signal serves as the REGWEN in this case.
     if (lc_idle_d) begin
-      if (tap_claim_transition_if_q == 8'hA5) begin
+      if (mubi8_test_true_strict(tap_claim_transition_if_q)) begin
         transition_cmd = tap_reg2hw.transition_cmd.q &
                          tap_reg2hw.transition_cmd.qe;
+
+        if (tap_reg2hw.transition_ctrl.qe) begin
+          use_ext_clock_d     = tap_reg2hw.transition_ctrl.q;
+        end
 
         for (int k = 0; k < LcTokenWidth/32; k++) begin
           if (tap_reg2hw.transition_token[k].qe) begin
@@ -342,15 +359,16 @@ module lc_ctrl
           transition_target_d = dec_lc_state_e'(tap_reg2hw.transition_target.q);
         end
 
-        if (tap_reg2hw.otp_test_ctrl.ext_clock.qe) begin
-          use_ext_clock_d     = tap_reg2hw.otp_test_ctrl.ext_clock.q;
+        if (tap_reg2hw.otp_vendor_test_ctrl.qe) begin
+          otp_vendor_test_ctrl_d = tap_reg2hw.otp_vendor_test_ctrl.q;
         end
-        if (tap_reg2hw.otp_test_ctrl.val.qe) begin
-          otp_test_ctrl_d = tap_reg2hw.otp_test_ctrl.val.q;
-        end
-      end else if (sw_claim_transition_if_q == 8'hA5) begin
+      end else if (mubi8_test_true_strict(sw_claim_transition_if_q)) begin
         transition_cmd = reg2hw.transition_cmd.q &
                          reg2hw.transition_cmd.qe;
+
+        if (reg2hw.transition_ctrl.qe) begin
+          use_ext_clock_d     = reg2hw.transition_ctrl.q;
+        end
 
         for (int k = 0; k < LcTokenWidth/32; k++) begin
           if (reg2hw.transition_token[k].qe) begin
@@ -362,11 +380,8 @@ module lc_ctrl
           transition_target_d = dec_lc_state_e'(reg2hw.transition_target.q);
         end
 
-        if (reg2hw.otp_test_ctrl.ext_clock.qe) begin
-          use_ext_clock_d = reg2hw.otp_test_ctrl.ext_clock.q;
-        end
-        if (reg2hw.otp_test_ctrl.val.qe) begin
-          otp_test_ctrl_d = reg2hw.otp_test_ctrl.val.q;
+        if (reg2hw.otp_vendor_test_ctrl.qe) begin
+          otp_vendor_test_ctrl_d = reg2hw.otp_vendor_test_ctrl.q;
         end
       end
     end
@@ -381,13 +396,13 @@ module lc_ctrl
       flash_rma_error_q         <= 1'b0;
       fatal_prog_error_q        <= 1'b0;
       fatal_state_error_q       <= 1'b0;
-      sw_claim_transition_if_q  <= '0;
-      tap_claim_transition_if_q <= '0;
+      sw_claim_transition_if_q  <= MuBi8False;
+      tap_claim_transition_if_q <= MuBi8False;
       transition_token_q        <= '0;
       transition_target_q       <= DecLcStRaw;
       otp_part_error_q          <= 1'b0;
       fatal_bus_integ_error_q   <= 1'b0;
-      otp_test_ctrl_q           <= '0;
+      otp_vendor_test_ctrl_q    <= '0;
       use_ext_clock_q           <= '0;
     end else begin
       // All status and error bits are terminal and require a reset cycle.
@@ -405,16 +420,31 @@ module lc_ctrl
       tap_claim_transition_if_q <= tap_claim_transition_if_d;
       transition_token_q        <= transition_token_d;
       transition_target_q       <= transition_target_d;
-      otp_test_ctrl_q           <= otp_test_ctrl_d;
+      otp_vendor_test_ctrl_q    <= otp_vendor_test_ctrl_d;
       use_ext_clock_q           <= use_ext_clock_d;
     end
   end
 
   assign lc_flash_rma_seed_o = transition_token_q[RmaSeedWidth-1:0];
 
-  // Output the vendor specific test ctrl bits only in TEST* or RMA states.
-  lc_tx_t lc_test_or_rma;
-  assign lc_otp_program_o.otp_test_ctrl = (lc_test_or_rma == On) ? otp_test_ctrl_q : '0;
+  // Gate the the vendor specific test ctrl/status bits to zero in production states.
+  // Buffer the enable signal to prevent optimization of the multibit signal.
+  lc_tx_t lc_raw_test_rma;
+  lc_tx_t [1:0] lc_raw_test_rma_buf;
+  prim_lc_sync #(
+    .NumCopies(2),
+    .AsyncOn(0)
+  ) u_prim_lc_sync (
+    .clk_i,
+    .rst_ni,
+    .lc_en_i(lc_raw_test_rma),
+    .lc_en_o(lc_raw_test_rma_buf)
+  );
+
+  assign lc_otp_vendor_test_o.ctrl = (lc_raw_test_rma_buf[0] == On) ?
+                                     otp_vendor_test_ctrl_q         : '0;
+  assign otp_vendor_test_status    = (lc_raw_test_rma_buf[1] == On) ?
+                                     lc_otp_vendor_test_i.status    : '0;
 
   //////////////////
   // Alert Sender //
@@ -486,9 +516,9 @@ module lc_ctrl
   ) u_prim_esc_receiver0 (
     .clk_i,
     .rst_ni,
-    .esc_en_o (esc_scrap_state0),
-    .esc_rx_o (esc_scrap_state0_rx_o),
-    .esc_tx_i (esc_scrap_state0_tx_i)
+    .esc_req_o (esc_scrap_state0),
+    .esc_rx_o  (esc_scrap_state0_rx_o),
+    .esc_tx_i  (esc_scrap_state0_tx_i)
   );
 
   // This escalation action moves the life cycle
@@ -500,9 +530,9 @@ module lc_ctrl
   ) u_prim_esc_receiver1 (
     .clk_i,
     .rst_ni,
-    .esc_en_o (esc_scrap_state1),
-    .esc_rx_o (esc_scrap_state1_rx_o),
-    .esc_tx_i (esc_scrap_state1_tx_i)
+    .esc_req_o (esc_scrap_state1),
+    .esc_rx_o  (esc_scrap_state1_rx_o),
+    .esc_tx_i  (esc_scrap_state1_tx_i)
   );
 
   ////////////////////////////
@@ -605,7 +635,7 @@ module lc_ctrl
     .flash_rma_error_o      ( flash_rma_error_d               ),
     .otp_prog_error_o       ( otp_prog_error_d                ),
     .state_invalid_error_o  ( state_invalid_error_d           ),
-    .lc_test_or_rma_o       ( lc_test_or_rma                  ),
+    .lc_raw_test_rma_o      ( lc_raw_test_rma                 ),
     .lc_dft_en_o,
     .lc_nvm_debug_en_o,
     .lc_hw_debug_en_o,

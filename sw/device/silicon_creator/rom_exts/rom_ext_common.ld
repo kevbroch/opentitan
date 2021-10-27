@@ -43,6 +43,7 @@ SECTIONS {
    * Ibex. This section includes the ROM_EXT entry address.
    */
   .vectors : ALIGN(256) {
+    _text_start = .;
     KEEP(*(.vectors))
   } > eflash
 
@@ -68,6 +69,20 @@ SECTIONS {
   } > eflash
 
   /**
+   * Shutdown text section, containing shutdown function(s).
+   *
+   * This must be the last executable section in the ROM_EXT flash image.
+   */
+  .shutdown : ALIGN(4) {
+    *(.shutdown)
+    *(.shutdown.*)
+
+    /* Ensure section end is word-aligned. */
+    . = ALIGN(4);
+    _text_end = .;
+  } > eflash
+
+  /**
    * Read-only data section, containing all large compile-time constants, like
    * strings.
    */
@@ -81,13 +96,27 @@ SECTIONS {
   } > eflash
 
   /**
+   * Critical static data that is accessible by both the mask ROM and the ROM
+   * extension.
+   *
+   * Each variable added to .static_critical must be in its own subsection
+   * named after the variable.
+   *
+   * This data is not initialized during CRT (hence NOLOAD). Instead it will
+   * be initialized by the mask ROM.
+   */
+  .static_critical ORIGIN(ram_main) (NOLOAD) : ALIGN(4) {
+    INCLUDE sw/device/silicon_creator/lib/base/static_critical.ld
+  } > ram_main
+
+  /**
    * Mutable data section, at the bottom of ram_main. This will be initialized
    * from flash at runtime by the CRT.
    *
    * Load this by copying the bytes from [_data_init_start, _data_init_end] into
    * the range [_data_start, _data_end].
    */
-  .data ORIGIN(ram_main) : ALIGN(4) {
+  .data : ALIGN(4) {
     _data_start = .;
     _data_init_start = LOADADDR(.data);
 

@@ -9,7 +9,6 @@
 module edn_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -123,7 +122,8 @@ module edn_reg_top (
   logic intr_test_edn_cmd_req_done_wd;
   logic intr_test_edn_fatal_err_wd;
   logic alert_test_we;
-  logic alert_test_wd;
+  logic alert_test_recov_alert_wd;
+  logic alert_test_fatal_alert_wd;
   logic regwen_we;
   logic regwen_qs;
   logic regwen_wd;
@@ -152,6 +152,17 @@ module edn_reg_top (
   logic max_num_reqs_between_reseeds_we;
   logic [31:0] max_num_reqs_between_reseeds_qs;
   logic [31:0] max_num_reqs_between_reseeds_wd;
+  logic recov_alert_sts_we;
+  logic recov_alert_sts_edn_enable_field_alert_qs;
+  logic recov_alert_sts_edn_enable_field_alert_wd;
+  logic recov_alert_sts_boot_req_mode_field_alert_qs;
+  logic recov_alert_sts_boot_req_mode_field_alert_wd;
+  logic recov_alert_sts_auto_req_mode_field_alert_qs;
+  logic recov_alert_sts_auto_req_mode_field_alert_wd;
+  logic recov_alert_sts_cmd_fifo_rst_field_alert_qs;
+  logic recov_alert_sts_cmd_fifo_rst_field_alert_wd;
+  logic recov_alert_sts_edn_bus_cmp_alert_qs;
+  logic recov_alert_sts_edn_bus_cmp_alert_wd;
   logic err_code_sfifo_rescmd_err_qs;
   logic err_code_sfifo_gencmd_err_qs;
   logic err_code_edn_ack_sm_err_qs;
@@ -165,7 +176,6 @@ module edn_reg_top (
 
   // Register instances
   // R[intr_state]: V(False)
-
   //   F[edn_cmd_req_done]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -190,7 +200,6 @@ module edn_reg_top (
     // to register interface (read)
     .qs     (intr_state_edn_cmd_req_done_qs)
   );
-
 
   //   F[edn_fatal_err]: 1:1
   prim_subreg #(
@@ -219,7 +228,6 @@ module edn_reg_top (
 
 
   // R[intr_enable]: V(False)
-
   //   F[edn_cmd_req_done]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -244,7 +252,6 @@ module edn_reg_top (
     // to register interface (read)
     .qs     (intr_enable_edn_cmd_req_done_qs)
   );
-
 
   //   F[edn_fatal_err]: 1:1
   prim_subreg #(
@@ -273,7 +280,6 @@ module edn_reg_top (
 
 
   // R[intr_test]: V(True)
-
   //   F[edn_cmd_req_done]: 0:0
   prim_subreg_ext #(
     .DW    (1)
@@ -287,7 +293,6 @@ module edn_reg_top (
     .q      (reg2hw.intr_test.edn_cmd_req_done.q),
     .qs     ()
   );
-
 
   //   F[edn_fatal_err]: 1:1
   prim_subreg_ext #(
@@ -305,23 +310,36 @@ module edn_reg_top (
 
 
   // R[alert_test]: V(True)
-
+  //   F[recov_alert]: 0:0
   prim_subreg_ext #(
     .DW    (1)
-  ) u_alert_test (
+  ) u_alert_test_recov_alert (
     .re     (1'b0),
     .we     (alert_test_we),
-    .wd     (alert_test_wd),
+    .wd     (alert_test_recov_alert_wd),
     .d      ('0),
     .qre    (),
-    .qe     (reg2hw.alert_test.qe),
-    .q      (reg2hw.alert_test.q),
+    .qe     (reg2hw.alert_test.recov_alert.qe),
+    .q      (reg2hw.alert_test.recov_alert.q),
+    .qs     ()
+  );
+
+  //   F[fatal_alert]: 1:1
+  prim_subreg_ext #(
+    .DW    (1)
+  ) u_alert_test_fatal_alert (
+    .re     (1'b0),
+    .we     (alert_test_we),
+    .wd     (alert_test_fatal_alert_wd),
+    .d      ('0),
+    .qre    (),
+    .qe     (reg2hw.alert_test.fatal_alert.qe),
+    .q      (reg2hw.alert_test.fatal_alert.q),
     .qs     ()
   );
 
 
   // R[regwen]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -348,7 +366,6 @@ module edn_reg_top (
 
 
   // R[ctrl]: V(False)
-
   //   F[edn_enable]: 3:0
   prim_subreg #(
     .DW      (4),
@@ -373,7 +390,6 @@ module edn_reg_top (
     // to register interface (read)
     .qs     (ctrl_edn_enable_qs)
   );
-
 
   //   F[boot_req_mode]: 7:4
   prim_subreg #(
@@ -400,7 +416,6 @@ module edn_reg_top (
     .qs     (ctrl_boot_req_mode_qs)
   );
 
-
   //   F[auto_req_mode]: 11:8
   prim_subreg #(
     .DW      (4),
@@ -425,7 +440,6 @@ module edn_reg_top (
     // to register interface (read)
     .qs     (ctrl_auto_req_mode_qs)
   );
-
 
   //   F[cmd_fifo_rst]: 15:12
   prim_subreg #(
@@ -454,7 +468,6 @@ module edn_reg_top (
 
 
   // R[sum_sts]: V(False)
-
   //   F[req_mode_sm_sts]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -479,7 +492,6 @@ module edn_reg_top (
     // to register interface (read)
     .qs     (sum_sts_req_mode_sm_sts_qs)
   );
-
 
   //   F[boot_inst_ack]: 1:1
   prim_subreg #(
@@ -508,7 +520,6 @@ module edn_reg_top (
 
 
   // R[sw_cmd_req]: V(True)
-
   prim_subreg_ext #(
     .DW    (32)
   ) u_sw_cmd_req (
@@ -524,7 +535,6 @@ module edn_reg_top (
 
 
   // R[sw_cmd_sts]: V(False)
-
   //   F[cmd_rdy]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -549,7 +559,6 @@ module edn_reg_top (
     // to register interface (read)
     .qs     (sw_cmd_sts_cmd_rdy_qs)
   );
-
 
   //   F[cmd_sts]: 1:1
   prim_subreg #(
@@ -578,7 +587,6 @@ module edn_reg_top (
 
 
   // R[reseed_cmd]: V(True)
-
   prim_subreg_ext #(
     .DW    (32)
   ) u_reseed_cmd (
@@ -594,7 +602,6 @@ module edn_reg_top (
 
 
   // R[generate_cmd]: V(True)
-
   prim_subreg_ext #(
     .DW    (32)
   ) u_generate_cmd (
@@ -610,7 +617,6 @@ module edn_reg_top (
 
 
   // R[max_num_reqs_between_reseeds]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -636,8 +642,134 @@ module edn_reg_top (
   );
 
 
-  // R[err_code]: V(False)
+  // R[recov_alert_sts]: V(False)
+  //   F[edn_enable_field_alert]: 0:0
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessW0C),
+    .RESVAL  (1'h0)
+  ) u_recov_alert_sts_edn_enable_field_alert (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
 
+    // from register interface
+    .we     (recov_alert_sts_we),
+    .wd     (recov_alert_sts_edn_enable_field_alert_wd),
+
+    // from internal hardware
+    .de     (hw2reg.recov_alert_sts.edn_enable_field_alert.de),
+    .d      (hw2reg.recov_alert_sts.edn_enable_field_alert.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (recov_alert_sts_edn_enable_field_alert_qs)
+  );
+
+  //   F[boot_req_mode_field_alert]: 1:1
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessW0C),
+    .RESVAL  (1'h0)
+  ) u_recov_alert_sts_boot_req_mode_field_alert (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (recov_alert_sts_we),
+    .wd     (recov_alert_sts_boot_req_mode_field_alert_wd),
+
+    // from internal hardware
+    .de     (hw2reg.recov_alert_sts.boot_req_mode_field_alert.de),
+    .d      (hw2reg.recov_alert_sts.boot_req_mode_field_alert.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (recov_alert_sts_boot_req_mode_field_alert_qs)
+  );
+
+  //   F[auto_req_mode_field_alert]: 2:2
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessW0C),
+    .RESVAL  (1'h0)
+  ) u_recov_alert_sts_auto_req_mode_field_alert (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (recov_alert_sts_we),
+    .wd     (recov_alert_sts_auto_req_mode_field_alert_wd),
+
+    // from internal hardware
+    .de     (hw2reg.recov_alert_sts.auto_req_mode_field_alert.de),
+    .d      (hw2reg.recov_alert_sts.auto_req_mode_field_alert.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (recov_alert_sts_auto_req_mode_field_alert_qs)
+  );
+
+  //   F[cmd_fifo_rst_field_alert]: 3:3
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessW0C),
+    .RESVAL  (1'h0)
+  ) u_recov_alert_sts_cmd_fifo_rst_field_alert (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (recov_alert_sts_we),
+    .wd     (recov_alert_sts_cmd_fifo_rst_field_alert_wd),
+
+    // from internal hardware
+    .de     (hw2reg.recov_alert_sts.cmd_fifo_rst_field_alert.de),
+    .d      (hw2reg.recov_alert_sts.cmd_fifo_rst_field_alert.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (recov_alert_sts_cmd_fifo_rst_field_alert_qs)
+  );
+
+  //   F[edn_bus_cmp_alert]: 12:12
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessW0C),
+    .RESVAL  (1'h0)
+  ) u_recov_alert_sts_edn_bus_cmp_alert (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (recov_alert_sts_we),
+    .wd     (recov_alert_sts_edn_bus_cmp_alert_wd),
+
+    // from internal hardware
+    .de     (hw2reg.recov_alert_sts.edn_bus_cmp_alert.de),
+    .d      (hw2reg.recov_alert_sts.edn_bus_cmp_alert.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (recov_alert_sts_edn_bus_cmp_alert_qs)
+  );
+
+
+  // R[err_code]: V(False)
   //   F[sfifo_rescmd_err]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -662,7 +794,6 @@ module edn_reg_top (
     // to register interface (read)
     .qs     (err_code_sfifo_rescmd_err_qs)
   );
-
 
   //   F[sfifo_gencmd_err]: 1:1
   prim_subreg #(
@@ -689,7 +820,6 @@ module edn_reg_top (
     .qs     (err_code_sfifo_gencmd_err_qs)
   );
 
-
   //   F[edn_ack_sm_err]: 20:20
   prim_subreg #(
     .DW      (1),
@@ -714,7 +844,6 @@ module edn_reg_top (
     // to register interface (read)
     .qs     (err_code_edn_ack_sm_err_qs)
   );
-
 
   //   F[edn_main_sm_err]: 21:21
   prim_subreg #(
@@ -741,7 +870,6 @@ module edn_reg_top (
     .qs     (err_code_edn_main_sm_err_qs)
   );
 
-
   //   F[fifo_write_err]: 28:28
   prim_subreg #(
     .DW      (1),
@@ -767,7 +895,6 @@ module edn_reg_top (
     .qs     (err_code_fifo_write_err_qs)
   );
 
-
   //   F[fifo_read_err]: 29:29
   prim_subreg #(
     .DW      (1),
@@ -792,7 +919,6 @@ module edn_reg_top (
     // to register interface (read)
     .qs     (err_code_fifo_read_err_qs)
   );
-
 
   //   F[fifo_state_err]: 30:30
   prim_subreg #(
@@ -821,7 +947,6 @@ module edn_reg_top (
 
 
   // R[err_code_test]: V(False)
-
   prim_subreg #(
     .DW      (5),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -848,8 +973,7 @@ module edn_reg_top (
 
 
 
-
-  logic [13:0] addr_hit;
+  logic [14:0] addr_hit;
   always_comb begin
     addr_hit = '0;
     addr_hit[ 0] = (reg_addr == EDN_INTR_STATE_OFFSET);
@@ -864,8 +988,9 @@ module edn_reg_top (
     addr_hit[ 9] = (reg_addr == EDN_RESEED_CMD_OFFSET);
     addr_hit[10] = (reg_addr == EDN_GENERATE_CMD_OFFSET);
     addr_hit[11] = (reg_addr == EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_OFFSET);
-    addr_hit[12] = (reg_addr == EDN_ERR_CODE_OFFSET);
-    addr_hit[13] = (reg_addr == EDN_ERR_CODE_TEST_OFFSET);
+    addr_hit[12] = (reg_addr == EDN_RECOV_ALERT_STS_OFFSET);
+    addr_hit[13] = (reg_addr == EDN_ERR_CODE_OFFSET);
+    addr_hit[14] = (reg_addr == EDN_ERR_CODE_TEST_OFFSET);
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -886,7 +1011,8 @@ module edn_reg_top (
                (addr_hit[10] & (|(EDN_PERMIT[10] & ~reg_be))) |
                (addr_hit[11] & (|(EDN_PERMIT[11] & ~reg_be))) |
                (addr_hit[12] & (|(EDN_PERMIT[12] & ~reg_be))) |
-               (addr_hit[13] & (|(EDN_PERMIT[13] & ~reg_be)))));
+               (addr_hit[13] & (|(EDN_PERMIT[13] & ~reg_be))) |
+               (addr_hit[14] & (|(EDN_PERMIT[14] & ~reg_be)))));
   end
   assign intr_state_we = addr_hit[0] & reg_we & !reg_error;
 
@@ -905,7 +1031,9 @@ module edn_reg_top (
   assign intr_test_edn_fatal_err_wd = reg_wdata[1];
   assign alert_test_we = addr_hit[3] & reg_we & !reg_error;
 
-  assign alert_test_wd = reg_wdata[0];
+  assign alert_test_recov_alert_wd = reg_wdata[0];
+
+  assign alert_test_fatal_alert_wd = reg_wdata[1];
   assign regwen_we = addr_hit[4] & reg_we & !reg_error;
 
   assign regwen_wd = reg_wdata[0];
@@ -935,7 +1063,18 @@ module edn_reg_top (
   assign max_num_reqs_between_reseeds_we = addr_hit[11] & reg_we & !reg_error;
 
   assign max_num_reqs_between_reseeds_wd = reg_wdata[31:0];
-  assign err_code_test_we = addr_hit[13] & reg_we & !reg_error;
+  assign recov_alert_sts_we = addr_hit[12] & reg_we & !reg_error;
+
+  assign recov_alert_sts_edn_enable_field_alert_wd = reg_wdata[0];
+
+  assign recov_alert_sts_boot_req_mode_field_alert_wd = reg_wdata[1];
+
+  assign recov_alert_sts_auto_req_mode_field_alert_wd = reg_wdata[2];
+
+  assign recov_alert_sts_cmd_fifo_rst_field_alert_wd = reg_wdata[3];
+
+  assign recov_alert_sts_edn_bus_cmp_alert_wd = reg_wdata[12];
+  assign err_code_test_we = addr_hit[14] & reg_we & !reg_error;
 
   assign err_code_test_wd = reg_wdata[4:0];
 
@@ -960,6 +1099,7 @@ module edn_reg_top (
 
       addr_hit[3]: begin
         reg_rdata_next[0] = '0;
+        reg_rdata_next[1] = '0;
       end
 
       addr_hit[4]: begin
@@ -1000,6 +1140,14 @@ module edn_reg_top (
       end
 
       addr_hit[12]: begin
+        reg_rdata_next[0] = recov_alert_sts_edn_enable_field_alert_qs;
+        reg_rdata_next[1] = recov_alert_sts_boot_req_mode_field_alert_qs;
+        reg_rdata_next[2] = recov_alert_sts_auto_req_mode_field_alert_qs;
+        reg_rdata_next[3] = recov_alert_sts_cmd_fifo_rst_field_alert_qs;
+        reg_rdata_next[12] = recov_alert_sts_edn_bus_cmp_alert_qs;
+      end
+
+      addr_hit[13]: begin
         reg_rdata_next[0] = err_code_sfifo_rescmd_err_qs;
         reg_rdata_next[1] = err_code_sfifo_gencmd_err_qs;
         reg_rdata_next[20] = err_code_edn_ack_sm_err_qs;
@@ -1009,7 +1157,7 @@ module edn_reg_top (
         reg_rdata_next[30] = err_code_fifo_state_err_qs;
       end
 
-      addr_hit[13]: begin
+      addr_hit[14]: begin
         reg_rdata_next[4:0] = err_code_test_qs;
       end
 
@@ -1019,12 +1167,18 @@ module edn_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

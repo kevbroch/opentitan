@@ -18,12 +18,12 @@ void demo_gpio_startup(dif_gpio_t *gpio) {
   LOG_INFO("Watch the LEDs!");
 
   // Give a LED pattern as startup indicator for 5 seconds.
-  CHECK(dif_gpio_write_all(gpio, 0xff00) == kDifGpioOk);
+  CHECK_DIF_OK(dif_gpio_write_all(gpio, 0xff00));
   for (int i = 0; i < 32; ++i) {
     usleep(5 * 1000);  // 5 ms
-    CHECK(dif_gpio_write(gpio, 8 + (i % 8), (i / 8) % 2) == kDifGpioOk);
+    CHECK_DIF_OK(dif_gpio_write(gpio, 8 + (i % 8), (i / 8) % 2));
   }
-  CHECK(dif_gpio_write_all(gpio, 0x0000) == kDifGpioOk);  // All LEDs off.
+  CHECK_DIF_OK(dif_gpio_write_all(gpio, 0x0000));  // All LEDs off.
 }
 
 /**
@@ -39,7 +39,7 @@ static const uint32_t kFtdiMask = 0x10000;
 
 uint32_t demo_gpio_to_log_echo(dif_gpio_t *gpio, uint32_t prev_gpio_state) {
   uint32_t gpio_state;
-  CHECK(dif_gpio_read_all(gpio, &gpio_state) == kDifGpioOk);
+  CHECK_DIF_OK(dif_gpio_read_all(gpio, &gpio_state));
   gpio_state &= kGpioMask;
 
   uint32_t state_delta = prev_gpio_state ^ gpio_state;
@@ -62,15 +62,17 @@ uint32_t demo_gpio_to_log_echo(dif_gpio_t *gpio, uint32_t prev_gpio_state) {
   return gpio_state;
 }
 
-void demo_spi_to_log_echo(const dif_spi_device_t *spi) {
+void demo_spi_to_log_echo(const dif_spi_device_t *spi,
+                          const dif_spi_device_config_t *spi_config) {
   uint32_t spi_buf[8];
   size_t spi_len;
-  CHECK(dif_spi_device_recv(spi, spi_buf, sizeof(spi_buf), &spi_len) ==
-        kDifSpiDeviceOk);
+  CHECK_DIF_OK(
+      dif_spi_device_recv(spi, spi_config, spi_buf, sizeof(spi_buf), &spi_len));
   if (spi_len > 0) {
     uint32_t echo_word = spi_buf[0] ^ 0x01010101;
-    CHECK(dif_spi_device_send(spi, &echo_word, sizeof(uint32_t),
-                              /*bytes_sent=*/NULL) == kDifSpiDeviceOk);
+    CHECK_DIF_OK(dif_spi_device_send(spi, spi_config, &echo_word,
+                                     sizeof(uint32_t),
+                                     /*bytes_sent=*/NULL));
     LOG_INFO("SPI: %z", spi_len, spi_buf);
   }
 }
@@ -78,14 +80,14 @@ void demo_spi_to_log_echo(const dif_spi_device_t *spi) {
 void demo_uart_to_uart_and_gpio_echo(dif_uart_t *uart, dif_gpio_t *gpio) {
   while (true) {
     size_t chars_available;
-    if (dif_uart_rx_bytes_available(uart, &chars_available) != kDifUartOk ||
+    if (dif_uart_rx_bytes_available(uart, &chars_available) != kDifOk ||
         chars_available == 0) {
       break;
     }
 
     uint8_t rcv_char;
-    CHECK(dif_uart_bytes_receive(uart, 1, &rcv_char, NULL) == kDifUartOk);
-    CHECK(dif_uart_byte_send_polled(uart, rcv_char) == kDifUartOk);
-    CHECK(dif_gpio_write_all(gpio, rcv_char << 8) == kDifGpioOk);
+    CHECK_DIF_OK(dif_uart_bytes_receive(uart, 1, &rcv_char, NULL));
+    CHECK_DIF_OK(dif_uart_byte_send_polled(uart, rcv_char));
+    CHECK_DIF_OK(dif_gpio_write_all(gpio, rcv_char << 8));
   }
 }

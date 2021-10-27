@@ -38,12 +38,11 @@ static bool bootstrap_requested(void) {
 
   // Initialize GPIO device.
   dif_gpio_t gpio;
-  dif_gpio_params_t gpio_params = {
-      .base_addr = mmio_region_from_addr(TOP_EARLGREY_GPIO_BASE_ADDR)};
-  CHECK(dif_gpio_init(gpio_params, &gpio) == kDifGpioOk);
+  CHECK_DIF_OK(
+      dif_gpio_init(mmio_region_from_addr(TOP_EARLGREY_GPIO_BASE_ADDR), &gpio));
 
   dif_gpio_state_t gpio_in;
-  CHECK(dif_gpio_read_all(&gpio, &gpio_in) == kDifGpioOk);
+  CHECK_DIF_OK(dif_gpio_read_all(&gpio, &gpio_in));
   return (gpio_in & GPIO_BOOTSTRAP_BIT_MASK) != 0;
 }
 
@@ -70,31 +69,38 @@ static int erase_flash(void) {
 static void compute_sha256(const dif_hmac_t *hmac, const void *data, size_t len,
                            dif_hmac_digest_t *digest) {
   const dif_hmac_transaction_t config = {
-      .digest_endianness = kDifHmacEndiannessLittle,
+      .digest_endianness = kDifHmacEndiannessBig,
       .message_endianness = kDifHmacEndiannessLittle,
   };
-  CHECK(dif_hmac_mode_sha256_start(hmac, config) == kDifHmacOk,
-        "Error on hmac start.");
+  CHECK_DIF_OK(dif_hmac_mode_sha256_start(hmac, config));
   const char *data8 = (const char *)data;
   size_t data_left = len;
   while (data_left > 0) {
     size_t bytes_sent;
-    dif_hmac_fifo_result_t result =
+    dif_result_t result =
         dif_hmac_fifo_push(hmac, data8, data_left, &bytes_sent);
-    if (result == kDifHmacFifoOk) {
+    if (result == kDifOk) {
       break;
     }
-    CHECK(result == kDifHmacFifoFull, "Error while pushing to FIFO.");
+    CHECK(result == kDifIpFifoFull, "Error while pushing to FIFO.");
     data8 += bytes_sent;
     data_left -= bytes_sent;
   }
 
-  CHECK(dif_hmac_process(hmac) == kDifHmacOk, "Error processing digest.");
-  dif_hmac_digest_result_t digest_result = kDifHmacDigestProcessing;
-  while (digest_result == kDifHmacDigestProcessing) {
+  CHECK_DIF_OK(dif_hmac_process(hmac));
+  dif_result_t digest_result = kDifUnavailable;
+  while (digest_result == kDifUnavailable) {
     digest_result = dif_hmac_finish(hmac, digest);
   }
-  CHECK(digest_result == kDifHmacDigestOk, "Error reading the digest.");
+  CHECK_DIF_OK(digest_result);
+
+  // Swap word order to keep hashes consistent with those generated in the
+  // MaskROM (little-endian).
+  for (size_t i = 0; i < 4; ++i) {
+    uint32_t tmp = digest->digest[i];
+    digest->digest[i] = digest->digest[7 - i];
+    digest->digest[7 - i] = tmp;
+  }
 }
 
 /**
@@ -119,18 +125,19 @@ static bool check_frame_hash(const dif_hmac_t *hmac,
  * This function checks that the sequence numbers and hashes of the frames are
  * correct before programming them into flash.
  */
-static int bootstrap_flash(dif_spi_device_t *spi, dif_hmac_t *hmac) {
+static int bootstrap_flash(const dif_spi_device_t *spi,
+                           const dif_spi_device_config_t *spi_config,
+                           const dif_hmac_t *hmac) {
   dif_hmac_digest_t ack = {0};
   uint32_t expected_frame_num = 0;
   while (true) {
     size_t bytes_available;
-    CHECK(dif_spi_device_rx_pending(spi, &bytes_available) == kDifSpiDeviceOk,
-          "Failed to check pending bytes.");
+    CHECK_DIF_OK(dif_spi_device_rx_pending(spi, spi_config, &bytes_available));
     if (bytes_available >= sizeof(spiflash_frame_t)) {
       spiflash_frame_t frame;
-      CHECK(dif_spi_device_recv(spi, &frame, sizeof(spiflash_frame_t),
-                                /*bytes_received=*/NULL) == kDifSpiDeviceOk,
-            "Failed to recieve bytes from SPI.");
+      CHECK_DIF_OK(dif_spi_device_recv(spi, spi_config, &frame,
+                                       sizeof(spiflash_frame_t),
+                                       /*bytes_received=*/NULL));
 
       uint32_t frame_num = SPIFLASH_FRAME_NUM(frame.header.frame_num);
       LOG_INFO("Processing frame #%d, expecting #%d", frame_num,
@@ -139,18 +146,16 @@ static int bootstrap_flash(dif_spi_device_t *spi, dif_hmac_t *hmac) {
       if (frame_num == expected_frame_num) {
         if (!check_frame_hash(hmac, &frame)) {
           LOG_ERROR("Detected hash mismatch on frame #%d", frame_num);
-          CHECK(dif_spi_device_send(spi, (uint8_t *)&ack.digest,
-                                    sizeof(ack.digest),
-                                    /*bytes_received=*/NULL) == kDifSpiDeviceOk,
-                "Failed to send bytes to SPI.");
+          CHECK_DIF_OK(dif_spi_device_send(
+              spi, spi_config, (uint8_t *)&ack.digest, sizeof(ack.digest),
+              /*bytes_received=*/NULL));
           continue;
         }
 
         compute_sha256(hmac, &frame, sizeof(spiflash_frame_t), &ack);
-        CHECK(
-            dif_spi_device_send(spi, (uint8_t *)&ack.digest, sizeof(ack.digest),
-                                /*bytes_received=*/NULL) == kDifSpiDeviceOk,
-            "Failed to send bytes to SPI.");
+        CHECK_DIF_OK(dif_spi_device_send(
+            spi, spi_config, (uint8_t *)&ack.digest, sizeof(ack.digest),
+            /*bytes_received=*/NULL));
 
         if (expected_frame_num == 0) {
           flash_default_region_access(/*rd_en=*/true, /*prog_en=*/true,
@@ -174,10 +179,9 @@ static int bootstrap_flash(dif_spi_device_t *spi, dif_hmac_t *hmac) {
         }
       } else {
         // Send previous ack if unable to verify current frame.
-        CHECK(
-            dif_spi_device_send(spi, (uint8_t *)&ack.digest, sizeof(ack.digest),
-                                /*bytes_received=*/NULL) == kDifSpiDeviceOk,
-            "Failed to send bytes to SPI.");
+        CHECK_DIF_OK(dif_spi_device_send(
+            spi, spi_config, (uint8_t *)&ack.digest, sizeof(ack.digest),
+            /*bytes_received=*/NULL));
       }
     }
   }
@@ -193,43 +197,35 @@ int bootstrap(void) {
   flash_init_block();
 
   dif_spi_device_t spi;
-  CHECK(dif_spi_device_init(
-            (dif_spi_device_params_t){
-                .base_addr =
-                    mmio_region_from_addr(TOP_EARLGREY_SPI_DEVICE_BASE_ADDR),
-            },
-            &spi) == kDifSpiDeviceOk,
-        "Failed to initialize SPI.");
-  CHECK(
-      dif_spi_device_configure(&spi,
-                               (dif_spi_device_config_t){
-                                   .clock_polarity = kDifSpiDeviceEdgePositive,
-                                   .data_phase = kDifSpiDeviceEdgeNegative,
-                                   .tx_order = kDifSpiDeviceBitOrderMsbToLsb,
-                                   .rx_order = kDifSpiDeviceBitOrderMsbToLsb,
-                                   .rx_fifo_timeout = 63,
-                                   .rx_fifo_len = kDifSpiDeviceBufferLen / 2,
-                                   .tx_fifo_len = kDifSpiDeviceBufferLen / 2,
-                               }) == kDifSpiDeviceOk,
-      "Failed to configure SPI.");
+  dif_spi_device_config_t spi_config = {
+      .clock_polarity = kDifSpiDeviceEdgePositive,
+      .data_phase = kDifSpiDeviceEdgeNegative,
+      .tx_order = kDifSpiDeviceBitOrderMsbToLsb,
+      .rx_order = kDifSpiDeviceBitOrderMsbToLsb,
+      .rx_fifo_timeout = 63,
+      .rx_fifo_len = kDifSpiDeviceBufferLen / 2,
+      .tx_fifo_len = kDifSpiDeviceBufferLen / 2,
+  };
+  CHECK_DIF_OK(dif_spi_device_init(
+      mmio_region_from_addr(TOP_EARLGREY_SPI_DEVICE_BASE_ADDR), &spi));
+  CHECK_DIF_OK(dif_spi_device_configure(&spi, &spi_config));
 
   dif_hmac_t hmac;
-  dif_hmac_config_t config = {
-      .base_addr = mmio_region_from_addr(TOP_EARLGREY_HMAC_BASE_ADDR),
-  };
-  CHECK(dif_hmac_init(&config, &hmac) == kDifHmacOk,
-        "Failed to configure HMAC.");
+  CHECK_DIF_OK(
+      dif_hmac_init(mmio_region_from_addr(TOP_EARLGREY_HMAC_BASE_ADDR), &hmac));
 
   LOG_INFO("HW initialisation completed, waiting for SPI input...");
-  int error = bootstrap_flash(&spi, &hmac);
+  int error = bootstrap_flash(&spi, &spi_config, &hmac);
   if (error != 0) {
     error |= erase_flash();
     LOG_ERROR("Bootstrap error: 0x%x", error);
   }
 
-  // Always make sure to revert flash_ctrl access to default settings.
-  // bootstrap_flash enables access to flash to perform update.
-  flash_default_region_access(/*rd_en=*/false, /*prog_en=*/false,
+  // Always make sure to revert flash_ctrl access
+  // to default settings. bootstrap_flash enables
+  // access to flash to perform update.
+  flash_default_region_access(/*rd_en=*/false,
+                              /*prog_en=*/false,
                               /*erase_en=*/false);
   return error;
 }

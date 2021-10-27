@@ -9,9 +9,8 @@
  * Coordinates of the public key, the message digest and R and S of the
  * signature are provided in the .data section below.
  *
- * Signature verification was successful, if the return values in the rnd and R
- * location are identical. The return values are copied to wide registers. See
- * comment at the end of the file for expected values for this example.
+ * The signature verification was successful if the return value in x_r and R
+ * are identical.
  */
 
 .text
@@ -40,8 +39,8 @@ ecdsa_verify_test:
   sw       x2, 0(x3)
 
   /* set dmem pointer to point to signature verifcation result */
-  la       x2, sig_xres
-  la       x3, dptr_rnd
+  la       x2, sig_x_r
+  la       x3, dptr_x_r
   sw       x2, 0(x3)
 
   /* call ECDSA signature verification subroutine in P-256 lib */
@@ -49,7 +48,7 @@ ecdsa_verify_test:
 
   /* load signature to wregs for comparison with reference */
   li        x2, 0
-  la        x3, sig_xres
+  la        x3, sig_x_r
   bn.lid    x2, 0(x3)
 
   ecall
@@ -111,10 +110,10 @@ pub_y:
   .word 0x1f31c143
   .word 0x42a1c697
 
-/* signature verification result x_res */
-sig_xres:
+/* signature verification result x_r */
+sig_x_r:
   .zero 32
 
-/* Expected values wide register file (w0=rnd, w1=R):
+/* Expected values wide register file (w0=x_r == R):
 w0 = 0x815215ad7dd27f336b35843cbe064de299504edd0c7d87dd1147ea5680a9674a
 */

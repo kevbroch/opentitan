@@ -39,12 +39,14 @@ class SourceClock:
         self.name = str(raw['name'])
         self.aon = _yn_to_bool(raw['aon'])
         self.freq = _to_int(raw['freq'])
+        self.ref = raw.get('ref', False)
 
     def _asdict(self) -> Dict[str, object]:
         return {
             'name': self.name,
             'aon': _bool_to_yn(self.aon),
-            'freq': str(self.freq)
+            'freq': str(self.freq),
+            'ref': self.ref
         }
 
 
@@ -78,7 +80,6 @@ class ClockSignal:
 class Group:
     def __init__(self,
                  raw: Dict[str, object],
-                 sources: Dict[str, SourceClock],
                  what: str):
         self.name = str(raw['name'])
         self.src = str(raw['src'])
@@ -96,16 +97,6 @@ class Group:
                              f'unique set.')
 
         self.clocks = {}  # type: Dict[str, ClockSignal]
-        raw_clocks = raw.get('clocks', {})
-        if not isinstance(raw_clocks, dict):
-            raise ValueError(f'clocks for {what} is not a dictionary')
-        for clk_name, src_name in raw_clocks.items():
-            src = sources.get(src_name)
-            if src is None:
-                raise ValueError(f'The {clk_name} entry of clocks for {what} '
-                                 f'has source {src_name}, which is not a '
-                                 f'known clock source.')
-            self.add_clock(clk_name, src)
 
     def add_clock(self, clk_name: str, src: SourceClock) -> ClockSignal:
         # Duplicates are ok, so long as they have the same source.
@@ -134,6 +125,10 @@ class Group:
 
 
 class TypedClocks(NamedTuple):
+    # External clocks that are consumed only inside the clkmgr and are fed from
+    # an external ast source.
+    ast_clks: Dict[str, ClockSignal]
+
     # Clocks fed through clkmgr but not disturbed in any way. This maintains
     # the clocking structure consistency. This includes two groups of clocks:
     #
@@ -225,7 +220,7 @@ class Clocks:
         assert isinstance(raw['groups'], list)
         for idx, raw_grp in enumerate(raw['groups']):
             assert isinstance(raw_grp, dict)
-            grp = Group(raw_grp, self.srcs, f'clocks.groups[{idx}]')
+            grp = Group(raw_grp, f'clocks.groups[{idx}]')
             self.groups[grp.name] = grp
 
     def _asdict(self) -> Dict[str, object]:
@@ -262,14 +257,14 @@ class Clocks:
         '''
         ret = []
         for src in self.srcs.values():
-            if not src.aon:
-                ret.append(f'rst_{src.name}_ni')
+            ret.append(f'rst_{src.name}_ni')
         for src in self.derived_srcs.values():
             ret.append(f'rst_{src.name}_ni')
         return ret
 
     def typed_clocks(self) -> TypedClocks:
         '''Split the clocks by type'''
+        ast_clks = {}
         ft_clks = {}
         rg_clks = {}
         sw_clks = {}
@@ -283,6 +278,10 @@ class Clocks:
                 continue
 
             for clk, sig in grp.clocks.items():
+                if grp.src == "ext":
+                    ast_clks[clk] = sig
+                    continue
+
                 if sig.src.aon:
                     # Any always-on clock is a feedthrough
                     ft_clks[clk] = sig
@@ -309,7 +308,8 @@ class Clocks:
         # Define a canonical ordering for rg_srcs
         rg_srcs = list(sorted(rg_srcs_set))
 
-        return TypedClocks(ft_clks=ft_clks,
+        return TypedClocks(ast_clks=ast_clks,
+                           ft_clks=ft_clks,
                            rg_clks=rg_clks,
                            sw_clks=sw_clks,
                            hint_clks=hint_clks,

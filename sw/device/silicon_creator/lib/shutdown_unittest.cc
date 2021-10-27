@@ -6,15 +6,17 @@
 
 #include "gtest/gtest.h"
 #include "sw/device/lib/base/mmio.h"
-#include "sw/device/lib/testing/mask_rom_test.h"
 #include "sw/device/silicon_creator/lib/base/mock_abs_mmio.h"
 #include "sw/device/silicon_creator/lib/drivers/lifecycle.h"
 #include "sw/device/silicon_creator/lib/drivers/mock_alert.h"
 #include "sw/device/silicon_creator/lib/drivers/mock_otp.h"
 #include "sw/device/silicon_creator/lib/error.h"
+#include "sw/device/silicon_creator/testing/mask_rom_test.h"
 
 #include "alert_handler_regs.h"
+#include "flash_ctrl_regs.h"
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"
+#include "lc_ctrl_regs.h"
 #include "otp_ctrl_regs.h"
 
 // FIXME: I can't get ARRAYSIZE from `memory.h` because the definitions of
@@ -30,8 +32,8 @@ using ::testing::Test;
 
 namespace {
 extern "C" {
-// Dummy out base_printf.
-int base_printf(const char *fmt, ...) { return 0; }
+// Dummy out log_printf.
+rom_error_t log_printf(const char *fmt, ...) { return kErrorOk; }
 }  // extern "C"
 
 // TODO(lowRISC/opentitan#7148): Refactor mocks into their own headers.
@@ -39,16 +41,22 @@ namespace internal {
 // Create a mock for shutdown functions.
 class MockShutdown : public ::mask_rom_test::GlobalMock<MockShutdown> {
  public:
+  MOCK_METHOD(void, shutdown_report_error, (rom_error_t));
   MOCK_METHOD(void, shutdown_software_escalate, ());
   MOCK_METHOD(void, shutdown_keymgr_kill, ());
   MOCK_METHOD(void, shutdown_flash_kill, ());
   MOCK_METHOD(void, shutdown_hang, ());
+
+ protected:
+  mask_rom_test::MockAbsMmio mmio_;
 };
 
 }  // namespace internal
 using MockShutdown = testing::StrictMock<internal::MockShutdown>;
 extern "C" {
-
+void shutdown_report_error(rom_error_t error) {
+  return MockShutdown::Instance().shutdown_report_error(error);
+}
 void shutdown_software_escalate(void) {
   return MockShutdown::Instance().shutdown_software_escalate();
 }
@@ -59,6 +67,9 @@ void shutdown_flash_kill(void) {
   return MockShutdown::Instance().shutdown_flash_kill();
 }
 void shutdown_hang(void) { return MockShutdown::Instance().shutdown_hang(); }
+
+// Real implementations of the above mocks.
+extern void unmocked_shutdown_flash_kill(void);
 }  // extern "C"
 
 constexpr uint32_t Pack32(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
@@ -78,6 +89,9 @@ constexpr uint32_t Pack32(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
 
 // This alert configuration is described in the Mask ROM Shutdown specification:
 // https://docs.google.com/document/d/1V8hRvQnJhsvddieJbRHS3azbPZvoBWxfxPZV_0YA1QU/edit#
+// Dummy alerts have been added to prevent the tests breaking when new alerts
+// are added (see #7183). These lists of alerts and local alerts are for test
+// purposes only and may not be complete and/or up to date.
 // clang-format off
 #define ALERTS(Xmacro) \
       Xmacro("Uart0FatalFault",                C, C, X, X), \
@@ -161,12 +175,23 @@ constexpr uint32_t Pack32(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
       Xmacro("Dummy78",                        X, X, X, X), \
       Xmacro("Dummy79",                        X, X, X, X)
 
-// TODO: find all of the local alerts and define them.
 #define LOC_ALERTS(Xmacro) \
       Xmacro("LocAlertPingFail",               A, A, X, X), \
       Xmacro("LocEscPingFail",                 A, A, X, X), \
       Xmacro("LocAlertIntegrityFail",          A, A, X, X), \
       Xmacro("LocEscIntegrityFail",            A, A, X, X), \
+      Xmacro("LocBusIntegrityFail",            A, A, X, X), \
+      Xmacro("LocShadowRegUpdateFail",         A, A, X, X), \
+      Xmacro("LocShadowRegStorageError",       A, A, X, X), \
+      Xmacro("LocDummy7",                      X, X, X, X), \
+      Xmacro("LocDummy8",                      X, X, X, X), \
+      Xmacro("LocDummy9",                      X, X, X, X), \
+      Xmacro("LocDummy10",                     X, X, X, X), \
+      Xmacro("LocDummy11",                     X, X, X, X), \
+      Xmacro("LocDummy12",                     X, X, X, X), \
+      Xmacro("LocDummy13",                     X, X, X, X), \
+      Xmacro("LocDummy14",                     X, X, X, X), \
+      Xmacro("LocDummy15",                     X, X, X, X),
 // clang-format on
 
 // TODO: adjust this to match the OTP layout in PR#6921.
@@ -215,13 +240,21 @@ constexpr OtpConfiguration kOtpConfig = {
 constexpr DefaultAlertClassification kDefaultAlertClassification[] = {
     ALERTS(FULL),
 };
-static_assert(
-    ARRAYSIZE(kDefaultAlertClassification) <= 80,
-    "The default alert classification must be less than or equal to the number of reserved OTP words");
+static_assert(ARRAYSIZE(kDefaultAlertClassification) <=
+                  (OTP_CTRL_PARAM_ROM_ALERT_CLASSIFICATION_SIZE / 4),
+              "The default alert classification must be less than or equal to "
+              "the number of reserved OTP words");
 
-static_assert(
-    kTopEarlgreyAlertIdLast < ARRAYSIZE(kDefaultAlertClassification),
-    "The number of alert sources must be smaller than the alert classification");
+static_assert(kTopEarlgreyAlertIdLast < ARRAYSIZE(kDefaultAlertClassification),
+              "The number of alert sources must be smaller than the alert "
+              "classification");
+
+constexpr DefaultAlertClassification kDefaultLocAlertClassification[] = {
+    LOC_ALERTS(FULL)};
+static_assert(ARRAYSIZE(kDefaultLocAlertClassification) <=
+                  (OTP_CTRL_PARAM_ROM_LOCAL_ALERT_CLASSIFICATION_SIZE / 4),
+              "The default local alert classification must be less than or "
+              "equal to the number of reserved OTP words");
 
 constexpr alert_class_t kClasses[] = {
     kAlertClassA,
@@ -268,22 +301,20 @@ alert_escalate_t RomAlertClassEscalation(alert_class_t cls) {
 
 class ShutdownTest : public mask_rom_test::MaskRomTest {
  protected:
-
   void SetupOtpReads() {
     // Make OTP reads retrieve their values from `otp_config_`.
-    ON_CALL(otp_, read32(::testing::_))
-        .WillByDefault([this](uint32_t address) {
-          // Must be aligned and in the SW_CFG partition.
-          EXPECT_EQ(address % 4, 0);
-          EXPECT_GE(address, OTP_CTRL_PARAM_OWNER_SW_CFG_OFFSET);
-          EXPECT_LT(address, OTP_CTRL_PARAM_OWNER_SW_CFG_OFFSET +
-                                 sizeof(this->otp_config_));
-          // Convert the address to a word index.
-          uint32_t index = (address - OTP_CTRL_PARAM_OWNER_SW_CFG_OFFSET) / 4;
-          const uint32_t *words =
-              reinterpret_cast<const uint32_t *>(&this->otp_config_);
-          return words[index];
-        });
+    ON_CALL(otp_, read32(::testing::_)).WillByDefault([this](uint32_t address) {
+      // Must be aligned and in the SW_CFG partition.
+      EXPECT_EQ(address % 4, 0);
+      EXPECT_GE(address, OTP_CTRL_PARAM_OWNER_SW_CFG_OFFSET);
+      EXPECT_LT(address,
+                OTP_CTRL_PARAM_OWNER_SW_CFG_OFFSET + sizeof(this->otp_config_));
+      // Convert the address to a word index.
+      uint32_t index = (address - OTP_CTRL_PARAM_OWNER_SW_CFG_OFFSET) / 4;
+      const uint32_t *words =
+          reinterpret_cast<const uint32_t *>(&this->otp_config_);
+      return words[index];
+    });
   }
 
   void ExpectClassConfigure() {
@@ -327,20 +358,29 @@ class ShutdownTest : public mask_rom_test::MaskRomTest {
 
 TEST_F(ShutdownTest, InitializeProd) {
   SetupOtpReads();
-  for(size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT; ++i) {
+  for (size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
     const auto &c = kDefaultAlertClassification[i];
     alert_class_t cls = c.prod;
     alert_enable_t en = RomAlertClassEnable(cls);
-    EXPECT_CALL(alert_, alert_configure(i, cls, en))
+    EXPECT_CALL(alert_, alert_configure(i, cls, en)).WillOnce(Return(kErrorOk));
+  }
+  for (size_t i = 0; i < ALERT_HANDLER_LOC_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
+    const auto &c = kDefaultLocAlertClassification[i];
+    alert_class_t cls = c.prod;
+    alert_enable_t en = RomAlertClassEnable(cls);
+    EXPECT_CALL(alert_, alert_local_configure(i, cls, en))
         .WillOnce(Return(kErrorOk));
   }
   ExpectClassConfigure();
   EXPECT_EQ(shutdown_init(kLcStateProd), kErrorOk);
 }
 
-TEST_F(ShutdownTest, InitializeProdWithError) {
+TEST_F(ShutdownTest, InitializeProdWithAlertError) {
   SetupOtpReads();
-  for(size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT; ++i) {
+  for (size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
     const auto &c = kDefaultAlertClassification[i];
     alert_class_t cls = c.prod;
     alert_enable_t en = RomAlertClassEnable(cls);
@@ -350,6 +390,39 @@ TEST_F(ShutdownTest, InitializeProdWithError) {
     EXPECT_CALL(alert_, alert_configure(i, cls, en))
         .WillOnce(Return(i == 0 ? kErrorUnknown : kErrorOk));
   }
+  for (size_t i = 0; i < ALERT_HANDLER_LOC_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
+    const auto &c = kDefaultLocAlertClassification[i];
+    alert_class_t cls = c.prod;
+    alert_enable_t en = RomAlertClassEnable(cls);
+    EXPECT_CALL(alert_, alert_local_configure(i, cls, en))
+        .WillOnce(Return(kErrorOk));
+  }
+  ExpectClassConfigure();
+  // We expect to get the error from alert configuration.
+  EXPECT_EQ(shutdown_init(kLcStateProd), kErrorUnknown);
+}
+
+TEST_F(ShutdownTest, InitializeProdWithLocalAlertError) {
+  SetupOtpReads();
+  for (size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
+    const auto &c = kDefaultAlertClassification[i];
+    alert_class_t cls = c.prod;
+    alert_enable_t en = RomAlertClassEnable(cls);
+    EXPECT_CALL(alert_, alert_configure(i, cls, en)).WillOnce(Return(kErrorOk));
+  }
+  for (size_t i = 0; i < ALERT_HANDLER_LOC_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
+    const auto &c = kDefaultLocAlertClassification[i];
+    alert_class_t cls = c.prod;
+    alert_enable_t en = RomAlertClassEnable(cls);
+    // Return an error on i zero.  The error should not cause alert
+    // configuation to abort early (ie: still expect the rest of the
+    // alerts to get configured).
+    EXPECT_CALL(alert_, alert_local_configure(i, cls, en))
+        .WillOnce(Return(i == 0 ? kErrorUnknown : kErrorOk));
+  }
   ExpectClassConfigure();
   // We expect to get the error from alert configuration.
   EXPECT_EQ(shutdown_init(kLcStateProd), kErrorUnknown);
@@ -357,11 +430,19 @@ TEST_F(ShutdownTest, InitializeProdWithError) {
 
 TEST_F(ShutdownTest, InitializeProdEnd) {
   SetupOtpReads();
-  for(size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT; ++i) {
+  for (size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
     const auto &c = kDefaultAlertClassification[i];
     alert_class_t cls = c.prodend;
     alert_enable_t en = RomAlertClassEnable(cls);
-    EXPECT_CALL(alert_, alert_configure(i, cls, en))
+    EXPECT_CALL(alert_, alert_configure(i, cls, en)).WillOnce(Return(kErrorOk));
+  }
+  for (size_t i = 0; i < ALERT_HANDLER_LOC_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
+    const auto &c = kDefaultLocAlertClassification[i];
+    alert_class_t cls = c.prodend;
+    alert_enable_t en = RomAlertClassEnable(cls);
+    EXPECT_CALL(alert_, alert_local_configure(i, cls, en))
         .WillOnce(Return(kErrorOk));
   }
   ExpectClassConfigure();
@@ -370,11 +451,19 @@ TEST_F(ShutdownTest, InitializeProdEnd) {
 
 TEST_F(ShutdownTest, InitializeDev) {
   SetupOtpReads();
-  for(size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT; ++i) {
+  for (size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
     const auto &c = kDefaultAlertClassification[i];
     alert_class_t cls = c.dev;
     alert_enable_t en = RomAlertClassEnable(cls);
-    EXPECT_CALL(alert_, alert_configure(i, cls, en))
+    EXPECT_CALL(alert_, alert_configure(i, cls, en)).WillOnce(Return(kErrorOk));
+  }
+  for (size_t i = 0; i < ALERT_HANDLER_LOC_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
+    const auto &c = kDefaultLocAlertClassification[i];
+    alert_class_t cls = c.dev;
+    alert_enable_t en = RomAlertClassEnable(cls);
+    EXPECT_CALL(alert_, alert_local_configure(i, cls, en))
         .WillOnce(Return(kErrorOk));
   }
   ExpectClassConfigure();
@@ -383,15 +472,72 @@ TEST_F(ShutdownTest, InitializeDev) {
 
 TEST_F(ShutdownTest, InitializeRma) {
   SetupOtpReads();
-  for(size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT; ++i) {
+  for (size_t i = 0; i < ALERT_HANDLER_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
     const auto &c = kDefaultAlertClassification[i];
     alert_class_t cls = c.rma;
     alert_enable_t en = RomAlertClassEnable(cls);
-    EXPECT_CALL(alert_, alert_configure(i, cls, en))
+    EXPECT_CALL(alert_, alert_configure(i, cls, en)).WillOnce(Return(kErrorOk));
+  }
+  for (size_t i = 0; i < ALERT_HANDLER_LOC_ALERT_CLASS_SHADOWED_MULTIREG_COUNT;
+       ++i) {
+    const auto &c = kDefaultLocAlertClassification[i];
+    alert_class_t cls = c.rma;
+    alert_enable_t en = RomAlertClassEnable(cls);
+    EXPECT_CALL(alert_, alert_local_configure(i, cls, en))
         .WillOnce(Return(kErrorOk));
   }
   ExpectClassConfigure();
   EXPECT_EQ(shutdown_init(kLcStateRma), kErrorOk);
+}
+
+TEST_F(ShutdownTest, RedactPolicyManufacturing) {
+  // Devices in manufacturing or RMA states should not redact errors regardless
+  // of the redaction level set by OTP.
+  constexpr auto kManufacturingStates = std::array<lifecycle_state_t, 10>{
+      kLcStateRaw,           kLcStateTestUnlocked0,
+      kLcStateTestUnlocked1, kLcStateTestUnlocked2,
+      kLcStateTestUnlocked3, kLcStateTestUnlocked4,
+      kLcStateTestUnlocked5, kLcStateTestUnlocked6,
+      kLcStateTestUnlocked7, kLcStateRma};
+  for (const auto state : kManufacturingStates) {
+    EXPECT_ABS_READ32(
+        TOP_EARLGREY_LC_CTRL_BASE_ADDR + LC_CTRL_LC_STATE_REG_OFFSET,
+        static_cast<uint32_t>(state));
+    EXPECT_EQ(shutdown_redact_policy(), kShutdownErrorRedactNone);
+  }
+}
+
+TEST_F(ShutdownTest, RedactPolicyProduction) {
+  // Production states should read redaction level from OTP.
+  constexpr auto kProductionStates = std::array<lifecycle_state_t, 3>{
+      kLcStateProd, kLcStateProdEnd, kLcStateDev};
+  for (const auto state : kProductionStates) {
+    EXPECT_ABS_READ32(
+        TOP_EARLGREY_LC_CTRL_BASE_ADDR + LC_CTRL_LC_STATE_REG_OFFSET,
+        static_cast<uint32_t>(state));
+    EXPECT_ABS_READ32(TOP_EARLGREY_OTP_CTRL_CORE_BASE_ADDR +
+                          OTP_CTRL_SW_CFG_WINDOW_REG_OFFSET +
+                          OTP_CTRL_PARAM_ROM_ERROR_REPORTING_OFFSET,
+                      static_cast<uint32_t>(kShutdownErrorRedactModule));
+    EXPECT_EQ(shutdown_redact_policy(), kShutdownErrorRedactModule);
+  }
+}
+
+TEST_F(ShutdownTest, RedactPolicyInvalid) {
+  // Invalid states should result in the highest redaction level regardless of
+  // the redaction level set by OTP.
+  constexpr auto kInvalidStates = std::array<lifecycle_state_t, 11>{
+      kLcStateTestLocked0, kLcStateTestLocked1, kLcStateTestLocked2,
+      kLcStateTestLocked3, kLcStateTestLocked4, kLcStateTestLocked5,
+      kLcStateTestLocked6, kLcStateScrap,       kLcStatePostTransition,
+      kLcStateEscalate,    kLcStateInvalid};
+  for (const auto state : kInvalidStates) {
+    EXPECT_ABS_READ32(
+        TOP_EARLGREY_LC_CTRL_BASE_ADDR + LC_CTRL_LC_STATE_REG_OFFSET,
+        static_cast<uint32_t>(state));
+    EXPECT_EQ(shutdown_redact_policy(), kShutdownErrorRedactAll);
+  }
 }
 
 TEST(ShutdownModule, RedactErrors) {
@@ -412,6 +558,7 @@ TEST(ShutdownModule, RedactErrors) {
 
 TEST_F(ShutdownTest, ShutdownFinalize) {
   SetupOtpReads();
+  EXPECT_CALL(shutdown_, shutdown_report_error(kErrorUnknown));
   EXPECT_CALL(shutdown_, shutdown_software_escalate());
   EXPECT_CALL(shutdown_, shutdown_keymgr_kill());
   EXPECT_CALL(shutdown_, shutdown_flash_kill());
@@ -421,6 +568,12 @@ TEST_F(ShutdownTest, ShutdownFinalize) {
   // In the X86_64 unittest environment, verify that all of the various
   // kill functions were called.
   shutdown_finalize(kErrorUnknown);
+}
+
+TEST_F(ShutdownTest, FlashKill) {
+  EXPECT_ABS_WRITE32(
+      TOP_EARLGREY_FLASH_CTRL_CORE_BASE_ADDR + FLASH_CTRL_DIS_REG_OFFSET, 1);
+  unmocked_shutdown_flash_kill();
 }
 
 }  // namespace

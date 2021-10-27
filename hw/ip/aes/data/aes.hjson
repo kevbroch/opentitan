@@ -107,12 +107,12 @@
       randcount: "160",
       randtype:  "data"
     },
-    { name:    "RndCnstMskgChunkLfsrPerm",
-      type:    "aes_pkg::mskg_chunk_lfsr_perm_t",
+    { name:    "RndCnstMaskingLfsrPerm",
+      type:    "aes_pkg::masking_lfsr_perm_t",
       desc:    '''
-        Permutation applied to the LFSR chunks of the PRNG used for masking.
+        Permutation applied to the concatenated LFSRs of the PRNG used for masking.
       '''
-      randcount: "32",
+      randcount: "160",
       randtype:  "perm"
     },
     # Note: All parameters below are local, they are not actually configurable.
@@ -157,6 +157,12 @@
       act:     "req"
       package: "edn_pkg"
     }
+    { struct:  "hw_key_req"
+      type:    "uni"
+      name:    "keymgr_key"
+      act:     "rcv"
+      package: "keymgr_pkg"
+    }
   ],
   alert_list: [
     //{ name: "informative",
@@ -197,6 +203,7 @@
       resval: "0",
       desc: '''
         Initial Key Registers Share 0.
+
         The actual initial key corresponds to Initial Key Registers Share 0 XORed with Initial Key Registers Share 1.
         Loaded into the internal Full Key register upon starting encryption/decryption of the next block.
         All key registers (Share 0 and Share 1) must be written at least once when the key is changed, regardless of key length (write random data for unused bits).
@@ -221,6 +228,7 @@
       resval: "0",
       desc: '''
         Initial Key Registers Share 1.
+
         The actual initial key corresponds to Initial Key Registers Share 0 XORed with Initial Key Registers Share 1.
         Loaded into the internal Full Key register upon starting encryption/decryption of the next block.
         All key registers (Share 0 and Share 1) must be written at least once when the key is changed, regardless of key length (write random data for unused bits).
@@ -247,6 +255,7 @@
       resval: "0",
       desc: '''
         Initialization Vector Registers.
+
         The initialization vector (IV) or initial counter value must be written to these registers when starting a new message in CBC or CTR mode (see Control Register), respectively.
         In CBC and CTR modes, the AES unit does not start encryption/decryption with a partially updated IV.
         Each register has to be written at least once.
@@ -275,6 +284,7 @@
       resval: "0",
       desc: '''
         Input Data Registers.
+
         If MANUAL_OPERATION=0 (see Control Register), the AES unit automatically starts encryption/decryption after all Input Data registers have been written.
         Each register has to be written at least once.
         The order in which the registers are written does not matter.
@@ -299,6 +309,7 @@
       resval: "0",
       desc: '''
         Output Data Register.
+
         Holds the output data produced by the AES unit during the last encryption/decryption operation.
         If MANUAL_OPERATION=0 (see Control Register), the AES unit is stalled when the previous output data has not yet been read and is about to be overwritten.
         Each register has to be read at least once.
@@ -325,8 +336,10 @@
 # control and status registers
   { name: "CTRL_SHADOWED",
     desc: '''
-      Control Register. Can only be updated when the AES unit is idle. If the
-      AES unit is non-idle, writes to this register are ignored.
+      Control Register.
+
+      Can only be updated when the AES unit is idle.
+      If the AES unit is non-idle, writes to this register are ignored.
       This register is shadowed, meaning two subsequent write operations are required to change its content.
       If the two write operations try to set a different value, a recoverable alert is triggered (See Status Register).
       A read operation clears the internal phase tracking: The next write operation is always considered a first write operation of an update sequence.
@@ -348,6 +361,7 @@
         desc:  '''
           Select encryption(0) or decryption(1) operation of AES unit.
         '''
+        tags: ["shadowed_reg_path:u_aes_core.u_ctrl_reg_shadowed.u_ctrl_reg_shadowed_operation"]
       }
       { bits: "6:1",
         name: "MODE",
@@ -395,6 +409,7 @@
             '''
           }
         ]
+        tags: ["shadowed_reg_path:u_aes_core.u_ctrl_reg_shadowed.u_ctrl_reg_shadowed_mode"]
       }
       { bits: "9:7",
         name: "KEY_LEN",
@@ -426,8 +441,17 @@
             '''
           }
         ]
+        tags: ["shadowed_reg_path:u_aes_core.u_ctrl_reg_shadowed.u_ctrl_reg_shadowed_key_len"]
       }
       { bits: "10",
+        name: "SIDELOAD",
+        resval: "0",
+        desc: '''
+          Controls whether the AES unit uses the key provided by the key manager via key sideload interface (1) or the key provided by software via Initial Key Registers KEY_SHARE1_0 - KEY_SHARE1_7 (0).
+        '''
+        tags: ["shadowed_reg_path:u_aes_core.u_ctrl_reg_shadowed.u_ctrl_reg_shadowed_sideload"]
+      }
+      { bits: "11",
         name: "MANUAL_OPERATION",
         resval: "0"
         desc:  '''
@@ -438,8 +462,9 @@
           In manual mode (1), the AES unit i) only starts to encrypt/decrypt after receiving a start trigger (see Trigger Register), and ii) overwrites previous output data irrespective of whether it has been read out or not.
           This mode is useful if software needs full control over the AES unit.
         '''
+        tags: ["shadowed_reg_path:u_aes_core.u_ctrl_reg_shadowed.u_ctrl_reg_shadowed_manual_operation"]
       }
-      { bits: "11",
+      { bits: "12",
         name: "FORCE_ZERO_MASKS",
         resval: "0"
         desc:  '''
@@ -448,17 +473,18 @@
           To completely disable the masking, the second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be zero as well.
           Only applicable if both the Masking parameter and the SecAllowForcingMasks parameter are set to one.
         '''
+        tags: ["shadowed_reg_path:u_aes_core.u_ctrl_reg_shadowed.u_ctrl_reg_shadowed_force_zero_masks"]
       }
     ]
     tags: [// Updated by the HW.
            // Updates based on writes to this reg (reset test possible).
            // Exclude from write-read checks.
-           "excl:CsrNonInitTests:CsrExclWriteCheck",
-           "shadowed_reg_path:u_aes_core.u_ctrl_reg_shadowed"]
+           "excl:CsrNonInitTests:CsrExclWriteCheck"]
   },
   { name: "TRIGGER",
     desc: '''
       Trigger Register.
+
       Each bit is individually cleared to zero when executing the corresponding trigger.
       While executing any of the triggered operations, the AES unit will set the IDLE bit in the Status Register to zero.
       The processor must check the Status Register before triggering further actions.

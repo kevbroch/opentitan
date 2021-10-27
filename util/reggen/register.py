@@ -148,7 +148,7 @@ class Register(RegBase):
                     raise ValueError('The {} register has hwext set, but '
                                      'field {} has hro hwaccess and the '
                                      'field value is readable by software '
-                                     'mode ({}).'
+                                     '(mode {}).'
                                      .format(self.name,
                                              field.name,
                                              field.swaccess.key))
@@ -159,6 +159,37 @@ class Register(RegBase):
                                      .format(self.name,
                                              field.name,
                                              field.swaccess.key))
+
+        # Shadow registers do not support all swaccess types, hence we
+        # need to check that here.
+        if self.shadowed:
+            for field in self.fields:
+                if field.swaccess.key not in ['rw', 'ro', 'wo', 'rw1s', 'rw0c']:
+                    raise ValueError("Shadowed register {} has a field ({}) with "
+                                     "incompatible type '{}'."
+                                     .format(self.name,
+                                             field.name,
+                                             field.swaccess.key))
+
+        # Check that fields will be updated together. This generally comes "for
+        # free", but there's a slight wrinkle with RC fields: these use the
+        # register's read-enable input as their write-enable. We want to ensure
+        # either that every field that is updated as a result of bus accesses
+        # is RC or that none of them are.
+        rc_fields = []
+        we_fields = []
+        for field in self.fields:
+            if field.swaccess.key == 'rc':
+                rc_fields.append(field.name)
+            elif field.swaccess.allows_write:
+                we_fields.append(field.name)
+        if rc_fields and we_fields:
+            raise ValueError("Register {} has both software writable fields "
+                             "({}) and read-clear fields ({}), meaning it "
+                             "doesn't have a single write-enable signal."
+                             .format(self.name,
+                                     ', '.join(rc_fields),
+                                     ', '.join(we_fields)))
 
         # Check that field bits are disjoint
         bits_used = 0
@@ -255,22 +286,40 @@ class Register(RegBase):
                               'shadowed flag for {} register'
                               .format(name))
 
+        if async_name and shadowed:
+            raise ValueError(f'{name} is defined as async and shadowed. '
+                             'This is currently not supported. Please file '
+                             'an issue against OpenTitan if this is needed.')
+
         raw_fields = check_list(rd['fields'],
                                 'fields for {} register'.format(name))
         if not raw_fields:
             raise ValueError('Register {} has no fields.'.format(name))
-        fields = [Field.from_raw(name,
-                                 idx,
-                                 len(raw_fields),
-                                 swaccess,
-                                 hwaccess,
-                                 resval,
-                                 reg_width,
-                                 params,
-                                 hwext,
-                                 shadowed,
-                                 rf)
-                  for idx, rf in enumerate(raw_fields)]
+
+        fields = []
+        used_bits = 0
+        for idx, rf in enumerate(raw_fields):
+
+            field = (Field.from_raw(name,
+                                    idx,
+                                    len(raw_fields),
+                                    swaccess,
+                                    hwaccess,
+                                    resval,
+                                    reg_width,
+                                    params,
+                                    hwext,
+                                    shadowed,
+                                    rf))
+
+            overlap_bits = used_bits & field.bits.bitmask()
+            if overlap_bits:
+                raise ValueError(f'Field {field.name} uses bits '
+                                 f'{overlap_bits:#x} that appear in other '
+                                 f'fields.')
+
+            used_bits |= field.bits.bitmask()
+            fields.append(field)
 
         raw_uea = rd.get('update_err_alert')
         if raw_uea is None:
@@ -336,8 +385,12 @@ class Register(RegBase):
 
         This is true if any of the following are true:
 
-          - The register is shadowed (because shadow registers need to know
-            about reads)
+          - The register is shadowed, because the read has a side effect.
+            I.e., this puts the register back into Phase 0 (next write will
+            go to the staged register). This is useful for software in case
+            it lost track of the current phase. See comportability spec for
+            more details:
+            https://docs.opentitan.org/doc/rm/register_tool/#shadow-registers
 
           - There's an RC field (where we'll attach the read-enable signal to
             the subreg's we port)
@@ -458,6 +511,13 @@ class Register(RegBase):
                          .format(self.name,
                                  wen_fld.swaccess.key,
                                  wen_fld.hwaccess.key))
+
+    def bitmask(self) -> str:
+        reg_bitmask = 0
+        for f in self.fields:
+            reg_bitmask |= f.bits.bitmask()
+
+        return format(reg_bitmask, "x")
 
     def _asdict(self) -> Dict[str, object]:
         rd = {

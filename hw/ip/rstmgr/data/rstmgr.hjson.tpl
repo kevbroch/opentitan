@@ -4,6 +4,9 @@
 
 <%
   crash_dump_srcs = ['alert', 'cpu']
+  # long term change this to a method where the generating function
+  # can query the pwrmgr for how many internal resets it has
+  total_hw_resets = num_rstreqs+2
 %>
 
 # RSTMGR register template
@@ -45,9 +48,9 @@
     },
 
     { name: "NumHwResets",
-      desc: "Number of hardware reset requests, inclusive of escalation",
+      desc: "Number of hardware reset requests, inclusive of pwrmgr's 2 internal resets",
       type: "int",
-      default: "${num_rstreqs+1}",
+      default: "${total_hw_resets}",
       local: "true"
     },
 
@@ -67,6 +70,7 @@
       type:    "uni",
       name:    "por_n",
       act:     "rcv",
+      width:   "${len(power_domains)}"
     },
 
     { struct:  "pwr_rst",    // pwr_rst_req_t, pwr_rst_rsp_t
@@ -78,6 +82,13 @@
     { struct:  "rstmgr_out",
       type:    "uni",
       name:    "resets",
+      act:     "req",
+      package: "rstmgr_pkg", // Origin package (only needs for the req)
+    },
+
+    { struct:  "rstmgr_rst_en",
+      type:    "uni",
+      name:    "rst_en",
       act:     "req",
       package: "rstmgr_pkg", // Origin package (only needs for the req)
     },
@@ -107,6 +118,13 @@
       package: "ibex_pkg",
     },
 
+    { struct:  "mubi4",
+      type:    "uni",
+      name:    "sw_rst_req",
+      act:     "req",
+      package: "prim_mubi_pkg",
+    },
+
     // Exported resets
 % for intf in export_rsts:
     { struct:  "rstmgr_${intf}_out",
@@ -119,6 +137,27 @@
   ],
 
   registers: [
+
+    { name: "RESET_REQ",
+      desc: '''
+        Software requested system reset.
+      ''',
+      swaccess: "rw",
+      hwaccess: "hrw",
+      fields: [
+        { bits: "3:0",
+          mubi: true
+          name: "VAL",
+          desc: '''
+            When set to kMultiBitBool4True, a reset to power manager is requested.
+            Upon completion of reset, this bit is automatically cleared by hardware.
+          '''
+          resval: false
+        },
+      ],
+      tags: [// This register will cause a system reset, directed test only
+        "excl:CsrAllTests:CsrExclWrite"]
+    },
 
     { name: "RESET_INFO",
       desc: '''
@@ -152,8 +191,17 @@
           resval: "0"
         },
 
+        { bits: "3",
+          hwaccess: "hrw",
+          name: "SW_RESET",
+          desc: '''
+            Indicates when a device has reset due to !!RESET_REQ.
+            '''
+          resval: "0"
+        },
+
         // reset requests include escalation reset + peripheral requests
-        { bits: "${3 + num_rstreqs}:3",
+        { bits: "${4 + total_hw_resets - 1}:4",
           hwaccess: "hrw",
           name: "HW_REQ",
           desc: '''
@@ -259,7 +307,7 @@
 
     { multireg: {
         cname: "RSTMGR_SW_RST",
-        name:  "SW_RST_REGEN",
+        name:  "SW_RST_REGWEN",
         desc:  '''
           Register write enable for software controllable resets.
           When a particular bit value is 0, the corresponding value in !!SW_RST_CTRL_N can no longer be changed.
@@ -276,8 +324,6 @@
             resval: "1",
           },
         ],
-        tags: [// Don't reset other IPs as it will affect CSR access on these IPs
-               "excl:CsrAllTests:CsrExclWrite"]
       }
     }
 
@@ -306,7 +352,31 @@
                "excl:CsrAllTests:CsrExclWrite"]
       }
     }
+
+    { name: "ERR_CODE",
+      desc: '''
+        A bit vector of all the errors that have occurred in reset manager
+      ''',
+      swaccess: "rw1c",
+      hwaccess: "hwo",
+      fields: [
+        { bits: "0",
+          name: "REG_INTG_ERR",
+          desc: '''
+            The register file has experienced an integrity error.
+          '''
+          resval: "0"
+        },
+
+        { bits: "1",
+          name: "RESET_CONSISTENCY_ERR",
+          desc: '''
+            A inconsistent parent / child reset was observed.
+          '''
+          resval: "0"
+        },
+
+      ]
+    },
   ]
-
-
 }

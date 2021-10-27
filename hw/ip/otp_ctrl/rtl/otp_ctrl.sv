@@ -48,6 +48,9 @@ module otp_ctrl
   // Power manager interface (inputs are synced to OTP clock domain)
   input  pwrmgr_pkg::pwr_otp_req_t                   pwr_otp_i,
   output pwrmgr_pkg::pwr_otp_rsp_t                   pwr_otp_o,
+  // Macro-specific test registers going to lifecycle TAP
+  input  lc_otp_vendor_test_req_t                    lc_otp_vendor_test_i,
+  output lc_otp_vendor_test_rsp_t                    lc_otp_vendor_test_o,
   // Lifecycle transition command interface
   input  lc_otp_program_req_t                        lc_otp_program_i,
   output lc_otp_program_rsp_t                        lc_otp_program_o,
@@ -76,10 +79,11 @@ module otp_ctrl
   input                                              scan_rst_ni,
   input lc_ctrl_pkg::lc_tx_t                         scanmode_i,
   // Test-related GPIO output
-  output logic [OtpTestCtrlWidth-1:0]                cio_test_o,
-  output logic [OtpTestCtrlWidth-1:0]                cio_test_en_o
+  output logic [OtpTestVectWidth-1:0]                cio_test_o,
+  output logic [OtpTestVectWidth-1:0]                cio_test_en_o
 );
 
+  import prim_mubi_pkg::*;
   import prim_util_pkg::vbits;
 
   ////////////////////////
@@ -191,6 +195,7 @@ module otp_ctrl
   logic [1:0]  tlul_rerror;
   logic [31:0] tlul_rdata;
 
+  import prim_mubi_pkg::MuBi4False;
   tlul_adapter_sram #(
     .SramAw      ( SwWindowAddrWidth ),
     .SramDw      ( 32 ),
@@ -200,7 +205,7 @@ module otp_ctrl
   ) u_tlul_adapter_sram (
     .clk_i,
     .rst_ni,
-    .en_ifetch_i ( tlul_pkg::InstrDis ),
+    .en_ifetch_i ( MuBi4False         ),
     .tl_i        ( tl_win_h2d         ),
     .tl_o        ( tl_win_d2h         ),
     .req_o       (  tlul_req          ),
@@ -287,6 +292,7 @@ module otp_ctrl
 
   logic [ScrmblBlockWidth-1:0] unused_digest;
   logic [NumPart-1:0][ScrmblBlockWidth-1:0] part_digest;
+  assign hw2reg.vendor_test_digest    = part_digest[VendorTestIdx];
   assign hw2reg.creator_sw_cfg_digest = part_digest[CreatorSwCfgIdx];
   assign hw2reg.owner_sw_cfg_digest   = part_digest[OwnerSwCfgIdx];
   assign hw2reg.hw_cfg_digest         = part_digest[HwCfgIdx];
@@ -300,20 +306,29 @@ module otp_ctrl
   // Access Defaults and CSRs //
   //////////////////////////////
 
-  part_access_t [NumPart-1:0] part_access_csrs;
+  part_access_t [NumPart-1:0] part_access;
   always_comb begin : p_access_control
     // Default (this will be overridden by partition-internal settings).
-    part_access_csrs = {{32'(2*NumPart)}{Unlocked}};
+    part_access = {{32'(2*NumPart)}{MuBi8False}};
     // Permanently lock DAI write and read access to the life cycle partition.
     // The LC partition can only be read from and written to via the LC controller.
-    part_access_csrs[LifeCycleIdx].write_lock = Locked;
-    part_access_csrs[LifeCycleIdx].read_lock = Locked;
+    part_access[LifeCycleIdx].write_lock = MuBi8True;
+    part_access[LifeCycleIdx].read_lock = MuBi8True;
 
     // Propagate CSR read enables down to the SW_CFG partitions.
-    if (!reg2hw.creator_sw_cfg_read_lock) part_access_csrs[CreatorSwCfgIdx].read_lock = Locked;
-    if (!reg2hw.owner_sw_cfg_read_lock) part_access_csrs[OwnerSwCfgIdx].read_lock = Locked;
+    if (!reg2hw.vendor_test_read_lock) begin
+      part_access[VendorTestIdx].read_lock = MuBi8True;
+    end
+    if (!reg2hw.creator_sw_cfg_read_lock) begin
+      part_access[CreatorSwCfgIdx].read_lock = MuBi8True;
+    end
+    if (!reg2hw.owner_sw_cfg_read_lock) begin
+      part_access[OwnerSwCfgIdx].read_lock = MuBi8True;
+    end
     // The SECRET2 partition can only be accessed (write&read) when provisioning is enabled.
-    if (lc_creator_seed_sw_rw_en != lc_ctrl_pkg::On) part_access_csrs[Secret2Idx] = {2{Locked}};
+    if (lc_creator_seed_sw_rw_en != lc_ctrl_pkg::On) begin
+      part_access[Secret2Idx] = {2{MuBi8True}};
+    end
   end
 
   //////////////////////
@@ -382,20 +397,30 @@ module otp_ctrl
     lc_escalate_en = lc_escalate_en_synced;
     // Need a single wire for gating assertions in arbitration and CDC primitives.
     lc_escalate_en_any = 1'b0;
-    // Aggregate all the errors from the partitions and the DAI/LCI
+
+    // Aggregate all the macro alerts from the partitions
+    for (int k = 0; k < NumPart; k++) begin
+      // Filter for critical error codes that should not occur in the field.
+      fatal_macro_error_d |= part_error[k] == MacroError;
+      // While uncorrectable ECC errors are always reported, they do not trigger a fatal alert
+      // event in some partitions like the VENDOR_TEST partition.
+      if (PartInfo[k].ecc_fatal) begin
+        fatal_macro_error_d |= part_error[k] == MacroEccUncorrError;
+      end
+    end
+    // Aggregate all the macro alerts from the DAI/LCI
+    for (int k = NumPart; k < NumPart+2; k++) begin
+      // Filter for critical error codes that should not occur in the field.
+      fatal_macro_error_d |= part_error[k] inside {MacroError, MacroEccUncorrError};
+    end
+
+    // Aggregate all the remaining errors / alerts from the partitions and the DAI/LCI
     for (int k = 0; k < NumPart+2; k++) begin
       // Set the error bit if the error status of the corresponding partition is nonzero.
       // Need to reverse the order here since the field enumeration in hw2reg.status is reversed.
       part_errors_reduced[NumPart+1-k] = |part_error[k];
-      // Filter for critical error codes that should not occur in the field.
-      fatal_macro_error_d |= part_error[k] inside {MacroError, MacroEccUncorrError};
-
       // Filter for integrity and consistency check failures.
-      fatal_check_error_d |= part_error[k] inside {CheckFailError, FsmStateError} |
-                             chk_timeout       |
-                             lfsr_fsm_err      |
-                             scrmbl_fsm_err    |
-                             key_deriv_fsm_err;
+      fatal_check_error_d |= part_error[k] inside {CheckFailError, FsmStateError};
 
       // If a fatal alert has been observed in any of the partitions/FSMs,
       // we locally trigger escalation within OTP, which moves all FSMs
@@ -407,6 +432,12 @@ module otp_ctrl
         lc_escalate_en_any = 1'b1;
       end
     end
+
+    // Errors from other non-partition FSMs.
+    fatal_check_error_d |= chk_timeout       |
+                           lfsr_fsm_err      |
+                           scrmbl_fsm_err    |
+                           key_deriv_fsm_err;
   end
 
   // Assign these to the status register.
@@ -453,7 +484,7 @@ module otp_ctrl
 
   prim_intr_hw #(
     .Width(1)
-  ) u_intr_esc0 (
+  ) u_intr_operation_done (
     .clk_i,
     .rst_ni,
     .event_intr_i           ( otp_operation_done                      ),
@@ -468,7 +499,7 @@ module otp_ctrl
 
   prim_intr_hw #(
     .Width(1)
-  ) u_intr_esc1 (
+  ) u_intr_error (
     .clk_i,
     .rst_ni,
     .event_intr_i           ( otp_error                      ),
@@ -658,30 +689,35 @@ module otp_ctrl
                              prim_tl_d2h_gated : '0;
 
   // Test-related GPIOs.
-  logic [OtpTestCtrlWidth-1:0] otp_test_vect;
+  logic [OtpTestVectWidth-1:0] otp_test_vect;
   assign cio_test_o = (lc_dft_en[2] == lc_ctrl_pkg::On) ? otp_test_vect : '0;
-  assign cio_test_en_o = (lc_dft_en[2] == lc_ctrl_pkg::On) ? {OtpTestCtrlWidth{1'b1}} : '0;
+  assign cio_test_en_o = (lc_dft_en[2] == lc_ctrl_pkg::On) ? {OtpTestVectWidth{1'b1}} : '0;
 
   prim_otp #(
-    .Width         ( OtpWidth            ),
-    .Depth         ( OtpDepth            ),
-    .SizeWidth     ( OtpSizeWidth        ),
-    .PwrSeqWidth   ( OtpPwrSeqWidth      ),
-    .TlDepth       ( NumDebugWindowWords ),
-    .TestCtrlWidth ( OtpTestCtrlWidth    ),
-    .MemInitFile   ( MemInitFile         )
+    .Width            ( OtpWidth            ),
+    .Depth            ( OtpDepth            ),
+    .SizeWidth        ( OtpSizeWidth        ),
+    .PwrSeqWidth      ( OtpPwrSeqWidth      ),
+    .TlDepth          ( NumDebugWindowWords ),
+    .TestCtrlWidth    ( OtpTestCtrlWidth    ),
+    .TestStatusWidth  ( OtpTestStatusWidth  ),
+    .TestVectWidth    ( OtpTestVectWidth    ),
+    .MemInitFile      ( MemInitFile         ),
+    .VendorTestOffset ( VendorTestOffset    ),
+    .VendorTestSize   ( VendorTestSize      )
   ) u_otp (
     .clk_i,
     .rst_ni,
     // Power sequencing signals to/from AST
-    .pwr_seq_o        ( otp_ast_pwr_seq_o.pwr_seq      ),
-    .pwr_seq_h_i      ( otp_ast_pwr_seq_h_i.pwr_seq_h  ),
-    .ext_voltage_io   ( otp_ext_voltage_h_io           ),
+    .pwr_seq_o        ( otp_ast_pwr_seq_o.pwr_seq     ),
+    .pwr_seq_h_i      ( otp_ast_pwr_seq_h_i.pwr_seq_h ),
+    .ext_voltage_io   ( otp_ext_voltage_h_io          ),
     // Test interface
-    .test_ctrl_i      ( lc_otp_program_i.otp_test_ctrl ),
-    .test_vect_o      ( otp_test_vect                  ),
-    .test_tl_i        ( prim_tl_h2d_gated              ),
-    .test_tl_o        ( prim_tl_d2h_gated              ),
+    .test_ctrl_i      ( lc_otp_vendor_test_i.ctrl     ),
+    .test_status_o    ( lc_otp_vendor_test_o.status   ),
+    .test_vect_o      ( otp_test_vect                 ),
+    .test_tl_i        ( prim_tl_h2d_gated             ),
+    .test_tl_o        ( prim_tl_d2h_gated             ),
     // Other DFT signals
     .scan_en_i,
     .scan_rst_ni,
@@ -981,7 +1017,7 @@ module otp_ctrl
   // Partition Instances //
   /////////////////////////
 
-  logic [2**OtpByteAddrWidth-1:0][7:0] part_buf_data;
+  logic [$bits(PartInvDefault)/8-1:0][7:0] part_buf_data;
 
   for (genvar k = 0; k < NumPart; k ++) begin : gen_partitions
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -995,7 +1031,7 @@ module otp_ctrl
         .init_done_o   ( part_init_done[k]            ),
         .escalate_en_i ( lc_escalate_en[k]            ),
         .error_o       ( part_error[k]                ),
-        .access_i      ( part_access_csrs[k]          ),
+        .access_i      ( part_access[k]               ),
         .access_o      ( part_access_dai[k]           ),
         .digest_o      ( part_digest[k]               ),
         .tlul_req_i    ( part_tlul_req[k]             ),
@@ -1052,7 +1088,7 @@ module otp_ctrl
         // Only supported by life cycle partition (see further below).
         .check_byp_en_i    ( lc_ctrl_pkg::Off                ),
         .error_o           ( part_error[k]                   ),
-        .access_i          ( part_access_csrs[k]             ),
+        .access_i          ( part_access[k]                  ),
         .access_o          ( part_access_dai[k]              ),
         .digest_o          ( part_digest[k]                  ),
         .data_o            ( part_buf_data[PartInfo[k].offset +: PartInfo[k].size] ),
@@ -1103,7 +1139,7 @@ module otp_ctrl
         // consistent with the values in the buffer regs anymore).
         .check_byp_en_i    ( lc_check_byp_en                 ),
         .error_o           ( part_error[k]                   ),
-        .access_i          ( part_access_csrs[k]             ),
+        .access_i          ( part_access[k]                  ),
         .access_o          ( part_access_dai[k]              ),
         .digest_o          ( part_digest[k]                  ),
         .data_o            ( part_buf_data[PartInfo[k].offset +: PartInfo[k].size] ),

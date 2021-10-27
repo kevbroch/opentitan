@@ -4,21 +4,29 @@
 
 #include "sw/device/silicon_creator/lib/base/sec_mmio.h"
 
+#include <assert.h>
+
 #include "sw/device/lib/base/memory.h"
 #include "sw/device/silicon_creator/lib/base/abs_mmio.h"
 
-// FIXME: Linker configuration.
-extern sec_mmio_ctx_t sec_mmio_ctx;
+// The context is declared as weak so that the mask ROM and ROM_EXT may
+// override its location.
+__attribute__((weak)) volatile sec_mmio_ctx_t sec_mmio_ctx;
 
 // FIXME: Replace for shutdown module handler.
 static sec_mmio_shutdown_handler sec_mmio_shutdown_cb;
 
-// Value with good hamming weight used to mask the stored expected value.
-static const uint32_t kSecMmioMaskVal = 0x21692436u;
+enum {
+  // Value with good hamming weight used to mask the stored expected value.
+  kSecMmioMaskVal = 0x21692436u,
 
-// This must be set to a prime number greater than the number of items in
-// `sec_mmio_ctx.addrs`. Used to generate random read order permutations.
-static const uint32_t kSecMmioRndStep = 103u;
+  // This must be set to a prime number greater than the number of items in
+  // `sec_mmio_ctx.addrs`. Used to generate random read order permutations.
+  kSecMmioRndStep = 211u,
+};
+
+static_assert((uint32_t)kSecMmioRndStep > (uint32_t)kSecMmioRegFileSize,
+              "kSecMmioRndStep not large enough");
 
 /**
  * Updates or inserts the register entry pointed to by MMIO `addr` with the
@@ -55,6 +63,17 @@ void sec_mmio_init(sec_mmio_shutdown_handler cb) {
   sec_mmio_ctx.expected_write_count = 0;
   for (size_t i = 0; i < ARRAYSIZE(sec_mmio_ctx.addrs); ++i) {
     sec_mmio_ctx.addrs[i] = UINT32_MAX;
+    sec_mmio_ctx.values[i] = UINT32_MAX;
+  }
+}
+
+void sec_mmio_next_stage_init(sec_mmio_shutdown_handler cb) {
+  sec_mmio_shutdown_cb = cb;
+  sec_mmio_ctx.check_count = 0;
+  for (size_t i = sec_mmio_ctx.last_index; i < ARRAYSIZE(sec_mmio_ctx.addrs);
+       ++i) {
+    sec_mmio_ctx.addrs[i] = UINT32_MAX;
+    sec_mmio_ctx.values[i] = UINT32_MAX;
   }
 }
 
@@ -62,7 +81,7 @@ uint32_t sec_mmio_read32(uint32_t addr) {
   uint32_t value = abs_mmio_read32(addr);
   uint32_t masked_value = value ^ kSecMmioMaskVal;
 
-  upsert_register(addr, value);
+  upsert_register(addr, masked_value);
 
   if ((abs_mmio_read32(addr) ^ kSecMmioMaskVal) != masked_value) {
     sec_mmio_shutdown_cb(kErrorSecMmioReadFault);

@@ -14,34 +14,53 @@ from .snippet import Snippet
 from .snippet_gen import GenRet, SnippetGen
 
 from .gens.branch import Branch
+from .gens.call_stack_rw import CallStackRW, BadCallStackRW
 from .gens.ecall import ECall
 from .gens.jump import Jump
-from .gens.loop import Loop
-from .gens.small_val import SmallVal
+from .gens.edge_load_store import EdgeLoadStore
 from .gens.known_wdr import KnownWDR
+from .gens.loop import Loop
+from .gens.loop_dup_end import LoopDupEnd
+from .gens.small_val import SmallVal
 from .gens.straight_line_insn import StraightLineInsn
 
+from .gens.bad_at_end import BadAtEnd
+from .gens.bad_bnmovr import BadBNMovr
+from .gens.bad_branch import BadBranch
 from .gens.bad_deep_loop import BadDeepLoop
 from .gens.bad_insn import BadInsn
 from .gens.bad_giant_loop import BadGiantLoop
+from .gens.bad_load_store import BadLoadStore
 from .gens.bad_zero_loop import BadZeroLoop
+from .gens.misaligned_load_store import MisalignedLoadStore
+from .gens.untaken_branch import UntakenBranch
 
 
 class SnippetGens:
     '''A collection of snippet generators'''
     _CLASSES = [
         Branch,
+        CallStackRW,
+        EdgeLoadStore,
         Jump,
         Loop,
+        LoopDupEnd,
         SmallVal,
         StraightLineInsn,
         KnownWDR,
+        UntakenBranch,
 
         ECall,
+        BadAtEnd,
+        BadBNMovr,
+        BadBranch,
+        BadCallStackRW,
         BadDeepLoop,
         BadInsn,
         BadGiantLoop,
-        BadZeroLoop
+        BadLoadStore,
+        BadZeroLoop,
+        MisalignedLoadStore
     ]
 
     def __init__(self, cfg: Config, insns_file: InsnsFile) -> None:

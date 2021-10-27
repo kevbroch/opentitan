@@ -18,8 +18,10 @@
 //     -> pattgen
 //     -> gpio
 //     -> spi_device
-//     -> spi_host0
-//     -> spi_host1
+//     -> asf_32
+//       -> spi_host0
+//     -> asf_33
+//       -> spi_host1
 //     -> rv_timer
 //     -> usbdev
 //     -> pwrmgr_aon
@@ -29,7 +31,7 @@
 //     -> otp_ctrl.core
 //     -> otp_ctrl.prim
 //     -> lc_ctrl
-//     -> sensor_ctrl_aon
+//     -> sensor_ctrl
 //     -> alert_handler
 //     -> ast
 //     -> sram_ctrl_ret_aon.ram
@@ -41,7 +43,11 @@
 
 module xbar_peri (
   input clk_peri_i,
+  input clk_spi_host0_i,
+  input clk_spi_host1_i,
   input rst_peri_ni,
+  input rst_spi_host0_ni,
+  input rst_spi_host1_ni,
 
   // Host interfaces
   input  tlul_pkg::tl_h2d_t tl_main_i,
@@ -92,8 +98,8 @@ module xbar_peri (
   input  tlul_pkg::tl_d2h_t tl_otp_ctrl__prim_i,
   output tlul_pkg::tl_h2d_t tl_lc_ctrl_o,
   input  tlul_pkg::tl_d2h_t tl_lc_ctrl_i,
-  output tlul_pkg::tl_h2d_t tl_sensor_ctrl_aon_o,
-  input  tlul_pkg::tl_d2h_t tl_sensor_ctrl_aon_i,
+  output tlul_pkg::tl_h2d_t tl_sensor_ctrl_o,
+  input  tlul_pkg::tl_d2h_t tl_sensor_ctrl_i,
   output tlul_pkg::tl_h2d_t tl_alert_handler_o,
   input  tlul_pkg::tl_d2h_t tl_alert_handler_i,
   output tlul_pkg::tl_h2d_t tl_sram_ctrl_ret_aon__regs_o,
@@ -130,6 +136,16 @@ module xbar_peri (
   // Create steering signal
   logic [4:0] dev_sel_s1n_31;
 
+  tl_h2d_t tl_asf_32_us_h2d ;
+  tl_d2h_t tl_asf_32_us_d2h ;
+  tl_h2d_t tl_asf_32_ds_h2d ;
+  tl_d2h_t tl_asf_32_ds_d2h ;
+
+  tl_h2d_t tl_asf_33_us_h2d ;
+  tl_d2h_t tl_asf_33_us_d2h ;
+  tl_h2d_t tl_asf_33_ds_h2d ;
+  tl_d2h_t tl_asf_33_ds_d2h ;
+
 
 
   assign tl_uart0_o = tl_s1n_31_ds_h2d[0];
@@ -162,11 +178,11 @@ module xbar_peri (
   assign tl_spi_device_o = tl_s1n_31_ds_h2d[9];
   assign tl_s1n_31_ds_d2h[9] = tl_spi_device_i;
 
-  assign tl_spi_host0_o = tl_s1n_31_ds_h2d[10];
-  assign tl_s1n_31_ds_d2h[10] = tl_spi_host0_i;
+  assign tl_asf_32_us_h2d = tl_s1n_31_ds_h2d[10];
+  assign tl_s1n_31_ds_d2h[10] = tl_asf_32_us_d2h;
 
-  assign tl_spi_host1_o = tl_s1n_31_ds_h2d[11];
-  assign tl_s1n_31_ds_d2h[11] = tl_spi_host1_i;
+  assign tl_asf_33_us_h2d = tl_s1n_31_ds_h2d[11];
+  assign tl_s1n_31_ds_d2h[11] = tl_asf_33_us_d2h;
 
   assign tl_rv_timer_o = tl_s1n_31_ds_h2d[12];
   assign tl_s1n_31_ds_d2h[12] = tl_rv_timer_i;
@@ -195,8 +211,8 @@ module xbar_peri (
   assign tl_lc_ctrl_o = tl_s1n_31_ds_h2d[20];
   assign tl_s1n_31_ds_d2h[20] = tl_lc_ctrl_i;
 
-  assign tl_sensor_ctrl_aon_o = tl_s1n_31_ds_h2d[21];
-  assign tl_s1n_31_ds_d2h[21] = tl_sensor_ctrl_aon_i;
+  assign tl_sensor_ctrl_o = tl_s1n_31_ds_h2d[21];
+  assign tl_s1n_31_ds_d2h[21] = tl_sensor_ctrl_i;
 
   assign tl_alert_handler_o = tl_s1n_31_ds_h2d[22];
   assign tl_s1n_31_ds_d2h[22] = tl_alert_handler_i;
@@ -224,6 +240,12 @@ module xbar_peri (
 
   assign tl_s1n_31_us_h2d = tl_main_i;
   assign tl_main_o = tl_s1n_31_us_d2h;
+
+  assign tl_spi_host0_o = tl_asf_32_ds_h2d;
+  assign tl_asf_32_ds_d2h = tl_spi_host0_i;
+
+  assign tl_spi_host1_o = tl_asf_33_ds_h2d;
+  assign tl_asf_33_ds_d2h = tl_spi_host1_i;
 
   always_comb begin
     // default steering to generate error response if address is not within the range
@@ -313,7 +335,7 @@ module xbar_peri (
       dev_sel_s1n_31 = 5'd20;
 
     end else if ((tl_s1n_31_us_h2d.a_address &
-                  ~(ADDR_MASK_SENSOR_CTRL_AON)) == ADDR_SPACE_SENSOR_CTRL_AON) begin
+                  ~(ADDR_MASK_SENSOR_CTRL)) == ADDR_SPACE_SENSOR_CTRL) begin
       dev_sel_s1n_31 = 5'd21;
 
     end else if ((tl_s1n_31_us_h2d.a_address &
@@ -366,6 +388,32 @@ end
     .tl_d_o       (tl_s1n_31_ds_h2d),
     .tl_d_i       (tl_s1n_31_ds_d2h),
     .dev_select_i (dev_sel_s1n_31)
+  );
+  tlul_fifo_async #(
+    .ReqDepth        (4),// At least 4 to make async work
+    .RspDepth        (4) // At least 4 to make async work
+  ) u_asf_32 (
+    .clk_h_i      (clk_peri_i),
+    .rst_h_ni     (rst_peri_ni),
+    .clk_d_i      (clk_spi_host0_i),
+    .rst_d_ni     (rst_spi_host0_ni),
+    .tl_h_i       (tl_asf_32_us_h2d),
+    .tl_h_o       (tl_asf_32_us_d2h),
+    .tl_d_o       (tl_asf_32_ds_h2d),
+    .tl_d_i       (tl_asf_32_ds_d2h)
+  );
+  tlul_fifo_async #(
+    .ReqDepth        (4),// At least 4 to make async work
+    .RspDepth        (4) // At least 4 to make async work
+  ) u_asf_33 (
+    .clk_h_i      (clk_peri_i),
+    .rst_h_ni     (rst_peri_ni),
+    .clk_d_i      (clk_spi_host1_i),
+    .rst_d_ni     (rst_spi_host1_ni),
+    .tl_h_i       (tl_asf_33_us_h2d),
+    .tl_h_o       (tl_asf_33_us_d2h),
+    .tl_d_o       (tl_asf_33_ds_h2d),
+    .tl_d_i       (tl_asf_33_ds_d2h)
   );
 
 endmodule

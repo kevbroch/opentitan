@@ -61,11 +61,13 @@
 module ${mod_name} (
   input clk_i,
   input rst_ni,
+% if rb.has_internal_shadowed_reg():
+  input rst_shadowed_ni,
+% endif
 % for clock in rb.clocks.values():
   input ${clock.clock},
   input ${clock.reset},
 % endfor
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
 % if num_wins != 0:
@@ -293,13 +295,16 @@ module ${mod_name} (
     rname = clock.reset
   %>\
   logic sync_${clk_name}_update;
-  prim_pulse_sync u_${tgl_expr} (
+  prim_sync_reqack u_${tgl_expr} (
     .clk_src_i(${cname}),
     .rst_src_ni(${rname}),
-    .src_pulse_i(1'b1),
     .clk_dst_i(${reg_clk_expr}),
     .rst_dst_ni(${reg_rst_expr}),
-    .dst_pulse_o(sync_${clk_name}_update)
+    .req_chk_i(1'b1),
+    .src_req_i(1'b1),
+    .src_ack_o(),
+    .dst_req_o(sync_${clk_name}_update),
+    .dst_ack_i(sync_${clk_name}_update)
   );
   % endfor
 % endif
@@ -328,70 +333,139 @@ ${reg_sig_decl(r)}\
 ${field_sig_decl(f, sig_name, r.hwext, r.shadowed, r.async_clk)}\
     % endfor
   % endfor
+% if len(rb.clocks.values()) > 0:
+  // Define register CDC handling.
+  // CDC handling is done on a per-reg instead of per-field boundary.
+% endif
+% for r in regs_flat:
+  % if r.async_clk:
+<%
+  base_name = r.async_clk.clock_base_name
+  r_name = r.name.lower()
+  src_we_expr = f"{r_name}_we" if r.needs_we() else "'0"
+  src_wd_expr = f"reg_wdata[{r.get_width()-1}:0]" if r.needs_we() else "'0"
+  src_re_expr = f"{r_name}_re" if r.needs_re() else "'0"
+  src_regwen_expr = f"{r.regwen.lower()}_qs" if r.regwen else "'0"
+  dst_we_expr = f"{base_name}_{r_name}_we" if r.needs_we() else ""
+  dst_wd_expr = f"{base_name}_{r_name}_wdata" if r.needs_we() else ""
+  dst_re_expr = f"{base_name}_{r_name}_re" if r.needs_re() else ""
+  dst_regwen_expr = f"{base_name}_{r_name}_regwen" if r.regwen else ""
+%>
+    % if len(r.fields) > 1:
+      % for f in r.fields:
+  logic ${str_arr_sv(f.bits)} ${base_name}_${r_name}_${f.name.lower()}_qs_int;
+      % endfor
+    % else:
+  logic ${str_arr_sv(r.fields[0].bits)} ${base_name}_${r_name}_qs_int;
+    % endif
+  logic [${r.get_width()-1}:0] ${base_name}_${r_name}_d;
+  % if r.needs_we():
+  logic [${r.get_width()-1}:0] ${base_name}_${r_name}_wdata;
+  logic ${base_name}_${r_name}_we;
+  logic unused_${base_name}_${r_name}_wdata;
+  % endif
+  % if r.needs_re():
+  logic ${base_name}_${r_name}_re;
+  % endif
+  % if r.regwen:
+  logic ${base_name}_${r_name}_regwen;
+  % endif
+
+  always_comb begin
+    ${base_name}_${r_name}_d = '0;
+    % if len(r.fields) > 1:
+      % for f in r.fields:
+    ${base_name}_${r_name}_d[${str_bits_sv(f.bits)}] = ${base_name}_${r_name}_${f.name.lower()}_qs_int;
+      % endfor
+    % else:
+    ${base_name}_${r_name}_d = ${base_name}_${r_name}_qs_int;
+    % endif
+  end
+
+  prim_reg_cdc #(
+    .DataWidth(${r.get_width()}),
+    .ResetVal(${r.get_width()}'h${format(r.resval, "x")}),
+    .BitMask(${r.get_width()}'h${r.bitmask()})
+  ) u_${r_name}_cdc (
+    .clk_src_i    (${reg_clk_expr}),
+    .rst_src_ni   (${reg_rst_expr}),
+    .clk_dst_i    (${r.async_clk.clock}),
+    .rst_dst_ni   (${r.async_clk.reset}),
+    .src_update_i (sync_${r.async_clk.clock_base_name}_update),
+    .src_regwen_i (${src_regwen_expr}),
+    .src_we_i     (${src_we_expr}),
+    .src_re_i     (${src_re_expr}),
+    .src_wd_i     (${src_wd_expr}),
+    .src_busy_o   (${r_name}_busy),
+    .src_qs_o     (${r_name}_qs), // for software read back
+    .dst_d_i      (${base_name}_${r_name}_d),
+    .dst_we_o     (${dst_we_expr}),
+    .dst_re_o     (${dst_re_expr}),
+    .dst_regwen_o (${dst_regwen_expr}),
+    .dst_wd_o     (${dst_wd_expr})
+  );
+    % if r.needs_we():
+  assign unused_${base_name}_${r_name}_wdata = ^${base_name}_${r_name}_wdata;
+    % endif
+  % endif
+% endfor
 
   // Register instances
   % for r in rb.all_regs:
-  ######################## multiregister ###########################
-    % if isinstance(r, MultiRegister):
 <%
-      k = 0
-%>
-      % for sr in r.regs:
-  // Subregister ${k} of Multireg ${r.reg.name.lower()}
-  // R[${sr.name.lower()}]: V(${str(sr.hwext)})
-        % if len(sr.fields) == 1:
+      if isinstance(r, MultiRegister):
+        r0 = r.reg
+        srs = r.regs
+      else:
+        r0 = r
+        srs = [r]
+
+      reg_name = r0.name.lower()
+      fld_count = 0
+%>\
+    % for sr_idx, sr in enumerate(srs):
 <%
-          f = sr.fields[0]
-          finst_name = sr.name.lower()
-          fsig_name = r.reg.name.lower() + "[%d]" % k
-          k = k + 1
-%>
-${finst_gen(sr, f, finst_name, fsig_name)}
-        % else:
-          % for f in sr.fields:
+        sr_name = sr.name.lower()
+
+        if isinstance(r, MultiRegister):
+          reg_hdr = (f'  // Subregister {sr_idx} of Multireg {reg_name}\n' +
+                     f'  // R[{sr_name}]: V({sr.hwext})')
+        else:
+          reg_hdr = (f'  // R[{sr_name}]: V({sr.hwext})')
+%>\
+${reg_hdr}
+      % for field in sr.fields:
 <%
-            finst_name = sr.name.lower() + "_" + f.name.lower()
-            if r.is_homogeneous():
-              fsig_name = r.reg.name.lower() + "[%d]" % k
-              k = k + 1
+          if isinstance(r, MultiRegister):
+            sig_idx = fld_count if r.is_homogeneous() else sr_idx
+            fsig_pfx = '{}[{}]'.format(reg_name, sig_idx)
+          else:
+            fsig_pfx = reg_name
+
+          fld_count += 1
+
+          fld_name = field.name.lower()
+          if len(sr.fields) == 1:
+            finst_name = sr_name
+            fsig_name = fsig_pfx
+          else:
+            finst_name = sr_name + '_' + fld_name
+            if isinstance(r, MultiRegister):
+              if r.is_homogeneous():
+                fsig_name = fsig_pfx
+              else:
+                fsig_name = '{}.{}'.format(fsig_pfx, get_basename(fld_name))
             else:
-              fsig_name = r.reg.name.lower() + "[%d]" % k + "." + get_basename(f.name.lower())
-%>
-  // F[${f.name.lower()}]: ${f.bits.msb}:${f.bits.lsb}
-${finst_gen(sr, f, finst_name, fsig_name)}
-          % endfor
-<%
-          if not r.is_homogeneous():
-            k += 1
-%>
+              fsig_name = '{}.{}'.format(fsig_pfx, fld_name)
+%>\
+        % if len(sr.fields) > 1:
+  //   F[${fld_name}]: ${field.bits.msb}:${field.bits.lsb}
         % endif
-        ## for: mreg_flat
+${finst_gen(sr, field, finst_name, fsig_name)}
       % endfor
-######################## register with single field ###########################
-    % elif len(r.fields) == 1:
-  // R[${r.name.lower()}]: V(${str(r.hwext)})
-<%
-        f = r.fields[0]
-        finst_name = r.name.lower()
-        fsig_name = r.name.lower()
-%>
-${finst_gen(r, f, finst_name, fsig_name)}
-######################## register with multiple fields ###########################
-    % else:
-  // R[${r.name.lower()}]: V(${str(r.hwext)})
-      % for f in r.fields:
-<%
-        finst_name = r.name.lower() + "_" + f.name.lower()
-        fsig_name = r.name.lower() + "." + f.name.lower()
-%>
-  //   F[${f.name.lower()}]: ${f.bits.msb}:${f.bits.lsb}
-${finst_gen(r, f, finst_name, fsig_name)}
-      % endfor
-    % endif
 
-  ## for: rb.all_regs
+    % endfor
   % endfor
-
 
   logic [${len(regs_flat)-1}:0] addr_hit;
   always_comb begin
@@ -427,10 +501,10 @@ ${finst_gen(r, f, finst_name, fsig_name)}
   % for i, r in enumerate(regs_flat):
 ${reg_enable_gen(r, i)}\
     % if len(r.fields) == 1:
-${field_wd_gen(r.fields[0], r.name.lower(), r.hwext, r.shadowed, i)}\
+${field_wd_gen(r.fields[0], r.name.lower(), r.hwext, r.shadowed, r.async_clk, r.name, i)}\
     % else:
       % for f in r.fields:
-${field_wd_gen(f, r.name.lower() + "_" + f.name.lower(), r.hwext, r.shadowed, i)}\
+${field_wd_gen(f, r.name.lower() + "_" + f.name.lower(), r.hwext, r.shadowed, r.async_clk, r.name, i)}\
       % endfor
     % endif
   % endfor
@@ -440,7 +514,11 @@ ${field_wd_gen(f, r.name.lower() + "_" + f.name.lower(), r.hwext, r.shadowed, i)
     reg_rdata_next = '0;
     unique case (1'b1)
       % for i, r in enumerate(regs_flat):
-        % if len(r.fields) == 1:
+        % if r.async_clk:
+      addr_hit[${i}]: begin
+        reg_rdata_next = DW'(${r.name.lower()}_qs);
+      end
+        % elif len(r.fields) == 1:
       addr_hit[${i}]: begin
 ${rdata_gen(r.fields[0], r.name.lower())}\
       end
@@ -460,34 +538,56 @@ ${rdata_gen(f, r.name.lower() + "_" + f.name.lower())}\
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  % if rb.has_internal_shadowed_reg():
+  logic rst_done;
+  logic shadow_rst_done;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      rst_done <= '0;
+    end else begin
+      rst_done <= 1'b1;
+    end
+  end
+
+  always_ff @(posedge clk_i or negedge rst_shadowed_ni) begin
+    if (!rst_shadowed_ni) begin
+      shadow_rst_done <= '0;
+    end else begin
+      shadow_rst_done <= 1'b1;
+    end
+  end
+
+  // both shadow and normal resets have been released
+  assign shadow_busy = ~(rst_done & shadow_rst_done);
+  % else:
+  assign shadow_busy = 1'b0;
+  % endif
+
   // register busy
   % if rb.async_if:
-  assign reg_busy = '0;
+  assign reg_busy = shadow_busy;
   % else:
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       % for i, r in enumerate(regs_flat):
-        % if r.async_clk and len(r.fields) == 1:
+        % if r.async_clk:
       addr_hit[${i}]: begin
-        reg_busy = ${r.name.lower() + "_busy"};
-      end
-        % elif r.async_clk:
-      addr_hit[${i}]: begin
-        reg_busy =
-          % for f in r.fields:
-          ${r.name.lower() + "_" + f.name.lower() + "_busy"}${";" if loop.last else " |"}
-          % endfor
+        reg_busy_sel = ${r.name.lower() + "_busy"};
       end
         % endif
       % endfor
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end
-  % endif
 
+  % endif
 % endif
 
   // Unused signal tieoff
@@ -539,37 +639,56 @@ ${bits.msb}\
   % if reg.needs_we():
   logic ${reg.name.lower()}_we;
   % endif
+  % if reg.async_clk:
+  logic [${reg.get_width()-1}:0] ${reg.name.lower()}_qs;
+  logic ${reg.name.lower()}_busy;
+  % endif
 </%def>\
 <%def name="field_sig_decl(field, sig_name, hwext, shadowed, async_clk)">\
-  % if field.swaccess.allows_read():
+  % if not async_clk and field.swaccess.allows_read():
   logic ${str_arr_sv(field.bits)}${sig_name}_qs;
   % endif
-  % if field.swaccess.allows_write():
+  % if not async_clk and field.swaccess.allows_write():
   logic ${str_arr_sv(field.bits)}${sig_name}_wd;
-  % endif
-  % if async_clk:
-  logic ${str_arr_sv(Bits(0,0))}${sig_name}_busy;
   % endif
 </%def>\
 <%def name="finst_gen(reg, field, finst_name, fsig_name)">\
 <%
-    re_expr = f'{reg.name.lower()}_re' if field.swaccess.allows_read() else "1'b0"
 
+    clk_base_name = f"{reg.async_clk.clock_base_name}_" if reg.async_clk else ""
+    reg_name = reg.name.lower()
+    clk_expr = reg.async_clk.clock if reg.async_clk else reg_clk_expr
+    rst_expr = reg.async_clk.reset if reg.async_clk else reg_rst_expr
+    re_expr = f'{reg_name}_re' if field.swaccess.allows_read() or reg.shadowed else "1'b0"
+
+    # software inputs to field instance, write enable, read enable, write data
     if field.swaccess.allows_write():
       # We usually use the REG_we signal, but use REG_re for RC fields
       # (which get updated on a read, not a write)
       we_suffix = 're' if field.swaccess.swrd() == SwRdAccess.RC else 'we'
-      we_signal = f'{reg.name.lower()}_{we_suffix}'
+      we_signal = f'{clk_base_name}{reg_name}_{we_suffix}'
 
-      if reg.regwen:
+      if reg.async_clk and reg.regwen:
+        we_expr = f'{we_signal} & {clk_base_name}{reg_name}_regwen'
+      elif reg.regwen:
         we_expr = f'{we_signal} & {reg.regwen.lower()}_qs'
       else:
         we_expr = we_signal
+
+      # when async, pick from the cdc handled data
       wd_expr = f'{finst_name}_wd'
+      if reg.async_clk:
+        if field.bits.msb == field.bits.lsb:
+          bit_sel = f'{field.bits.msb}'
+        else:
+          bit_sel = f'{field.bits.msb}:{field.bits.lsb}'
+        wd_expr = f'{clk_base_name}{reg_name}_wdata[{bit_sel}]'
+
     else:
       we_expr = "1'b0"
       wd_expr = "'0"
 
+    # hardware inputs to field instance
     if field.hwaccess.allows_write():
       de_expr = f'hw2reg.{fsig_name}.de'
       d_expr = f'hw2reg.{fsig_name}.d'
@@ -577,6 +696,7 @@ ${bits.msb}\
       de_expr = "1'b0"
       d_expr = "'0"
 
+    # field instance outputs
     qre_expr = f'reg2hw.{fsig_name}.re' if reg.hwre or reg.shadowed else ""
 
     if field.hwaccess.allows_read():
@@ -586,29 +706,23 @@ ${bits.msb}\
       qe_expr = ''
       q_expr = ''
 
-    qs_expr = f'{finst_name}_qs' if field.swaccess.allows_read() else ''
+    # when async, the outputs are aggregated first by the cdc module
+    async_suffix = '_int' if reg.async_clk else ''
+    qs_expr = f'{clk_base_name}{finst_name}_qs{async_suffix}' if field.swaccess.allows_read() else ''
+
 %>\
 <%
-    clk_expr = reg.async_clk.clock if reg.async_clk else reg_clk_expr
-    rst_expr = reg.async_clk.reset if reg.async_clk else reg_rst_expr
+
     if reg.async_clk:
       update_expr = "sync_" + reg.async_clk.clock.strip("_iclk_")+ "_update"
 %>\
   % if reg.hwext:       ## if hwext, instantiate prim_subreg_ext
 <%
-    subreg_block = "prim_subreg_ext_async" if reg.async_clk else "prim_subreg_ext"
+    subreg_block = "prim_subreg_ext"
 %>\
   ${subreg_block} #(
     .DW    (${field.bits.width()})
   ) u_${finst_name} (
-    % if reg.async_clk:
-    .clk_src_i    (${reg_clk_expr}),
-    .rst_src_ni   (${reg_rst_expr}),
-    .clk_dst_i    (${clk_expr}),
-    .rst_dst_ni   (${rst_expr}),
-    .src_update_i (${update_expr}),
-    .src_busy_o   (${finst_name}_busy),
-    % endif
     .re     (${re_expr}),
     .we     (${we_expr}),
     .wd     (${wd_expr}),
@@ -634,34 +748,17 @@ ${bits.msb}\
     % if is_const_reg:
   // constant-only read
   assign ${finst_name}_qs = ${resval_expr};
-    % elif reg.async_clk:
-  prim_subreg_async #(
-    .DW      (${field.bits.width()}),
-    .SwAccess(prim_subreg_pkg::SwAccess${field.swaccess.value[1].name.upper()}),
-    .RESVAL  (${resval_expr})
-  ) u_${finst_name} (
-    .clk_src_i    (${reg_clk_expr}),
-    .rst_src_ni   (${reg_rst_expr}),
-    .clk_dst_i    (${clk_expr}),
-    .rst_dst_ni   (${rst_expr}),
-    .src_update_i (${update_expr}),
-    .src_we_i     (${we_expr}),
-    .src_wd_i     (${wd_expr}),
-    .dst_de_i     (${de_expr}),
-    .dst_d_i      (${d_expr}),
-    .src_busy_o   (${finst_name}_busy),
-    .src_qs_o     (${qs_expr}),
-    .dst_qe_o     (${qe_expr}),
-    .q            (${q_expr})
-  );
     % else:
   ${subreg_block} #(
     .DW      (${field.bits.width()}),
     .SwAccess(prim_subreg_pkg::SwAccess${field.swaccess.value[1].name.upper()}),
     .RESVAL  (${resval_expr})
   ) u_${finst_name} (
-    .clk_i   (${reg_clk_expr}),
-    .rst_ni  (${reg_rst_expr}),
+    .clk_i   (${clk_expr}),
+    .rst_ni  (${rst_expr}),
+      % if reg.shadowed and not reg.hwext:
+    .rst_shadowed_ni (rst_shadowed_ni),
+      % endif
 
     // from register interface
       % if reg.shadowed:
@@ -700,13 +797,13 @@ ${bits.msb}\
   assign ${reg.name.lower()}_we = addr_hit[${idx}] & reg_we & !reg_error;
   % endif
 </%def>\
-<%def name="field_wd_gen(field, sig_name, hwext, shadowed, idx)">\
+<%def name="field_wd_gen(field, sig_name, hwext, shadowed, async_clk, reg_name, idx)">\
 <%
     needs_wd = field.swaccess.allows_write()
     space = '\n' if needs_wd or needs_re else ''
 %>\
 ${space}\
-% if needs_wd:
+% if needs_wd and not async_clk:
   % if field.swaccess.swrd() == SwRdAccess.RC:
   assign ${sig_name}_wd = '1;
   % else:
@@ -714,11 +811,11 @@ ${space}\
   % endif
 % endif
 </%def>\
-<%def name="rdata_gen(field, sig_name)">\
+<%def name="rdata_gen(field, sig_name, rd_name='reg_rdata_next')">\
 % if field.swaccess.allows_read():
-        reg_rdata_next[${str_bits_sv(field.bits)}] = ${sig_name}_qs;
+        ${rd_name}[${str_bits_sv(field.bits)}] = ${sig_name}_qs;
 % else:
-        reg_rdata_next[${str_bits_sv(field.bits)}] = '0;
+        ${rd_name}[${str_bits_sv(field.bits)}] = '0;
 % endif
 </%def>\
 <%def name="reg_enable_gen(reg, idx)">\

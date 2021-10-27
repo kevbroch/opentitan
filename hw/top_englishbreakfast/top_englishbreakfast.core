@@ -13,6 +13,7 @@ filesets:
       # Manually instantiated
       - lowrisc:ip:rv_core_ibex
       - lowrisc:ip:rv_dm
+      - lowrisc:opentitan:top_englishbreakfast_rv_plic
       - lowrisc:ip:tlul
       - lowrisc:prim:all
       - lowrisc:prim:ram_1p_adv
@@ -22,9 +23,7 @@ filesets:
       - lowrisc:ip:sram_ctrl
       # Instantiated by topgen
       - lowrisc:ip:uart:0.1
-      - lowrisc:ip:alert_handler
       - lowrisc:ip:gpio
-      - lowrisc:ip:rv_plic_component
       - lowrisc:ip:pinmux_component
       - lowrisc:ip:rv_timer
       - lowrisc:ip:spi_device
@@ -37,6 +36,8 @@ filesets:
       - lowrisc:ip:otp_ctrl
       - lowrisc:ip:lc_ctrl
       - lowrisc:ip:usbdev
+      - lowrisc:top_englishbreakfast:xbar_main
+      - lowrisc:top_englishbreakfast:xbar_peri
       - lowrisc:ip:rstmgr
       - lowrisc:ip:pwrmgr
       - lowrisc:ip:rom_ctrl
@@ -108,4 +109,3 @@ targets:
         mode: lint-only
         verilator_options:
           - "-Wall"
-

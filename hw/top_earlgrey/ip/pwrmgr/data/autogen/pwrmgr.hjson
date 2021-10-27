@@ -10,7 +10,9 @@
 { name: "PWRMGR",
   clocking: [
     {clock: "clk_i", reset: "rst_ni", primary: true},
-    {clock: "clk_slow_i", reset: "rst_slow_ni"}
+    {reset: "rst_main_ni"},
+    {clock: "clk_slow_i", reset: "rst_slow_ni"},
+    {clock: "clk_esc_i", reset: "rst_esc_ni"}
   ]
   bus_interfaces: [
     { protocol: "tlul", direction: "device" }
@@ -26,7 +28,6 @@
     }
   ],
 
-  // Define flash_ctrl <-> flash_phy struct package
   inter_signal_list: [
     { struct:  "pwr_ast",
       type:    "req_rsp",
@@ -92,7 +93,7 @@
     },
 
     { struct:  "logic",
-      width:   5,
+      width:   6,
       type:    "uni",
       name:    "wakeups",
       act:     "rcv",
@@ -134,48 +135,62 @@
       act:     "req",
       package: "lc_ctrl_pkg",
     },
+
+    { struct:  "mubi4",
+      type:    "uni",
+      name:    "sw_rst_req",
+      act:     "rcv",
+      package: "prim_mubi_pkg",
+    },
   ],
 
   param_list: [
     { name: "NumWkups",
       desc: "Number of wakeups",
       type: "int",
-      default: "5",
+      default: "6",
       local: "true"
     },
 
-    { name: "GSC_WK_IDX",
-      desc: "Vector index for gsc_wk, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
+    { name: "SYSRST_CTRL_AON_WKUP_REQ_IDX",
+      desc: "Vector index for sysrst_ctrl_aon wkup_req, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
       type: "int",
       default: "0",
       local: "true"
     },
 
-    { name: "DEBUG_CABLE_WAKEUP_IDX",
-      desc: "Vector index for debug_cable_wakeup, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
+    { name: "ADC_CTRL_AON_WKUP_REQ_IDX",
+      desc: "Vector index for adc_ctrl_aon wkup_req, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
       type: "int",
       default: "1",
       local: "true"
     },
 
-    { name: "AON_WKUP_REQ_IDX",
-      desc: "Vector index for aon_wkup_req, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
+    { name: "PINMUX_AON_PIN_WKUP_REQ_IDX",
+      desc: "Vector index for pinmux_aon pin_wkup_req, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
       type: "int",
       default: "2",
       local: "true"
     },
 
-    { name: "USB_WKUP_REQ_IDX",
-      desc: "Vector index for usb_wkup_req, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
+    { name: "PINMUX_AON_USB_WKUP_REQ_IDX",
+      desc: "Vector index for pinmux_aon usb_wkup_req, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
       type: "int",
       default: "3",
       local: "true"
     },
 
-    { name: "AON_TIMER_WKUP_REQ_IDX",
-      desc: "Vector index for aon_timer_wkup_req, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
+    { name: "AON_TIMER_AON_WKUP_REQ_IDX",
+      desc: "Vector index for aon_timer_aon wkup_req, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
       type: "int",
       default: "4",
+      local: "true"
+    },
+
+    { name: "SENSOR_CTRL_WKUP_REQ_IDX",
+      desc: "Vector index for sensor_ctrl wkup_req, applies for WAKEUP_EN, WAKE_STATUS and WAKE_INFO",
+      type: "int",
+      default: "5",
       local: "true"
     },
 
@@ -336,6 +351,9 @@
                 '''
             },
           ]
+          tags: [// Turning off USB clock in active state impacts other CSRs
+                 // at the chip level (in other blocks, such as clkmgr).
+                 "excl:CsrNonInitTests:CsrExclWrite"]
         },
 
         { bits: "8",
@@ -554,11 +572,11 @@
       hwqe: "true",
       resval: "0"
       fields: [
-        { bits: "4:0",
+        { bits: "5:0",
           name: "REASONS",
           desc: "Various peripheral wake reasons"
         },
-        { bits: "5",
+        { bits: "6",
           name: "FALL_THROUGH",
           desc: '''
             The fall through wakeup reason indicates that despite setting a WFI and providing a low power
@@ -567,7 +585,7 @@
             The power manager detects this condition, halts low power entry and reports as a wakeup reason
           ''',
         },
-        { bits: "6",
+        { bits: "7",
           name: "ABORT",
           desc: '''
             The abort wakeup reason indicates that despite setting a WFI and providing a low power

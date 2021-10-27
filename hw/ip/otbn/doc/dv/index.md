@@ -39,20 +39,28 @@ The top-level testbench is located at `hw/ip/otbn/dv/uvm/tb.sv`.
 This instantiates the OTBN DUT module `hw/ip/otbn/rtl/otbn.sv`.
 
 OTBN has the following interfaces:
-- A [Clock and reset interface]({{< relref "hw/dv/sv/common_ifs#clk_rst_if" >}})
-- A [TileLink interface]({{< relref "hw/dv/sv/tl_agent/README.md" >}}).
-  OTBN is a TL device, which expects to communicate with a TL host.
+- A [Clock and reset interface]({{< relref "/hw/dv/sv/common_ifs#clk_rst_if" >}})
+- A [TileLink interface]({{< relref "/hw/dv/sv/tl_agent/README.md" >}}).
+  OTBN is a TL-UL device, which expects to communicate with a TL-UL host.
   In the OpenTitan SoC, this will be the Ibex core.
-- An idle signal, `idle_o`
-- Two interrupts
-- An [alert interface]({{< relref "hw/dv/sv/alert_esc_agent/README" >}})
+- Idle signals in each clock domain, `idle_o`, and `idle_otp_o`
+- One interrupt
+- An [alert interface]({{< relref "/hw/dv/sv/alert_esc_agent/README" >}})
+- A life cycle escalation interface
+- An [OTP]({{< relref "/hw/ip/otp_ctrl/doc" >}}) connection
+- Two [EDN]({{< relref "/hw/ip/edn/doc" >}}) connections
+- A RAM configuration interface, which is passed through to the SRAM macros
 
 The idle and interrupt signals are modelled with the basic
 [`pins_if`]({{< relref "hw/dv/sv/common_ifs#pins_if" >}}) interface.
 
 As well as instantiating OTBN, the testbench also instantiates an `otbn_core_model`.
 This module wraps an ISS (instruction set simulator) subprocess and performs checks to make sure that OTBN behaves the same as the ISS.
-The model communicates with the testbench through an `otbn_model_if` interface, which is monitored by the `otbn_model_agent`, described below.
+The `otbn_core_model` module communicates with test sequences through an `otbn_model_if` interface, which is monitored by the `otbn_model_agent`, described below.
+The module communicates with the Python subprocess as shown in the diagram below.
+
+![Model communication](model.svg)
+
 
 ### OTBN model agent
 
@@ -141,7 +149,7 @@ We expect to:
 - Complete a loop with the maximal number of iterations.
   Obviously, this isn't a reasonable thing to do for real in a test (there's a 32-bit iteration counter!).
   The testbench will have to force a signal to skip past some iterations.
-  Tracked as `MaxIterLoop_C`.
+  Tracked as `MaximalLoop_C`.
 - Run through a "badly nested" loop, where the body contains the final instruction from an outer loop (checking that we don't wrongly skip back).
   Tracked as `BadNestingEnd_C` and `BadNestingMiddle_C`.
 - Jump into a loop body from outside.
@@ -164,6 +172,29 @@ Similarly, each flag in each flag group should be cleared to zero from one by so
 See the instruction counter saturate.
 
 > This is tracked in the `insn_cnt_if` interface with the `InsnCntSaturated_C` cover property.
+
+#### External (bus-accessible) CSRs
+
+The OTBN block exposes functionality to a bus host through bus-accessible CSRs.
+Behavior of some CSRs depends on [OTBN's operational state]({{< relref "..#design-details-operational-states" >}}).
+
+Events we want to see:
+- For the `CMD` CSR, we want to see all valid commands being written crossed with all operational states to ensure commands are ignored as expected when OTBN is busy or locked.
+
+  Tracked in the `csr_ext_cmd_cg` covergroup.
+- For the `STATUS` CSR we want to see a read of all valid status codes.
+
+  Tracked in the `csr_ext_status_cg` covergroup.
+- For the `ERR_BITS` CSR, we want to see that every valid bit is read at least once, and we want to see a read in each operational state.
+
+  Tracked in the `csr_ext_err_bits_cg` covergroup.
+- For the `FATAL_ALERT_CAUSE` CSR, we want to see that every valid bit is read at least once, and we want to see a read in each operational state.
+
+  Tracked in the `csr_ext_fatal_alert_cause_cg` covergroup.
+- For `INSN_CNT` we want to see a read returning a zero and a non-zero value.
+  We also want to see a read in every operational state.
+
+  Tracked in the `csr_ext_fatal_insn_cnt_cg` covergroup.
 
 ### Instruction-based coverage
 
@@ -226,6 +257,10 @@ This paragraph implies eight coverage points (four flags times two values) for t
 > Some instructions only write the `M`, `L` and `Z` flags.
 > These are found in the `bna`, `bnan`, `bnaqs` and `bnaqw` encoding groups.
 > For these instructions, we only track bits `1`, `2` and `3` of the flags structure.
+
+For any instruction that can cause multiple errors in a single cycle, we expect to see each possible combination of errors.
+This is described in more detail in the per-instruction text below.
+If an instruction below doesn't describe triggering multiple errors, that means we don't think it's possible.
 
 #### ADD
 
@@ -373,7 +408,7 @@ The instruction-specific covergroup is `insn_log_binop_cg` (shared with other lo
 This instruction uses the `I` encoding schema, with covergroup `enc_i_cg`.
 The instruction-specific covergroup is `insn_xw_cg` (shared with `SW`).
 
-- Load from a valid address, where `<grs1>` is above the top of memory and a negative `<offset>` brings the load address in range. 
+- Load from a valid address, where `<grs1>` is above the top of memory and a negative `<offset>` brings the load address in range.
   Tracked as `oob_base_neg_off_cross`.
 - Load from a valid address, where `<grs1>` is negative and a positive `<offset>` brings the load address in range.
   Tracked as `neg_base_pos_off_cross`.
@@ -391,6 +426,15 @@ The instruction-specific covergroup is `insn_xw_cg` (shared with `SW`).
   Track loads from addresses that are in range for the size of the memory.
   Cross the different values modulo 4 for `grs1` and `offset`.
   Tracked as `align_cross`.
+
+It is possible for LW to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack, invalid DMEM address, and overflow call stack.
+It's not possible to under- and overflow the call stack in a single cycle.
+Similarly, if we underflow the call stack, we won't have an address at all (valid or otherwise).
+This leaves a single combination to check:
+
+- Overflow the call stack when loading from an invalid address.
+  Tracked as `overflow_cs_invalid_addr_cp`.
 
 #### SW
 
@@ -416,6 +460,13 @@ The instruction-specific covergroup is `insn_xw_cg` (shared with `LW`).
   Cross the different values modulo 4 for `grs1` and `offset`.
   Tracked as `align_cross`.
 
+It is possible for SW to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack and invalid DMEM address.
+These can happen together, giving a single combination to check:
+
+- Underflow the call stack when reading the value to be stored and try to write it to an invalid address.
+  Tracked as `underflow_cs_invalid_addr_cp`.
+
 #### BEQ
 
 This instruction uses the `B` encoding schema, with covergroup `enc_b_cg`.
@@ -426,7 +477,9 @@ All points should be crossed with branch taken / branch not taken.
 - See each branch direction (forwards, backwards, current address).
   Tracked as `eq_dir_cross`.
 - Branch to a misaligned address (offset not a multiple of 4)
-  Each offset alignment is tracked in `eq_offset_align_cross`.
+  PC is always 4-bit aligned and offset is a multiple of 2 by definition.
+  Therefore the only misalignment would be by setting the second bit of the offset to 1.
+  Offset alignment is tracked in `eq_offset_align_cross`.
 - Branch forwards to an invalid address, above the top of memory
   Tracked as `eq_oob_cross`.
 - Branch backwards to an invalid address (wrapping past zero)
@@ -436,6 +489,16 @@ All points should be crossed with branch taken / branch not taken.
 
 The "branch to current address" item is problematic if we want to take the branch.
 Probably we need some tests with short timeouts to handle this properly.
+
+It is possible for BEQ to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack, bad target address, and branch at end of loop.
+Since the target address check only triggers if the branch is taken, which requires a value for comparison, it's not possible to underflow the call stack and see a bad target address at the same time.
+This leaves two possible combinations:
+
+- Underflow the call stack in a branch at the end of a loop.
+  Tracked as `underflow_at_loop_end_cross`.
+- Take a branch to an invalid address where the branch instruction is at the end of a loop.
+  Tracked as `bad_addr_at_loop_end_cross`.
 
 #### BNE
 
@@ -447,7 +510,9 @@ All points should be crossed with branch taken / branch not taken.
 - See each branch direction (forwards, backwards, current address).
   Tracked as `eq_dir_cross`.
 - Branch to a misaligned address (offset not a multiple of 4)
-  Each offset alignment is tracked in `eq_offset_align_cross`.
+  PC is always 4-bit aligned and offset is a multiple of 2 by definition.
+  Therefore the only misalignment would be by setting the second bit of the offset to 1.
+  Offset alignment is tracked in `eq_offset_align_cross`.
 - Branch forwards to an invalid address, above the top of memory
   Tracked as `eq_oob_cross`.
 - Branch backwards to an invalid address (wrapping past zero)
@@ -457,6 +522,16 @@ All points should be crossed with branch taken / branch not taken.
 
 The "branch to current address" item is problematic if we want to take the branch.
 Probably we need some tests with short timeouts to handle this properly.
+
+It is possible for BNE to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack, bad target address, and branch at end of loop.
+Since the target address check only triggers if the branch is taken, which requires a value for comparison, it's not possible to underflow the call stack and see a bad target address at the same time.
+This leaves two possible combinations:
+
+- Underflow the call stack in a branch at the end of a loop.
+  Tracked as `underflow_at_loop_end_cross`.
+- Take a branch to an invalid address where the branch instruction is at the end of a loop.
+  Tracked as `bad_addr_at_loop_end_cross`.
 
 #### JAL
 
@@ -477,6 +552,19 @@ The instruction-specific covergroup is `insn_jal_cg`.
   Tracked as `at_loop_end_cp`.
 
 Note that the "jump to current address" item won't be a problem to test since it will quickly overflow the call stack.
+
+It is possible for JAL to trigger multiple errors in a single cycle.
+The possible errors are: overflow call stack, bad target address, and jump at end of loop.
+All four combinations are possible:
+
+- Overflow call stack when jumping to an invalid address.
+  Tracked as `overflow_and_invalid_addr_cp`.
+- Overflow call stack from a jump at the end of a loop.
+  Tracked as `overflow_at_loop_end_cp`.
+- Jump to an invalid address from the end of a loop.
+  Tracked as `invalid_addr_at_loop_end_cp`.
+- Overflow call stack when jumping to an invalid address from the end of a loop.
+  Tracked as `overflow_and_invalid_addr_at_loop_end_cp`.
 
 #### JALR
 
@@ -504,6 +592,23 @@ The instruction-specific covergroup is `insn_jalr_cg`.
 
 Note that the "jump to current address" item won't be a problem to test since it will quickly over- or underflow the call stack, provided `<grd>` and `<grs1>` aren't both `x1`.
 
+It is possible for JALR to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack, overflow call stack, bad target address, and jump at end of loop.
+If we underflow the call stack, we can't also overflow it, nor do we have a target address.
+This means the only error that can occur in combination with underflowing the call stack is a jump at the end of a loop.
+Otherwise, all other combinations are possible.
+
+- Underflow call stack in a jump instruction at the end of a loop.
+  Tracked as `underflow_at_loop_end_cp`.
+- Overflow call stack when jumping to an invalid address.
+  Tracked as `overflow_and_bad_addr_cp`.
+- Overflow call stack from a jump at the end of a loop.
+  Tracked as `overflow_at_loop_end_cp`.
+- Jump to an invalid address from the end of a loop.
+  Tracked as `bad_addr_at_loop_end_cp`.
+- Overflow call stack when jumping to an invalid address from the end of a loop.
+  Tracked as `overflow_and_bad_addr_at_loop_end_cp`.
+
 #### CSRRS
 
 This instruction uses the `I` encoding schema, with covergroup `enc_i_cg`.
@@ -513,7 +618,17 @@ The instruction-specific covergroup is `insn_csrrs_cg`.
 - Write to an invalid CSR.
 
 These points are tracked with `csr_cross` in `insn_csrrs_cg`.
-It crosses `csr_cp` (which tracks each valid CSR, plus an invalid CSR) with `bits_to_set_cp` (which tracks whether `bits_to_set` is nonzero.
+It crosses `csr_cp` (which tracks each valid CSR, plus an invalid CSR) with `bits_to_set_cp` (which tracks whether `bits_to_set` is nonzero).
+
+It is possible for CSRRS to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack, overflow call stack, and invalid CSR.
+It's not possible to under- and overflow the call stack in a single cycle.
+The other two combinations are possible:
+
+- Underflow the call stack and access an invalid CSR
+  Tracked as `underflow_with_bad_csr_cp`.
+- Overflow the call stack and access an invalid CSR
+  Tracked as `overflow_with_bad_csr_cp`.
 
 #### CSRRW
 
@@ -526,6 +641,16 @@ The instruction-specific covergroup is `insn_csrrw_cg`.
 
 These points are tracked with `csr_cross` in `insn_csrrw_cg`.
 It crosses `csr_cp` (which tracks each valid CSR, plus an invalid CSR) with `grd_cp_to_set_cp` (which tracks whether `grd` is equal to `x0`.
+
+It is possible for CSRRW to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack, overflow call stack, and invalid CSR.
+It's not possible to under- and overflow the call stack in a single cycle.
+The other two combinations are possible:
+
+- Underflow the call stack and access an invalid CSR
+  Tracked as `underflow_with_bad_csr_cp`.
+- Overflow the call stack and access an invalid CSR
+  Tracked as `overflow_with_bad_csr_cp`.
 
 #### ECALL
 
@@ -552,6 +677,15 @@ The instruction-specific covergroup is `insn_loop_cg`.
 - Duplicate loop end address, matching top of stack
   Tracked as `duplicate_loop_end_cp`.
 
+It is possible for LOOP to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack, zero loop count, and loop at end of loop.
+It's not possible to underflow the call stack and see a zero loop count (because if we underflow the call stack, we have no loop count), so we get two pairs:
+
+- Underflow the call stack and loop at the end of a loop.
+  Tracked as `underflow_at_loop_end_cp`.
+- Loop with a zero loop count at the end of a loop.
+  Tracked as `zero_count_at_loop_end_cp`.
+
 #### LOOPI
 
 This instruction uses the `loopi` encoding schema, with covergroup `enc_loopi_cg`.
@@ -567,6 +701,13 @@ The instruction-specific covergroup is `insn_loopi_cg`.
   Tracked as `at_loop_end_cp`.
 - Duplicate loop end address, matching top of stack
   Tracked as `duplicate_loop_end_cp`.
+
+It is possible for LOOPI to trigger multiple errors in a single cycle.
+The possible errors are: zero loop count and loop at end of loop.
+These can happen together:
+
+- Loop with a zero loop count at the end of a loop.
+  Tracked as `zero_count_at_loop_end_cp`.
 
 #### BN.ADD
 
@@ -790,10 +931,8 @@ The instruction-specific covergroup is `insn_bn_xid_cg` (shared with `BN.SID`).
   Tracked as `oob_addr_neg_cross`.
 - Misaligned address tracking.
   Track loads from addresses that are in range for the size of the memory.
-  Crossing the possible misalignments for operand_a and offset would give a big cross (`32^2 = 1024`).
-  Instead, we split those alignments into 3 bins: 0, 1-30 and 31.
-  Crossing them gives 9 combinations, tracked as `part_align_cross`.
-  We also track all possible alignments of the sum as `addr_align_cross`.
+  We track all possible alignments of the sum as `addr_align_cross`.
+  The reason for not tracking offset and register value misalignments seperately is because the offset would always be shifted by 5 bits, which makes it always aligned.
 - See an invalid instruction with both increments specified
   Tracked in `enc_bnxid_cg` as a bin of `incd_inc1_cross`.
 - See `grd` greater than 31, giving an illegal instruction error
@@ -802,6 +941,32 @@ The instruction-specific covergroup is `insn_bn_xid_cg` (shared with `BN.SID`).
   Tracked in `enc_bnxid_cg` as `grx_incd_cross`.
 - Cross the three types of GPR for `grs1` with `grd_inc`
   Tracked in `enc_bnxid_cg` as `grs1_inc1_cross`.
+
+It is possible for BN.LID to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack (for `grs1`), underflow call stack (for `grd`), both increments set, invalid WDR index and bad data address.
+If we underflow the call stack for `grs1`, there's no architectural address, so that can't happen at the same time as a bad data address.
+Similarly, if we underflow the call stack for `grd`, there's no WDR index, so that can't cause an invalid WDR index.
+However, every other combination is possible.
+Binning together the two underflows unless it makes a difference to the possible behaviour gives the following list:
+
+- Underflow call stack and set both increments.
+  Tracked as `underflow_and_inc_both_cross`.
+- Underflow call stack for `grs1` and have a bad WDR index in `*grd`.
+  Tracked as `underflow_and_badb_cross`.
+- Underflow call stack for `grd` and compute a bad address from `*grs1`.
+  Tracked as `underflow_and_bad_addr_cross`.
+- Set both increments and have a bad WDR index.
+  Tracked as `inc_both_and_bad_wdr_cross`.
+- Set both increments and load from a bad address.
+  Tracked as `inc_both_and_bad_addr_cross`.
+- Have a bad WDR index when loading from a bad address.
+  Tracked as `bad_wdr_and_bad_addr_cross`.
+- Underflow call stack for `grs1`, setting both increments and have a bad WDR index in `*grd`.
+  Tracked as `underflow_and_inc_both_and_bad_wdr_cross`.
+- Underflow call stack for `grd`, setting both increments and compute a bad address from `*grs1`.
+  Tracked as `underflow_and_inc_both_and_bad_addr_cross`.
+- Set both increments and have both a bad WDR index and a bad address.
+  Tracked as `inc_both_and_bad_wdr_and_bad_addr_cross`.
 
 #### BN.SID
 
@@ -822,10 +987,8 @@ The instruction-specific covergroup is `insn_bn_xid_cg` (shared with `BN.LID`).
   Tracked as `oob_addr_neg_cross`.
 - Misaligned address tracking.
   Track stores to addresses that are in range for the size of the memory.
-  Crossing the possible misalignments for operand_a and offset would give a big cross (`32^2 = 1024`).
-  Instead, we split those alignments into 3 bins: 0, 1-30 and 31.
-  Crossing them gives 9 combinations, tracked as `part_align_cross`.
-  We also track all possible alignments of the sum as `addr_align_cross`.
+  We track all possible alignments of the sum as `addr_align_cross`.
+  The reason for not tracking offset and register value misalignments seperately is because the offset would always be shifted by 5 bits, which makes it always aligned.
 - See an invalid instruction with both increments specified
   Tracked in `enc_bnxid_cg` as a bin of `incd_inc1_cross`.
 - See `grd` greater than 31, giving an illegal instruction error
@@ -834,6 +997,32 @@ The instruction-specific covergroup is `insn_bn_xid_cg` (shared with `BN.LID`).
   Tracked in `enc_bnxid_cg` as `grx_incd_cross`.
 - Cross the three types of GPR for `grs1` with `grd_inc`
   Tracked in `enc_bnxid_cg` as `grs1_inc1_cross`.
+
+It is possible for BN.SID to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack (for `grs1`), underflow call stack (for `grs2`), both increments set, invalid WDR index and bad data address.
+If we underflow the call stack for `grs1`, there's no architectural address, so that can't happen at the same time as a bad data address.
+Similarly, if we underflow the call stack for `grs2`, there's no WDR index, so that can't cause an invalid WDR index.
+However, every other combination is possible.
+Binning together the two underflows unless it makes a difference to the possible behaviour gives the following list:
+
+- Underflow call stack and set both increments.
+  Tracked as `underflow_and_inc_both_cross`.
+- Underflow call stack for `grs1` and have a bad WDR index in `*grs2`.
+  Tracked as `underflow_and_badb_cross`.
+- Underflow call stack for `grs2` and compute a bad address from `*grs1`.
+  Tracked as `underflow_and_bad_addr_cross`.
+- Set both increments and have a bad WDR index.
+  Tracked as `inc_both_and_bad_wdr_cross`.
+- Set both increments and store to a bad address.
+  Tracked as `inc_both_and_bad_addr_cross`.
+- Have a bad WDR index when storing to a bad address.
+  Tracked as `bad_wdr_and_bad_addr_cross`.
+- Underflow call stack for `grs1`, setting both increments and have a bad WDR index in `*grs2`.
+  Tracked as `underflow_and_inc_both_and_bad_wdr_cross`.
+- Underflow call stack for `grs2`, setting both increments and compute a bad address from `*grs1`.
+  Tracked as `underflow_and_inc_both_and_bad_addr_cross`.
+- Set both increments and have both a bad WDR index and a bad address.
+  Tracked as `inc_both_and_bad_wdr_and_bad_addr_cross`.
 
 #### BN.MOV
 
@@ -845,12 +1034,31 @@ No special coverage otherwise.
 #### BN.MOVR
 
 This instruction uses the `bnmovr` encoding schema, with covergroup `enc_bnmovr_cg`.
-There is no instruction-specific covergroup.
+The instruction-specific covergroup is `insn_bn_movr_cg`.
 
 - See an invalid instruction with both increments specified
   Tracked in `enc_bnmovr_cg` as a bin of `incd_inc1_cross`.
 - Since MOVR signals an error if either of its source registers has a value greater than 31, cross whether the input register value at `grd` is greater than 31 with whether the register value at `grs` is greater than 31
   Tracked in `enc_bnmovr_cg` as `big_gpr_cross`.
+
+It is possible for BN.MOVR to trigger multiple errors in a single cycle.
+The possible errors are: underflow call stack (for `grs`), underflow call stack (for `grd`), both increments set, invalid WDR index (from `*grs`) and invalid WDR index (from `*grd`).
+If we underflow the call stack for `grs`, there's no WDR index from `*grs`, so it's not also possible to see an invalid WDR index from that.
+Similarly, if we underflow the call stack for `grd` then there's no WDR index from `*grd`, so it's not also possible to see an invalid WDR index from that.
+Binning together the two underflows and WDR indices unless it makes a difference to the possible behaviour gives the following list:
+
+- Underflow call stack and set both increments.
+  Tracked as `underflow_and_inc_both_cp`.
+- Underflow call stack for `grs` and have a bad WDR index in `*grd`.
+  Tracked as `underflow_and_bad_grd_cp`.
+- Underflow call stack for `grd` and have a bad WDR index in `*grs`.
+  Tracked as `underflow_and_bad_grs_cp`.
+- Set both increments and have a bad WDR index.
+  Tracked as `inc_both_and_bad_wdr_cp`.
+- Underflow call stack for `grs`, setting both increments and have a bad WDR index in `*grd`.
+  Tracked as `underflow_grs_and_inc_both_and_bad_wdr_cp`.
+- Underflow call stack for `grd`, setting both increments and have a bad WDR index in `*grs`.
+  Tracked as `underflow_grd_and_inc_both_and_bad_wdr_cp`.
 
 #### BN.WSRR
 

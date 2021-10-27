@@ -16,7 +16,7 @@
 #include "sw/device/lib/runtime/log.h"
 #include "sw/device/lib/runtime/print.h"
 #include "sw/device/lib/testing/check.h"
-#include "sw/device/silicon_creator/lib/base/abs_mmio.h"
+#include "sw/device/silicon_creator/lib/base/sec_mmio.h"
 #include "sw/device/silicon_creator/lib/drivers/keymgr.h"
 #include "sw/device/silicon_creator/lib/drivers/lifecycle.h"
 #include "sw/device/silicon_creator/lib/error.h"
@@ -91,6 +91,11 @@ const uint32_t kMaxVerBl0 = 2;
 
 const test_config_t kTestConfig;
 
+/** SEC MMIO error handler. */
+static void error_handler_cb(rom_error_t e) {
+  LOG_ERROR("Secure MMIO error: 0x%x", e);
+}
+
 /**
  * Writes `size` words of `data` into flash info page.
  *
@@ -138,34 +143,6 @@ static void init_flash(void) {
                   ARRAYSIZE(kOwnerSecret));
 }
 
-/** Key manager configuration steps performed in mask ROM. */
-rom_error_t keymgr_rom_test(void) {
-  ASSERT_OK(keymgr_check_state(kKeymgrStateReset));
-  keymgr_set_next_stage_inputs(&kBindingValueRomExt, kMaxVerRomExt);
-  return kErrorOk;
-}
-
-/** Key manager configuration steps performed in ROM_EXT. */
-rom_error_t keymgr_rom_ext_test(void) {
-  ASSERT_OK(keymgr_check_state(kKeymgrStateReset));
-
-  const uint16_t kEntropyReseedInterval = 0x1234;
-  ASSERT_OK(keymgr_init(kEntropyReseedInterval));
-  keymgr_advance_state();
-  ASSERT_OK(keymgr_check_state(kKeymgrStateInit));
-
-  // FIXME: Check `kBindingValueRomExt` before advancing state.
-  keymgr_advance_state();
-  ASSERT_OK(keymgr_check_state(kKeymgrStateCreatorRootKey));
-
-  keymgr_set_next_stage_inputs(&kBindingValueBl0, kMaxVerBl0);
-
-  // FIXME: Check `kBindingValueBl0` before advancing state.
-  keymgr_advance_state();
-  ASSERT_OK(keymgr_check_state(kKeymgrStateOwnerIntermediateKey));
-  return kErrorOk;
-}
-
 static const dif_pwrmgr_wakeup_reason_t kWakeUpReasonPor = {
     .types = 0,
     .request_sources = 0,
@@ -181,19 +158,18 @@ static bool compare_wakeup_reasons(const dif_pwrmgr_wakeup_reason_t *lhs,
 static void aon_timer_wakeup_config(dif_aon_timer_t *aon_timer,
                                     uint32_t wakeup_threshold) {
   // Make sure that wake-up timer is stopped.
-  CHECK(dif_aon_timer_wakeup_stop(aon_timer) == kDifAonTimerOk);
+  CHECK_DIF_OK(dif_aon_timer_wakeup_stop(aon_timer));
 
   // Make sure the wake-up IRQ is cleared to avoid false positive.
-  CHECK(dif_aon_timer_irq_acknowledge(
-            aon_timer, kDifAonTimerIrqWakeupThreshold) == kDifAonTimerOk);
+  CHECK_DIF_OK(dif_aon_timer_irq_acknowledge(aon_timer,
+                                             kDifAonTimerIrqWkupTimerExpired));
 
   bool is_pending;
-  CHECK(dif_aon_timer_irq_is_pending(aon_timer, kDifAonTimerIrqWakeupThreshold,
-                                     &is_pending) == kDifAonTimerOk);
+  CHECK_DIF_OK(dif_aon_timer_irq_is_pending(
+      aon_timer, kDifAonTimerIrqWkupTimerExpired, &is_pending));
   CHECK(!is_pending);
 
-  CHECK(dif_aon_timer_wakeup_start(aon_timer, wakeup_threshold, 0) ==
-        kDifAonTimerOk);
+  CHECK_DIF_OK(dif_aon_timer_wakeup_start(aon_timer, wakeup_threshold, 0));
 }
 
 /**
@@ -204,7 +180,7 @@ static dif_otp_ctrl_t otp;
 static void wait_for_dai(void) {
   while (true) {
     dif_otp_ctrl_status_t status;
-    CHECK(dif_otp_ctrl_get_status(&otp, &status) == kDifOtpCtrlOk);
+    CHECK_DIF_OK(dif_otp_ctrl_get_status(&otp, &status));
     if (bitfield_bit32_read(status.codes, kDifOtpCtrlStatusCodeDaiIdle)) {
       return;
     }
@@ -218,17 +194,10 @@ static void wait_for_dai(void) {
  */
 static void lock_otp_secret_partition2(void) {
   // initialize otp
-  mmio_region_t otp_reg_core =
-      mmio_region_from_addr(TOP_EARLGREY_OTP_CTRL_CORE_BASE_ADDR);
-  mmio_region_t otp_reg_prim =
-      mmio_region_from_addr(TOP_EARLGREY_OTP_CTRL_PRIM_BASE_ADDR);
-  CHECK(
-      dif_otp_ctrl_init((dif_otp_ctrl_params_t){.base_addr_core = otp_reg_core,
-                                                .base_addr_prim = otp_reg_prim},
-                        &otp) == kDifOtpCtrlOk);
+  CHECK_DIF_OK(dif_otp_ctrl_init(
+      mmio_region_from_addr(TOP_EARLGREY_OTP_CTRL_CORE_BASE_ADDR), &otp));
 
-  CHECK(dif_otp_ctrl_dai_digest(&otp, kDifOtpCtrlPartitionSecret2, 0) ==
-        kDifOtpCtrlDaiOk);
+  CHECK_DIF_OK(dif_otp_ctrl_dai_digest(&otp, kDifOtpCtrlPartitionSecret2, 0));
 
   wait_for_dai();
 }
@@ -236,15 +205,14 @@ static void lock_otp_secret_partition2(void) {
 /** Place kmac into sideload mode for correct keymgr operation */
 static void init_kmac_for_keymgr(void) {
   dif_kmac_t kmac;
-  CHECK(dif_kmac_init((dif_kmac_params_t){.base_addr = mmio_region_from_addr(
-                                              TOP_EARLGREY_KMAC_BASE_ADDR)},
-                      &kmac) == kDifKmacOk);
+  CHECK_DIF_OK(
+      dif_kmac_init(mmio_region_from_addr(TOP_EARLGREY_KMAC_BASE_ADDR), &kmac));
 
   // Configure KMAC hardware using software entropy.
   dif_kmac_config_t config = (dif_kmac_config_t){
       .sideload = true,
   };
-  CHECK(dif_kmac_configure(&kmac, config) == kDifKmacOk);
+  CHECK_DIF_OK(dif_kmac_configure(&kmac, config));
 }
 
 /** Soft reboot device */
@@ -255,16 +223,55 @@ static void soft_reboot(dif_pwrmgr_t *pwrmgr, dif_aon_timer_t *aon_timer) {
   dif_pwrmgr_domain_config_t config;
   config = kDifPwrmgrDomainOptionUsbClockInActivePower;
 
-  CHECK(dif_pwrmgr_set_request_sources(pwrmgr, kDifPwrmgrReqTypeWakeup,
-                                       kDifPwrmgrWakeupRequestSourceFive) ==
-        kDifPwrmgrConfigOk);
-  CHECK(dif_pwrmgr_set_domain_config(pwrmgr, config) == kDifPwrmgrConfigOk);
-  CHECK(dif_pwrmgr_low_power_set_enabled(pwrmgr, kDifPwrmgrToggleEnabled) ==
-        kDifPwrmgrConfigOk);
+  CHECK_DIF_OK(dif_pwrmgr_set_request_sources(
+      pwrmgr, kDifPwrmgrReqTypeWakeup, kDifPwrmgrWakeupRequestSourceFive));
+  CHECK_DIF_OK(dif_pwrmgr_set_domain_config(pwrmgr, config));
+  CHECK_DIF_OK(dif_pwrmgr_low_power_set_enabled(pwrmgr, kDifToggleEnabled));
 
   // Enter low power mode.
   LOG_INFO("Entering low power");
   wait_for_interrupt();
+}
+
+/** Key manager configuration steps performed in mask ROM. */
+rom_error_t keymgr_rom_test(void) {
+  ASSERT_OK(keymgr_state_check(kKeymgrStateReset));
+  keymgr_sw_binding_set(&kBindingValueRomExt, &kBindingValueRomExt);
+  keymgr_creator_max_ver_set(kMaxVerRomExt);
+  sec_mmio_check_values(/*rnd_offset=*/0);
+  sec_mmio_check_counters(/*expected_check_count=*/1);
+  return kErrorOk;
+}
+
+/** Key manager configuration steps performed in ROM_EXT. */
+rom_error_t keymgr_rom_ext_test(void) {
+  ASSERT_OK(keymgr_state_check(kKeymgrStateReset));
+
+  const uint16_t kEntropyReseedInterval = 0x1234;
+  ASSERT_OK(keymgr_init(kEntropyReseedInterval));
+
+  sec_mmio_check_values(/*rnd_offset=*/0);
+  keymgr_advance_state();
+  ASSERT_OK(keymgr_state_check(kKeymgrStateInit));
+
+  keymgr_advance_state();
+  ASSERT_OK(keymgr_state_check(kKeymgrStateCreatorRootKey));
+
+  // The software binding register lock is reset after advancing the key
+  // manager, so we need to call this function to update sec_mmio expectation
+  // table.
+  keymgr_sw_binding_unlock_wait();
+  sec_mmio_check_values(/*rnd_offset=*/0);
+
+  keymgr_sw_binding_set(&kBindingValueBl0, &kBindingValueBl0);
+  keymgr_owner_int_max_ver_set(kMaxVerBl0);
+  sec_mmio_check_values(/*rnd_offset=*/0);
+
+  keymgr_advance_state();
+  ASSERT_OK(keymgr_state_check(kKeymgrStateOwnerIntermediateKey));
+
+  sec_mmio_check_counters(/*expected_check_count=*/5);
+  return kErrorOk;
 }
 
 bool test_main(void) {
@@ -276,23 +283,17 @@ bool test_main(void) {
 
   // Initialize pwrmgr
   dif_pwrmgr_t pwrmgr;
-  CHECK(dif_pwrmgr_init(
-            (dif_pwrmgr_params_t){
-                .base_addr =
-                    mmio_region_from_addr(TOP_EARLGREY_PWRMGR_AON_BASE_ADDR),
-            },
-            &pwrmgr) == kDifPwrmgrOk);
+  CHECK_DIF_OK(dif_pwrmgr_init(
+      mmio_region_from_addr(TOP_EARLGREY_PWRMGR_AON_BASE_ADDR), &pwrmgr));
 
   // Initialize aon_timer
   dif_aon_timer_t aon_timer;
-  dif_aon_timer_params_t params = {
-      .base_addr = mmio_region_from_addr(TOP_EARLGREY_AON_TIMER_AON_BASE_ADDR),
-  };
-  CHECK(dif_aon_timer_init(params, &aon_timer) == kDifAonTimerOk);
+  CHECK_DIF_OK(dif_aon_timer_init(
+      mmio_region_from_addr(TOP_EARLGREY_AON_TIMER_AON_BASE_ADDR), &aon_timer));
 
   // Get wakeup reason
   dif_pwrmgr_wakeup_reason_t wakeup_reason;
-  CHECK(dif_pwrmgr_wakeup_reason_get(&pwrmgr, &wakeup_reason) == kDifPwrmgrOk);
+  CHECK_DIF_OK(dif_pwrmgr_wakeup_reason_get(&pwrmgr, &wakeup_reason));
 
   if (compare_wakeup_reasons(&wakeup_reason, &kWakeUpReasonPor)) {
     LOG_INFO("Powered up for the first time, program flash");
@@ -309,7 +310,7 @@ bool test_main(void) {
   } else {
     LOG_INFO("Powered up for the second time, actuate keymgr");
 
-    // Initialize kmac for key manager
+    sec_mmio_init(error_handler_cb);
     init_kmac_for_keymgr();
 
     EXECUTE_TEST(result, keymgr_rom_test);

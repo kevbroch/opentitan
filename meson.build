@@ -120,6 +120,9 @@ c_cpp_cross_args = [
   '-fno-asynchronous-unwind-tables',
   # Don't use COMMON sections for uninitialized globals
   '-fno-common',
+  # Place each function into its own section (used in conjunction with
+  # --gc-sections to remove unused functions from output files).
+  '-ffunction-sections',
 ]
 
 # Add extra warning flags for cross builds, if they are supported.
@@ -152,6 +155,8 @@ c_cpp_cross_link_args = [
   '-Wl,--orphan-handling=warn',
   # Turn Linker Warnings into Errors
   '-Wl,--fatal-warnings',
+  # Garbage collect unused sections.
+  '-Wl,--gc-sections',
 ]
 add_project_link_arguments(
   c_cpp_cross_link_args,
@@ -205,11 +210,12 @@ gen_hw_hdr = generator(
 
 # TODO: Considering moving these into hw/ip directories.
 TOPNAME='top_earlgrey'
+hw_ip_adc_ctrl_reg_h = gen_hw_hdr.process('hw/ip/adc_ctrl/data/adc_ctrl.hjson')
 hw_ip_aes_reg_h = gen_hw_hdr.process('hw/ip/aes/data/aes.hjson')
-hw_ip_alert_handler_reg_h = gen_hw_hdr.process('hw/' + TOPNAME + '/ip/alert_handler/data/autogen/alert_handler.hjson')
+hw_ip_alert_handler_reg_h = gen_hw_hdr.process('hw/' + TOPNAME + '/ip_autogen/alert_handler/data/alert_handler.hjson')
 hw_ip_aon_timer_reg_h = gen_hw_hdr.process('hw/ip/aon_timer/data/aon_timer.hjson')
 hw_ip_clkmgr_reg_h = gen_hw_hdr.process('hw/' + TOPNAME + '/ip/clkmgr/data/autogen/clkmgr.hjson')
-hw_ip_entropy_reg_h = gen_hw_hdr.process('hw/ip/entropy_src/data/entropy_src.hjson')
+hw_ip_entropy_src_reg_h = gen_hw_hdr.process('hw/ip/entropy_src/data/entropy_src.hjson')
 hw_ip_flash_ctrl_reg_h = gen_hw_hdr.process('hw/' + TOPNAME + '/ip/flash_ctrl/data/autogen/flash_ctrl.hjson')
 hw_ip_gpio_reg_h = gen_hw_hdr.process('hw/ip/gpio/data/gpio.hjson')
 hw_ip_hmac_reg_h = gen_hw_hdr.process('hw/ip/hmac/data/hmac.hjson')
@@ -220,6 +226,7 @@ hw_ip_lc_ctrl_reg_h = gen_hw_hdr.process('hw/ip/lc_ctrl/data/lc_ctrl.hjson')
 hw_ip_otbn_reg_h = gen_hw_hdr.process('hw/ip/otbn/data/otbn.hjson')
 hw_ip_otp_ctrl_reg_h = gen_hw_hdr.process('hw/ip/otp_ctrl/data/otp_ctrl.hjson')
 hw_ip_spi_device_reg_h = gen_hw_hdr.process('hw/ip/spi_device/data/spi_device.hjson')
+hw_ip_spi_host_reg_h = gen_hw_hdr.process('hw/ip/spi_host/data/spi_host.hjson')
 hw_ip_sram_ctrl_reg_h = gen_hw_hdr.process('hw/ip/sram_ctrl/data/sram_ctrl.hjson')
 hw_ip_entropy_src_reg_h = gen_hw_hdr.process('hw/ip/entropy_src/data/entropy_src.hjson')
 hw_ip_csrng_reg_h = gen_hw_hdr.process('hw/ip/csrng/data/csrng.hjson')
@@ -227,11 +234,13 @@ hw_ip_edn_reg_h = gen_hw_hdr.process('hw/ip/edn/data/edn.hjson')
 hw_ip_rv_timer_reg_h = gen_hw_hdr.process('hw/ip/rv_timer/data/rv_timer.hjson')
 hw_ip_uart_reg_h = gen_hw_hdr.process('hw/ip/uart/data/uart.hjson')
 hw_ip_usbdev_reg_h = gen_hw_hdr.process('hw/ip/usbdev/data/usbdev.hjson')
+hw_ip_sysrst_ctrl_reg_h = gen_hw_hdr.process('hw/ip/sysrst_ctrl/data/sysrst_ctrl.hjson')
+hw_ip_pattgen_reg_h = gen_hw_hdr.process('hw/ip/pattgen/data/pattgen.hjson')
 hw_ip_pwrmgr_reg_h = gen_hw_hdr.process('hw/' + TOPNAME + '/ip/pwrmgr/data/autogen/pwrmgr.hjson')
 hw_ip_rstmgr_reg_h = gen_hw_hdr.process('hw/' + TOPNAME + '/ip/rstmgr/data/autogen/rstmgr.hjson')
 hw_ip_ibex_reg_h = gen_hw_hdr.process('hw//ip/rv_core_ibex/data/rv_core_ibex.hjson')
 hw_top_earlgrey_pinmux_reg_h = gen_hw_hdr.process('hw/' + TOPNAME + '/ip/pinmux/data/autogen/pinmux.hjson')
-hw_top_earlgrey_rv_plic_reg_h = gen_hw_hdr.process('hw/' + TOPNAME + '/ip/rv_plic/data/autogen/rv_plic.hjson')
+hw_top_earlgrey_rv_plic_reg_h = gen_hw_hdr.process('hw/' + TOPNAME + '/ip_autogen/rv_plic/data/rv_plic.hjson')
 
 # Top Earlgrey library (top_earlgrey)
 # The sources for this are generated into the hw hierarchy.

@@ -9,7 +9,6 @@
 module clkmgr_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -124,7 +123,6 @@ module clkmgr_reg_top (
 
   // Register instances
   // R[clk_enables]: V(False)
-
   //   F[clk_fixed_peri_en]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -149,7 +147,6 @@ module clkmgr_reg_top (
     // to register interface (read)
     .qs     (clk_enables_clk_fixed_peri_en_qs)
   );
-
 
   //   F[clk_usb_48mhz_peri_en]: 1:1
   prim_subreg #(
@@ -178,7 +175,6 @@ module clkmgr_reg_top (
 
 
   // R[clk_hints]: V(False)
-
   //   F[clk_main_aes_hint]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -203,7 +199,6 @@ module clkmgr_reg_top (
     // to register interface (read)
     .qs     (clk_hints_clk_main_aes_hint_qs)
   );
-
 
   //   F[clk_main_hmac_hint]: 1:1
   prim_subreg #(
@@ -232,7 +227,6 @@ module clkmgr_reg_top (
 
 
   // R[clk_hints_status]: V(False)
-
   //   F[clk_main_aes_val]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -258,7 +252,6 @@ module clkmgr_reg_top (
     .qs     (clk_hints_status_clk_main_aes_val_qs)
   );
 
-
   //   F[clk_main_hmac_val]: 1:1
   prim_subreg #(
     .DW      (1),
@@ -283,7 +276,6 @@ module clkmgr_reg_top (
     // to register interface (read)
     .qs     (clk_hints_status_clk_main_hmac_val_qs)
   );
-
 
 
 
@@ -340,12 +332,18 @@ module clkmgr_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

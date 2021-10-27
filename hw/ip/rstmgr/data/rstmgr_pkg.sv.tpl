@@ -23,12 +23,27 @@ package rstmgr_pkg;
 % endfor
 
   // resets generated and broadcast
-  // This should be templatized and generated
   typedef struct packed {
 % for rst in output_rsts:
-    logic [PowerDomains-1:0] rst_${rst}_n;
+  % if rst.shadowed:
+    logic [PowerDomains-1:0] rst_${rst.name}_shadowed_n;
+  % endif
+    logic [PowerDomains-1:0] rst_${rst.name}_n;
 % endfor
   } rstmgr_out_t;
+
+  // reset indication for alert handler
+  typedef struct packed {
+<% n_rst = 0 %>\
+% for rst in output_rsts:
+  % if rst.shadowed:
+    prim_mubi_pkg::mubi4_t [PowerDomains-1:0] ${rst.name}_shadowed;<% n_rst += 1 %>
+  % endif
+    prim_mubi_pkg::mubi4_t [PowerDomains-1:0] ${rst.name};<% n_rst += 1 %>
+% endfor
+  } rstmgr_rst_en_t;
+
+  parameter int NumOutputRst = ${n_rst} * PowerDomains;
 
   // cpu reset requests and status
   typedef struct packed {
@@ -41,7 +56,7 @@ package rstmgr_pkg;
   typedef struct packed {
   % for ep, rsts in eps.items():
     % for rst in rsts:
-    logic [PowerDomains-1:0] rst_${intf}_${ep}_${rst}_n;
+    logic [PowerDomains-1:0] rst_${intf}_${ep}_${rst['name']}_n;
     % endfor
   % endfor
   } rstmgr_${intf}_out_t;

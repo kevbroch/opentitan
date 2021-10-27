@@ -12,6 +12,9 @@ from shared.operand import (OperandType, EnumOperandType,
 from .known_mem import KnownMem
 from .program import ProgInsn
 
+# A dictionary mapping integers to weights
+WDict = Dict[int, float]
+
 
 class CallStack:
     '''An abstract model of the x1 call stack'''
@@ -51,6 +54,10 @@ class CallStack:
         assert self._max_depth <= 8
         return self._max_depth == 8
 
+    def depth_range(self) -> Tuple[int, int]:
+        '''Return the (inclusive) range of possible depths'''
+        return (self._min_depth, self._max_depth)
+
     def pop(self) -> None:
         assert 0 < self._min_depth
         self._min_depth -= 1
@@ -88,6 +95,85 @@ class CallStack:
         self._elts_at_top = [None] * len(self._elts_at_top)
 
 
+class LoopStack:
+    '''An abstract model of the loop stack
+
+    The idea is that most of the time, we push loop end addresses onto _stack
+    when entering a loop body and pop them off again when exiting. If something
+    goes wrong in the loop body and the pop address doesn't match, we throw
+    away the current stack (since we know it can never be popped) and increment
+    a "stuck" counter by that much.
+
+    This "stuck" counter, in turn, needs to be a range of possible values
+    because otherwise we can't merge branches (where one side might have had an
+    ill-formed loop, but the other didn't).
+
+    '''
+    stack_depth = 8
+
+    def __init__(self) -> None:
+        self._stack = []  # type: List[int]
+        self._min_stuck = 0
+        self._max_stuck = 0
+
+    def copy(self) -> 'LoopStack':
+        '''Return a deep copy of the loop stack'''
+        ret = LoopStack()
+        ret._stack = self._stack.copy()
+        ret._min_stuck = self._min_stuck
+        ret._max_stuck = self._max_stuck
+        return ret
+
+    def merge(self, other: 'LoopStack') -> None:
+        if self._stack == other._stack:
+            matching_stack = self._stack
+            ns_min = 0
+            ns_max = 0
+        else:
+            matching_stack = []
+            for a, b in zip(self._stack, other._stack):
+                if a == b:
+                    matching_stack.append(a)
+                else:
+                    break
+            new_stuck_self = len(self._stack) - len(matching_stack)
+            new_stuck_other = len(other._stack) - len(matching_stack)
+            ns_min = min(new_stuck_self, new_stuck_other)
+            ns_max = max(new_stuck_self, new_stuck_other)
+
+        self._stack = matching_stack
+        self._min_stuck = min(self._min_stuck, other._min_stuck) + ns_min
+        self._max_stuck = max(self._max_stuck, other._max_stuck) + ns_max
+
+    def push(self, end_addr: int) -> None:
+        assert self._max_stuck + len(self._stack) < LoopStack.stack_depth
+        self._stack.append(end_addr)
+
+    def pop(self, end_addr: int) -> None:
+        if self._stack:
+            exp_addr = self._stack.pop()
+            if exp_addr != end_addr:
+                to_add = len(self._stack) + 1
+                self._min_stuck += to_add
+                self._max_stuck += to_add
+                self._stack = []
+
+    def min_depth(self) -> int:
+        return self._min_stuck + len(self._stack)
+
+    def max_depth(self) -> int:
+        return self._max_stuck + len(self._stack)
+
+    def maybe_full(self) -> bool:
+        return self.max_depth() == LoopStack.stack_depth
+
+    def force_full(self) -> None:
+        '''Make the loop stack look like it's completely full'''
+        self._stack = []
+        self._min_stuck = LoopStack.stack_depth
+        self._max_stuck = LoopStack.stack_depth
+
+
 class Model:
     '''An abstract model of the processor and memories
 
@@ -96,9 +182,7 @@ class Model:
     following the instruction stream to this point.
 
     '''
-    max_loop_depth = 8
-
-    def __init__(self, dmem_size: int, reset_addr: int, fuel: int) -> None:
+    def __init__(self, dmem_size: int, fuel: int) -> None:
         assert fuel >= 0
         self.initial_fuel = fuel
         self.fuel = fuel
@@ -135,10 +219,10 @@ class Model:
         # entry of None means an entry with an architectural value, but where
         # we don't actually know what it is (usually a result of some
         # arithmetic operation that got written to x1).
-        self._call_stack = CallStack()
+        self.call_stack = CallStack()
 
-        # The depth of the loop stack.
-        self.loop_depth = 0
+        # The loop stack.
+        self.loop_stack = LoopStack()
 
         # Known values for memory, keyed by memory type ('dmem', 'csr', 'wsr').
         csrs = KnownMem(4096)
@@ -154,6 +238,7 @@ class Model:
         csrs.touch_addr(0x7c1)      # FG1
         csrs.touch_addr(0x7c8)      # FLAGS
         csrs.touch_range(0x7d0, 8)  # MOD0 - MOD7
+        csrs.touch_addr(0x7d8)      # RND_PREFETCH
         csrs.touch_addr(0xfc0)      # RND
 
         wsrs.touch_addr(0x0)        # MOD
@@ -162,11 +247,12 @@ class Model:
 
         # The current PC (the address of the next instruction that needs
         # generating)
-        self.pc = reset_addr
+        self.pc = 0
 
     def copy(self) -> 'Model':
         '''Return a deep copy of the model'''
-        ret = Model(self.dmem_size, self.pc, self.initial_fuel)
+        ret = Model(self.dmem_size, self.initial_fuel)
+        ret.pc = self.pc
         ret.fuel = self.fuel
         ret._known_regs = {n: regs.copy()
                            for n, regs in self._known_regs.items()}
@@ -175,8 +261,8 @@ class Model:
         for entry in self._const_stack:
             ret._const_stack.append({n: regs.copy()
                                      for n, regs in entry.items()})
-        ret._call_stack = self._call_stack.copy()
-        ret.loop_depth = self.loop_depth
+        ret.call_stack = self.call_stack.copy()
+        ret.loop_stack = self.loop_stack.copy()
         ret._known_mem = {n: mem.copy()
                           for n, mem in self._known_mem.items()}
         return ret
@@ -244,9 +330,8 @@ class Model:
 
         assert self._const_stack == other._const_stack
 
-        self._call_stack.merge(other._call_stack)
-
-        assert self.loop_depth == other.loop_depth
+        self.call_stack.merge(other.call_stack)
+        self.loop_stack.merge(other.loop_stack)
 
         for mem_type, self_mem in self._known_mem.items():
             self_mem.merge(other._known_mem[mem_type])
@@ -263,7 +348,7 @@ class Model:
         if reg_type == 'gpr' and idx == 1:
             # We shouldn't ever read from x1 if it is marked constant
             assert not self.is_const('gpr', 1)
-            self._call_stack.pop()
+            self.call_stack.pop()
 
     def write_reg(self,
                   reg_type: str,
@@ -291,7 +376,7 @@ class Model:
 
             if idx == 1:
                 # Special-case writes to x1
-                self._call_stack.write(value, update)
+                self.call_stack.write(value, update)
                 return
 
         self._known_regs.setdefault(reg_type, {})[idx] = value
@@ -299,7 +384,7 @@ class Model:
     def get_reg(self, reg_type: str, idx: int) -> Optional[int]:
         '''Get a register value, if known.'''
         if reg_type == 'gpr' and idx == 1:
-            return self._call_stack.peek()
+            return self.call_stack.peek()
 
         return self._known_regs.setdefault(reg_type, {}).get(idx)
 
@@ -308,37 +393,35 @@ class Model:
         assert mem_type in self._known_mem
         self._known_mem[mem_type].touch_range(base, width)
 
-    def pick_operand_value(self, op_type: OperandType) -> Optional[int]:
+    def pick_operand_value(self,
+                           op_type: OperandType,
+                           weights: Optional[WDict] = None) -> Optional[int]:
         '''Pick a random value for an operand
 
         The result will always be non-negative: if the operand is a signed
         immediate, this is encoded as 2s complement.
 
+        If op_type is a RegOperandType, the weights argument will be used to
+        bias towards particular values. Registers that don't appear in the
+        dictionary get a default weight of 1.
+
         '''
         if isinstance(op_type, RegOperandType):
-            return self.pick_reg_operand_value(op_type)
-
-        op_rng = op_type.get_op_val_range(self.pc)
-        if op_rng is None:
-            # If we don't know the width, the only immediate that we *know*
-            # is going to be valid is 0.
-            return 0
-
-        if isinstance(op_type, ImmOperandType):
-            shift = op_type.shift
+            return self._pick_reg_operand_value(op_type, weights)
         else:
-            shift = 0
+            assert weights is None
+            if isinstance(op_type, ImmOperandType):
+                return self._pick_imm_operand_value(op_type)
+            elif isinstance(op_type, EnumOperandType):
+                return random.randrange(0, len(op_type.items))
+            if isinstance(op_type, OptionOperandType):
+                return random.randint(0, 1)
 
-        align = 1 << shift
+            assert 0
 
-        lo, hi = op_rng
-        sh_lo = (lo + align - 1) // align
-        sh_hi = hi // align
-
-        op_val = random.randint(sh_lo, sh_hi) << shift
-        return op_type.op_val_to_enc_val(op_val, self.pc)
-
-    def pick_reg_operand_value(self, op_type: RegOperandType) -> Optional[int]:
+    def _pick_reg_operand_value(self,
+                                op_type: RegOperandType,
+                                weights: Optional[WDict]) -> Optional[int]:
         '''Pick a random value for a register operand
 
         Returns None if there's no valid value possible.
@@ -375,9 +458,9 @@ class Model:
         # when the stack is full, because we only do one operand at a time.
         if op_type.reg_type == 'gpr':
             can_use_x1 = not self.is_const('gpr', 1)
-            if is_src and self._call_stack.empty():
+            if is_src and self.call_stack.empty():
                 can_use_x1 = False
-            if is_dst and self._call_stack.full():
+            if is_dst and self.call_stack.full():
                 can_use_x1 = False
 
             # Since x1 isn't tracked in known_regs, we add it here if wanted
@@ -388,7 +471,50 @@ class Model:
             else:
                 reg_set.discard(1)
 
-        return None if not reg_set else random.choice(list(reg_set))
+        if not reg_set:
+            return None
+
+        if weights is None:
+            if op_type.reg_type == 'gpr' and is_dst and not is_src:
+                # Destination registers without a specific set of weights get a
+                # default that makes x1 more likely. The idea is that we'll be
+                # more likely to fill the call stack this way.
+                weights = {1: 8}
+
+        if weights is None:
+            return random.choice(list(reg_set))
+
+        regs = []
+        reg_weights = []
+        for reg in reg_set:
+            weight = weights.get(reg, 1)
+            assert weight >= 0
+            if weight > 0:
+                regs.append(reg)
+                reg_weights.append(weight)
+
+        if not regs:
+            return None
+
+        return random.choices(regs, weights=reg_weights)[0]
+
+    def _pick_imm_operand_value(self,
+                                op_type: ImmOperandType) -> Optional[int]:
+
+        op_rng = op_type.get_op_val_range(self.pc)
+        if op_rng is None:
+            # If we don't know the width, the only immediate that we *know*
+            # is going to be valid is 0.
+            return 0
+
+        align = 1 << op_type.shift
+
+        lo, hi = op_rng
+        sh_lo = (lo + align - 1) // align
+        sh_hi = hi // align
+
+        op_val = random.randint(sh_lo, sh_hi) << op_type.shift
+        return op_type.op_val_to_enc_val(op_val, self.pc)
 
     def all_regs_with_known_vals(self) -> Dict[str, List[Tuple[int, int]]]:
         '''Like regs_with_known_vals, but returns all reg types'''
@@ -419,8 +545,8 @@ class Model:
         # not None and can be read iff it isn't marked constant.
         if reg_type == 'gpr':
             assert 1 not in known_regs
-            if not self._call_stack.empty():
-                x1 = self._call_stack.peek()
+            if not self.call_stack.empty():
+                x1 = self.call_stack.peek()
                 if x1 is not None:
                     if not self.is_const('gpr', 1):
                         ret.append((1, x1))
@@ -436,7 +562,7 @@ class Model:
         # stack is not empty.
         if reg_type == 'gpr':
             assert 1 not in arch_regs
-            if not self._call_stack.empty():
+            if not self.call_stack.empty():
                 if not self.is_const('gpr', 1):
                     arch_regs.append(1)
 
@@ -489,7 +615,7 @@ class Model:
 
             # x1 (the call stack) has different handling
             if reg_idx == 1:
-                self._call_stack.forget_value()
+                self.call_stack.forget_value()
                 return
 
         # Set the value in known_regs to None, but only if the register already
@@ -644,8 +770,7 @@ class Model:
     def _inc_gpr(self,
                  gpr: int,
                  gpr_val: Optional[int],
-                 delta: int,
-                 mask: int) -> None:
+                 delta: int) -> None:
         '''Mark gpr as having a value and increment it if known
 
         This passes update=False to self.write_reg: it should be used for
@@ -653,6 +778,7 @@ class Model:
         instruction.
 
         '''
+        mask = (1 << 32) - 1
         new_val = (gpr_val + delta) & mask if gpr_val is not None else None
         self.write_reg('gpr', gpr, new_val, False)
 
@@ -699,9 +825,9 @@ class Model:
             self.write_reg('wdr', grd_val & 31, None, False)
 
         if grs1_inc:
-            self._inc_gpr(grs1, grs1_val, 32, (1 << 32) - 1)
+            self._inc_gpr(grs1, grs1_val, 32)
         elif grd_inc:
-            self._inc_gpr(grd, grd_val, 1, 31)
+            self._inc_gpr(grd, grd_val, 1)
 
     def update_for_bnsid(self, prog_insn: ProgInsn) -> None:
         '''Update model state after an BN.SID'''
@@ -738,9 +864,9 @@ class Model:
         self._generic_update_for_insn(prog_insn)
 
         if grs1_inc:
-            self._inc_gpr(grs1, grs1_val, 32, (1 << 32) - 1)
+            self._inc_gpr(grs1, grs1_val, 32)
         elif grs2_inc:
-            self._inc_gpr(grs2, grs2_val, 1, 31)
+            self._inc_gpr(grs2, grs2_val, 1)
 
     def update_for_bnmovr(self, prog_insn: ProgInsn) -> None:
         '''Update model state after an BN.MOVR'''
@@ -777,9 +903,9 @@ class Model:
             self.write_reg('wdr', grd_val & 31, None, False)
 
         if grd_inc:
-            self._inc_gpr(grd, grd_val, 1, 31)
+            self._inc_gpr(grd, grd_val, 1)
         elif grs_inc:
-            self._inc_gpr(grs, grs_val, 1, 31)
+            self._inc_gpr(grs, grs_val, 1)
 
     def update_for_bnxor(self, prog_insn: ProgInsn) -> None:
         '''Update model state after an BN.XOR

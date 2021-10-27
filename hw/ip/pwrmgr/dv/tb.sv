@@ -51,6 +51,9 @@ module tb;
     .rst_ni     (rst_n),
     .clk_slow_i (clk_slow),
     .rst_slow_ni(rst_slow_n),
+    .rst_main_ni(rst_slow_n),
+    .clk_esc_i  (clk),
+    .rst_esc_ni (rst_n),
 
     .tl_i(tl_if.h2d),
     .tl_o(tl_if.d2h),
@@ -85,6 +88,8 @@ module tb;
 
     .rom_ctrl_i(pwrmgr_if.rom_ctrl),
 
+    .sw_rst_req_i(prim_mubi_pkg::MuBi4False),
+
     .esc_rst_tx_i(pwrmgr_if.esc_rst_tx),
     .esc_rst_rx_o(pwrmgr_if.esc_rst_rx),
 
@@ -103,11 +108,12 @@ module tb;
     uvm_config_db#(virtual pwrmgr_if)::set(null, "*.env", "pwrmgr_vif", pwrmgr_if);
     uvm_config_db#(virtual tl_if)::set(null, "*.env.m_tl_agent*", "vif", tl_if);
     // Bound assertions interfaces.
-    uvm_config_db#(virtual pwrmgr_ast_if)::set(null, "*.env", "pwrmgr_ast_vif", dut.pwrmgr_ast_if);
-    uvm_config_db#(virtual pwrmgr_clock_enables_if)::set(null, "*.env", "pwrmgr_clock_enables_vif",
-                                                         dut.pwrmgr_clock_enables_if);
-    uvm_config_db#(virtual pwrmgr_rstmgr_if)::set(null, "*.env", "pwrmgr_rstmgr_vif",
-                                                  dut.pwrmgr_rstmgr_if);
+    uvm_config_db#(virtual pwrmgr_ast_sva_if)::set(null, "*.env", "pwrmgr_ast_sva_vif",
+                                                   dut.pwrmgr_ast_sva_if);
+    uvm_config_db#(virtual pwrmgr_clock_enables_sva_if)::set(
+        null, "*.env", "pwrmgr_clock_enables_sva_vif", dut.pwrmgr_clock_enables_sva_if);
+    uvm_config_db#(virtual pwrmgr_rstmgr_sva_if)::set(null, "*.env", "pwrmgr_rstmgr_sva_vif",
+                                                      dut.pwrmgr_rstmgr_sva_if);
     $timeformat(-12, 0, " ps", 12);
     run_test();
   end

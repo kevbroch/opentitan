@@ -212,7 +212,8 @@ module prim_fifo_async_sram_adapter #(
   // End:   SRAM Read pointer
 
   // Full/ Empty
-  localparam logic [PtrW-1:0] XorMask = PtrW'(1) << (PtrW-1);
+  // Lint complains PtrW'(1) << (PtrW-1). So changed as below
+  localparam logic [PtrW-1:0] XorMask = {1'b 1, {PtrW-1{1'b0}}};
   assign w_full  = (w_wptr_q == (w_rptr   ^ XorMask));
   assign r_full  = (r_wptr   == (r_rptr_q ^ XorMask));
   assign r_empty = (r_wptr   == r_rptr_q);
@@ -231,10 +232,10 @@ module prim_fifo_async_sram_adapter #(
   assign w_sram_addr_o  = SramBaseAddr + SramAw'(w_wptr_v);
 
   assign w_sram_wdata_o = SramDw'(wdata_i);
-  assign w_sram_wmask_o = SramDw'(2**Width-1);
+  assign w_sram_wmask_o = SramDw'({Width{1'b1}});
 
-  logic w_unused_sram;
-  assign w_unused_sram = ^{w_sram_rvalid_i, w_sram_rdata_i, w_sram_rerror_i};
+  logic unused_w_sram;
+  assign unused_w_sram = ^{w_sram_rvalid_i, w_sram_rdata_i, w_sram_rerror_i};
 
   // SRAM Read Request
   // Request Scenario (!r_empty):
@@ -273,12 +274,17 @@ module prim_fifo_async_sram_adapter #(
   // Send SRAM request with sram read pointer.
   assign r_sram_addr_o  = SramBaseAddr + SramAw'(r_sram_rptr[0+:PtrVW]);
 
-  assign rdata_d = r_sram_rdata_i[0+:Width];
+  assign rdata_d = (r_sram_rvalid_i) ? r_sram_rdata_i[0+:Width] : Width'(0);
 
   assign rdata_o = (stored) ? rdata_q : rdata_d;
 
   logic unused_rsram;
   assign unused_rsram = ^{r_sram_rerror_i};
+
+  if (Width < SramDw) begin : g_unused_rdata
+    logic unused_rdata;
+    assign unused_rdata = ^r_sram_rdata_i[SramDw-1:Width];
+  end : g_unused_rdata
 
   // read clock domain rdata storage
   logic store;

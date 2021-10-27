@@ -11,18 +11,39 @@
   clock_srcs:
   {
     clk_peri_i: io_div4
+    clk_spi_host0_i: io
+    clk_spi_host1_i: io_div2
   }
   clock_group: infra
   reset: rst_peri_ni
   reset_connections:
   {
-    rst_peri_ni: sys_io_div4
+    rst_peri_ni:
+    {
+      name: sys_io_div4
+      domain: "0"
+    }
+    rst_spi_host0_ni:
+    {
+      name: spi_host0
+      domain: "0"
+    }
+    rst_spi_host1_ni:
+    {
+      name: spi_host1
+      domain: "0"
+    }
   }
   clock_connections:
   {
     clk_peri_i: clkmgr_aon_clocks.clk_io_div4_infra
+    clk_spi_host0_i: clkmgr_aon_clocks.clk_io_infra
+    clk_spi_host1_i: clkmgr_aon_clocks.clk_io_div2_infra
   }
-  domain: "0"
+  domain:
+  [
+    "0"
+  ]
   connections:
   {
     main:
@@ -48,7 +69,7 @@
       otp_ctrl.core
       otp_ctrl.prim
       lc_ctrl
-      sensor_ctrl_aon
+      sensor_ctrl
       alert_handler
       ast
       sram_ctrl_ret_aon.ram
@@ -273,8 +294,8 @@
     {
       name: spi_host0
       type: device
-      clock: clk_peri_i
-      reset: rst_peri_ni
+      clock: clk_spi_host0_i
+      reset: rst_spi_host0_ni
       pipeline: "false"
       inst_type: spi_host
       addr_range:
@@ -291,8 +312,8 @@
     {
       name: spi_host1
       type: device
-      clock: clk_peri_i
-      reset: rst_peri_ni
+      clock: clk_spi_host1_i
+      reset: rst_spi_host1_ni
       pipeline: "false"
       inst_type: spi_host
       addr_range:
@@ -469,7 +490,7 @@
       pipeline_byp: "true"
     }
     {
-      name: sensor_ctrl_aon
+      name: sensor_ctrl
       type: device
       clock: clk_peri_i
       reset: rst_peri_ni

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterator, Optional, Tuple
 
 from shared.insn_yaml import Insn, DummyInsn, load_insns_yaml
 
@@ -19,15 +19,6 @@ try:
 except RuntimeError as err:
     sys.stderr.write('{}\n'.format(err))
     sys.exit(1)
-
-
-class DecodeError(Exception):
-    '''An error raised when trying to decode malformed instruction bits'''
-    def __init__(self, msg: str):
-        self.msg = msg
-
-    def __str__(self) -> str:
-        return 'DecodeError: {}'.format(self.msg)
 
 
 def insn_for_mnemonic(mnemonic: str, num_operands: int) -> Insn:
@@ -70,6 +61,10 @@ class OTBNInsn:
     # a loop).
     affects_control = False
 
+    # A class variable that is true if this instruction has valid bits. (Set to
+    # false by the EmptyInsn subclass)
+    has_bits = True
+
     def __init__(self, raw: int, op_vals: Dict[str, int]):
         self.raw = raw
         self.op_vals = op_vals
@@ -79,15 +74,13 @@ class OTBNInsn:
         # it can't hurt to check).
         self._disasm = None  # type: Optional[Tuple[int, str]]
 
-    def pre_execute(self, state: OTBNState) -> bool:
-        '''Performs any actions required before instruction can execute.
+    def execute(self, state: OTBNState) -> Optional[Iterator[None]]:
+        '''Execute the instruction
 
-        Return True if instruction is clear to execute. Returning False will
-        stall the simulator for a step.
+        This may yield (returning an iterator object) if the instruction has
+        stalled the processor and will take multiple cycles.
+
         '''
-        return True
-
-    def execute(self, state: OTBNState) -> None:
         raise NotImplementedError('OTBNInsn.execute')
 
     def disassemble(self, pc: int) -> str:
@@ -107,19 +100,14 @@ class OTBNInsn:
         assert -(1 << 31) <= value < (1 << 31)
         return (1 << 32) + value if value < 0 else value
 
-
-class OTBNLDInsn(OTBNInsn):
-    '''A general class for any load instruction providing appropriate stalls'''
-
-    def pre_execute(self, state: OTBNState) -> bool:
-        if state.dmem.in_progress_load_complete():
-            # Load has been started and now complete, execution can proceed
-            return True
-
-        # Load not complete so begin a new load
-        state.dmem.begin_load()
-        # Load stalls when it begins
-        return False
+    def rtl_trace(self, pc: int) -> str:
+        '''Return the RTL trace entry for executing this insn'''
+        if self.has_bits:
+            return (f'E PC: {pc:#010x}, insn: {self.raw:#010x}\n'
+                    f'# @{pc:#010x}: {self.insn.mnemonic}')
+        else:
+            return (f'E PC: {pc:#010x}, insn: ??\n'
+                    f'# @{pc:#010x}: ??')
 
 
 class RV32RegReg(OTBNInsn):

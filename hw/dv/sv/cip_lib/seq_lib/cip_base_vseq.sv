@@ -83,11 +83,32 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
   `uvm_object_utils_end
 
   `include "cip_base_vseq__tl_errors.svh"
+  `include "cip_base_vseq__shadow_reg_errors.svh"
 
   virtual task dut_init(string reset_kind = "HARD");
     super.dut_init(reset_kind);
-    if (en_auto_alerts_response && cfg.list_of_alerts.size()) run_alert_rsp_seq_nonblocking();
   endtask
+
+  virtual task post_apply_reset(string reset_kind = "HARD");
+    super.post_apply_reset(reset_kind);
+    if (en_auto_alerts_response && cfg.list_of_alerts.size()) run_alert_rsp_seq_nonblocking();
+
+    // Wait for alert init done, then start the sequence.
+    foreach (cfg.list_of_alerts[i]) begin
+      if (cfg.m_alert_agent_cfg[cfg.list_of_alerts[i]].is_active) begin
+        wait (cfg.m_alert_agent_cfg[cfg.list_of_alerts[i]].alert_init_done == 1);
+      end
+    end
+  endtask
+
+  function void pre_randomize();
+    super.pre_randomize();
+    // Disable csr_access_abort because shadow_reg sequence requires all shadow registers'
+    // read/write to be executed into design without aborting.
+    if (common_seq_type inside {"shadow_reg_errors", "shadow_reg_errors_with_csr_rw"}) begin
+      csr_access_abort_pct.rand_mode(0);
+    end
+  endfunction
 
   task pre_start();
     if (common_seq_type == "") void'($value$plusargs("run_%0s", common_seq_type));
@@ -150,12 +171,12 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
                          input bit [BUS_DW-1:0]  compare_mask = '1,
                          input bit               check_exp_data = 1'b0,
                          input bit               blocking = csr_utils_pkg::default_csr_blocking,
-                         input tl_type_e         tl_type = DataType,
+                         input mubi4_e           instr_type = MuBi4False,
                          tl_sequencer            tl_sequencer_h = p_sequencer.tl_sequencer_h,
                          input tl_intg_err_e     tl_intg_err_type = TlIntgErrNone);
-    uvm_status_e status;
-    tl_access_w_abort(addr, write, data, status, mask, check_rsp, exp_err_rsp, exp_data,
-                      compare_mask, check_exp_data, blocking, tl_type, tl_sequencer_h,
+    bit completed, saw_err;
+    tl_access_w_abort(addr, write, data, completed, saw_err, mask, check_rsp, exp_err_rsp, exp_data,
+                      compare_mask, check_exp_data, blocking, instr_type, tl_sequencer_h,
                       tl_intg_err_type);
   endtask
 
@@ -165,7 +186,8 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
       input bit [BUS_AW-1:0]  addr,
       input bit               write,
       inout bit [BUS_DW-1:0]  data,
-      output uvm_status_e     status,
+      output bit              completed,
+      output bit              saw_err,
       input bit [BUS_DBW-1:0] mask = '1,
       input bit               check_rsp = 1'b1,
       input bit               exp_err_rsp = 1'b0,
@@ -173,19 +195,19 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
       input bit [BUS_DW-1:0]  compare_mask = '1,
       input bit               check_exp_data = 1'b0,
       input bit               blocking = csr_utils_pkg::default_csr_blocking,
-      input tl_type_e         tl_type = DataType,
+      input mubi4_e           instr_type = MuBi4False,
       tl_sequencer            tl_sequencer_h = p_sequencer.tl_sequencer_h,
       input tl_intg_err_e     tl_intg_err_type = TlIntgErrNone,
       input int               req_abort_pct = 0);
 
     if (blocking) begin
-      tl_access_sub(addr, write, data, status, mask, check_rsp, exp_err_rsp, exp_data,
-                    compare_mask, check_exp_data, req_abort_pct, tl_type, tl_sequencer_h,
+      tl_access_sub(addr, write, data, completed, saw_err, mask, check_rsp, exp_err_rsp, exp_data,
+                    compare_mask, check_exp_data, req_abort_pct, instr_type, tl_sequencer_h,
                     tl_intg_err_type);
     end else begin
       fork
-        tl_access_sub(addr, write, data, status, mask, check_rsp, exp_err_rsp, exp_data,
-                      compare_mask, check_exp_data, req_abort_pct, tl_type, tl_sequencer_h,
+        tl_access_sub(addr, write, data, completed, saw_err, mask, check_rsp, exp_err_rsp, exp_data,
+                      compare_mask, check_exp_data, req_abort_pct, instr_type, tl_sequencer_h,
                       tl_intg_err_type);
       join_none
       // Add #0 to ensure that this thread starts executing before any subsequent call
@@ -196,7 +218,8 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
   virtual task tl_access_sub(input bit [BUS_AW-1:0]  addr,
                              input bit               write,
                              inout bit [BUS_DW-1:0]  data,
-                             output uvm_status_e     status,
+                             output bit              completed,
+                             output bit              saw_err,
                              input bit [BUS_DBW-1:0] mask = '1,
                              input bit               check_rsp = 1'b1,
                              input bit               exp_err_rsp = 1'b0,
@@ -204,14 +227,14 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
                              input bit [BUS_DW-1:0]  compare_mask = '1,
                              input bit               check_exp_data = 1'b0,
                              input int               req_abort_pct = 0,
-                             input tl_type_e         tl_type = DataType,
+                             input mubi4_e           instr_type = MuBi4False,
                              tl_sequencer            tl_sequencer_h = p_sequencer.tl_sequencer_h,
                              input tl_intg_err_e     tl_intg_err_type = TlIntgErrNone);
     `DV_SPINWAIT(
         // thread to read/write tlul
         cip_tl_host_single_seq tl_seq;
         `uvm_create_on(tl_seq, tl_sequencer_h)
-        tl_seq.tl_type = tl_type;
+        tl_seq.instr_type = instr_type;
         tl_seq.tl_intg_err_type = tl_intg_err_type;
         if (cfg.zero_delays) begin
           tl_seq.min_req_delay = 0;
@@ -237,10 +260,10 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
           `DV_CHECK_EQ(tl_seq.rsp.d_error, exp_err_rsp, "unexpected error response")
         end
 
-        // when error occurs or item isn't completed, use status to let seq not update predicted
-        // value
-        if (tl_seq.rsp.d_error || !tl_seq.rsp.rsp_completed) status = UVM_NOT_OK;
-        else                                                 status = UVM_IS_OK;
+        // Expose whether the transaction ran and whether it generated an error. Note that we
+        // probably only want to do a RAL update if it ran and caused no error.
+        completed = tl_seq.rsp.rsp_completed;
+        saw_err = tl_seq.rsp.d_error;
 
         csr_utils_pkg::decrement_outstanding_access();,
         // thread to check timeout
@@ -352,17 +375,20 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
     if (common_seq_type == "") void'($value$plusargs("run_%0s", common_seq_type));
     // check which test type
     case (common_seq_type)
-      "intr_test":                  run_intr_test_vseq(num_times);
-      "alert_test":                 run_alert_test_vseq(num_times);
-      "tl_errors":                  run_tl_errors_vseq(num_times);
-      "tl_intg_err":                run_tl_intg_err_vseq(num_times);
-      "stress_all_with_rand_reset": run_stress_all_with_rand_reset_vseq(num_times);
-      "same_csr_outstanding":       run_same_csr_outstanding_vseq(num_times);
-      "shadow_reg_errors":          run_shadow_reg_errors(num_times);
-      "mem_partial_access":         run_mem_partial_access_vseq(num_times);
-      "csr_mem_rw_with_rand_reset": run_csr_mem_rw_with_rand_reset_vseq(num_times);
-      "csr_mem_rw":                 run_csr_mem_rw_vseq(num_times);
-      default:                      run_csr_vseq_wrapper(num_times);
+      "intr_test":                     run_intr_test_vseq(num_times);
+      "alert_test":                    run_alert_test_vseq(num_times);
+      "tl_errors":                     run_tl_errors_vseq(num_times);
+      // Each iteration only sends 1 item with TL integrity error. Increase to send at least
+      // 10 x num_times integrity errors
+      "tl_intg_err":                   run_tl_intg_err_vseq(10 * num_times);
+      "stress_all_with_rand_reset":    run_stress_all_with_rand_reset_vseq(num_times);
+      "same_csr_outstanding":          run_same_csr_outstanding_vseq(num_times);
+      "shadow_reg_errors":             run_shadow_reg_errors(num_times);
+      "shadow_reg_errors_with_csr_rw": run_shadow_reg_errors(num_times, 1);
+      "mem_partial_access":            run_mem_partial_access_vseq(num_times);
+      "csr_mem_rw_with_rand_reset":    run_csr_mem_rw_with_rand_reset_vseq(num_times);
+      "csr_mem_rw":                    run_csr_mem_rw_vseq(num_times);
+      default:                         run_csr_vseq_wrapper(num_times);
     endcase
   endtask
 
@@ -502,11 +528,15 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
     end
   endtask
 
-  virtual task wait_alert_trigger(string alert_name, int max_wait_cycle = 2, bit wait_complete = 0);
-    `DV_SPINWAIT_EXIT(while (!cfg.m_alert_agent_cfg[alert_name].vif.get_alert())
+  // if alerts are triggered continuously, there are 6 cycles gap between 2 alerts. 2-3 cycles for
+  // clock domain crossing, 2 for pauses, 1 for idle state.
+  // So use 7 cycle for default max_wait_cycle.
+  virtual task wait_alert_trigger(string alert_name, int max_wait_cycle = 7, bit wait_complete = 0);
+    `DV_SPINWAIT_EXIT(while (!cfg.m_alert_agent_cfg[alert_name].vif.is_alert_handshaking())
                       cfg.clk_rst_vif.wait_clks(1);,
-                      cfg.clk_rst_vif.wait_clks(max_wait_cycle);,
-                      $sformatf("expect alert:%0s to fire", alert_name))
+                      // another thread to wait for given cycles. If timeout, report an error.
+                      cfg.clk_rst_vif.wait_clks(max_wait_cycle);
+                      `uvm_error(`gfn, $sformatf("expect alert:%0s to fire", alert_name)))
     if (wait_complete) begin
       `DV_SPINWAIT(cfg.m_alert_agent_cfg[alert_name].vif.wait_ack_complete();,
                    $sformatf("timeout wait for alert handshake:%0s", alert_name))
@@ -526,11 +556,15 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
   endtask
 
   // override csr_vseq to control adapter to abort transaction
-  virtual task run_csr_vseq(string          csr_test_type = "",
-                            int             num_test_csrs = 0,
-                            bit             do_rand_wr_and_reset = 1);
+  virtual task run_csr_vseq(string csr_test_type = "",
+                            int    num_test_csrs = 0,
+                            bit    do_rand_wr_and_reset = 1);
 
-    `DV_CHECK_MEMBER_RANDOMIZE_FATAL(csr_access_abort_pct)
+    if (csr_access_abort_pct.rand_mode()) begin
+      `DV_CHECK_MEMBER_RANDOMIZE_FATAL(csr_access_abort_pct)
+    end else begin
+      csr_access_abort_pct = 0;
+    end
     foreach (cfg.m_tl_agent_cfgs[i]) begin
       cfg.m_tl_agent_cfgs[i].csr_access_abort_pct_in_adapter = csr_access_abort_pct;
     end
@@ -647,10 +681,15 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
           // do write, exclude CsrExclWrite
           if ($urandom_range(0, 1) &&
               !csr_excl.is_excl(all_csrs[i], CsrExclWrite, csr_test_type)) begin
+            // Shadowed register requires two writes and thus call predict function twice.
+            int num_write = all_csrs[i].get_is_shadowed() ? 2 : 1;
+
             `DV_CHECK_STD_RANDOMIZE_FATAL(wr_data)
             wr_data &= wr_mask;
-            tl_access(.addr(all_csrs[i].get_address()), .write(1), .data(wr_data), .blocking(0));
-            void'(all_csrs[i].predict(.value(wr_data), .kind(UVM_PREDICT_WRITE)));
+            repeat (num_write) begin
+              tl_access(.addr(all_csrs[i].get_address()), .write(1), .data(wr_data), .blocking(0));
+              void'(all_csrs[i].predict(.value(wr_data), .kind(UVM_PREDICT_WRITE)));
+            end
             exp_data = all_csrs[i].get_mirrored_value();
           end
         end
@@ -662,54 +701,12 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
     end
   endtask
 
-  // callback for individual modules to override
-  // can be used to update storage error status register
-  virtual function void shadow_reg_storage_err_post_write();
-  endfunction
-
-  // alert triggers as soon as design accept the TLUL transaction, if wait until csr_wr() finishes
-  // then check alert, the alert transaction might already finished
-  // this task can be override in block level common_vseq for specific shadow_regs
-  virtual task shadow_reg_wr(dv_base_reg csr, uvm_reg_data_t wdata, output bit alert_triggered);
-    fork
-      begin
-        fork
-          begin
-            csr_wr(.ptr(csr), .value(wdata), .en_shadow_wr(0), .predict(1));
-          end
-          begin
-            string alert_name = csr.get_update_err_alert_name();
-            while (1) begin
-              cfg.clk_rst_vif.wait_clks(1);
-              if (!alert_triggered) begin
-                alert_triggered = cfg.m_alert_agent_cfg[alert_name].vif.get_alert();
-              end
-            end
-          end
-        join_any
-        disable fork;
-      end
-    join
-  endtask
-
-  // this function will return a storage_err value to backdoor poke shadow_reg's storage registers
-  // it can generate a rand value, or randomly flip one bit from the original value
-  virtual function bit [BUS_DW-1:0] gen_storage_err_val(dv_base_reg csr,
-                                                        bit [BUS_DW-1:0] origin_val,
-                                                        bit gen_rand_val = $urandom_range(0, 1));
-    int addr_index = $urandom_range(0, csr.get_msb_pos());
-    int shift_bits = BUS_DW - addr_index - 1;
-    gen_storage_err_val = (gen_rand_val) ? $urandom() : origin_val;
-    gen_storage_err_val[addr_index] = ~gen_storage_err_val[addr_index];
-    gen_storage_err_val = gen_storage_err_val << shift_bits >> shift_bits;
-  endfunction
-
   virtual task check_fatal_alert_nonblocking(string alert_name);
     fork
       `DV_SPINWAIT_EXIT(
           forever begin
             // 1 extra cycle to make sure no race condition
-            repeat(alert_esc_agent_pkg::ALERT_B2B_DELAY + 1) begin
+            repeat (alert_esc_agent_pkg::ALERT_B2B_DELAY + 1) begin
               cfg.clk_rst_vif.wait_n_clks(1);
               if (cfg.m_alert_agent_cfg[alert_name].vif.get_alert() == 1) break;
             end
@@ -719,145 +716,6 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
           end,
           wait(cfg.under_reset);)
     join_none
-  endtask
-
-  virtual task run_shadow_reg_errors(int num_times);
-    csr_excl_item      csr_excl;
-    dv_base_reg        shadowed_csrs[$], test_csrs[$];
-    uvm_reg_data_t     wdata;
-    bit                alert_triggered;
-
-    foreach (cfg.ral_models[i]) cfg.ral_models[i].get_shadowed_regs(shadowed_csrs);
-
-    for (int trans = 1; trans <= num_times; trans++) begin
-      `uvm_info(`gfn, $sformatf("Running shadow reg error test iteration %0d/%0d", trans,
-                                num_times), UVM_LOW)
-      repeat ($urandom_range(10, 100)) begin
-        all_csrs.shuffle();
-        test_csrs.delete();
-        test_csrs = {shadowed_csrs, all_csrs[0: $urandom_range(0, all_csrs.size()-1)]};
-        test_csrs.shuffle();
-
-        if ($urandom_range(1, 10) == 10) dut_init("HARD");
-
-        foreach (test_csrs[i]) begin
-          csr_excl = get_excl_item(test_csrs[i]);
-          // check if parent block or register is excluded from write
-          // if the excluded reg is shadow_reg, it won't skip writing
-          if (csr_excl.is_excl(test_csrs[i], CsrExclWrite, CsrRwTest) &&
-              !test_csrs[i].get_is_shadowed()) begin
-            `uvm_info(`gtn, $sformatf("Skipping register %0s due to CsrExclWrite exclusion",
-                                      test_csrs[i].get_full_name()), UVM_MEDIUM)
-            continue;
-          end
-
-          // skip alert_test register because it will trigger alerts
-          if (test_csrs[i].get_name() == "alert_test") continue;
-
-          `DV_CHECK_STD_RANDOMIZE_FATAL(wdata)
-          wdata &= get_mask_excl_fields(test_csrs[i], CsrExclWrite, CsrRwTest, csr_excl);
-
-          // if the write is shadow register's second write, there is a 50% possibility that the
-          // second write value is identical to its staged_value
-          if (test_csrs[i].is_staged()) begin
-            if ($urandom_range(0, 1)) wdata = test_csrs[i].get_staged_shadow_val();
-          end
-          if (test_csrs[i].get_is_shadowed()) shadow_reg_wr(test_csrs[i], wdata, alert_triggered);
-          else csr_wr(.ptr(test_csrs[i]), .value(wdata), .en_shadow_wr(0), .predict(1));
-
-          // check shadow_reg update error
-          if (test_csrs[i].get_shadow_update_err()) begin
-            string alert_name = test_csrs[i].get_update_err_alert_name();
-            `DV_SPINWAIT(if(!alert_triggered) begin
-                           while (!cfg.m_alert_agent_cfg[alert_name].vif.get_alert())
-                           cfg.clk_rst_vif.wait_clks(1);
-                         end,
-                         $sformatf("%0s update_err alert not detected", test_csrs[i].get_name()))
-            `DV_SPINWAIT(cfg.m_alert_agent_cfg[alert_name].vif.wait_ack_complete();,
-                         $sformatf("timeout for alert:%0s", alert_name))
-            test_csrs[i].clear_shadow_update_err();
-            alert_triggered = 0;
-          end else if (alert_triggered) begin
-            `uvm_error(`gfn, $sformatf("unexpect %0s update_err alert triggered",
-                                       test_csrs[i].get_name()))
-          end
-
-          // randomly backdoor write a shadow_reg to create storage error
-          if ($urandom_range(1, 10) == 10) begin
-            int             index = $urandom_range(0, shadowed_csrs.size() - 1);
-            uvm_reg_data_t  rand_val, origin_val;
-            bkdr_reg_path_e kind;
-            int             shadow_reg_width = shadowed_csrs[index].get_msb_pos() + 1;
-
-            if (shadowed_csrs[index].shadow_reg_is_locked() == 0) begin
-              `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(
-                  kind, kind inside {BkdrRegPathRtlCommitted, BkdrRegPathRtlShadow};)
-              csr_peek(.ptr(shadowed_csrs[index]), .value(origin_val), .kind(kind));
-              rand_val = gen_storage_err_val(shadowed_csrs[index], origin_val);
-
-              csr_poke(.ptr(shadowed_csrs[index]), .value(rand_val), .kind(kind), .predict(1));
-              `uvm_info(`gfn, $sformatf("backdoor write %0s with value %0h", kind.name, rand_val),
-                        UVM_HIGH);
-
-              // check shadow_reg storage error
-              if ((origin_val ^ rand_val) & ((1 << shadow_reg_width) - 1)) begin
-                string alert_name = shadowed_csrs[index].get_storage_err_alert_name();
-                bit    has_storage_error;
-                shadow_reg_storage_err_post_write();
-                has_storage_error = shadowed_csrs[index].get_shadow_storage_err();
-
-                if (has_storage_error && do_lock_shadow_reg) begin
-                  shadowed_csrs[index].lock_shadow_reg();
-                  check_fatal_alert_nonblocking(alert_name);
-
-                  // Wait two clock cycles then backdoor write back original value.
-                  // This won't stop fatal alert from firing.
-                  cfg.clk_rst_vif.wait_clks(2);
-                  csr_poke(.ptr(shadowed_csrs[index]), .value(origin_val), .kind(kind), .predict(1));
-                end else begin
-                  `DV_CHECK_EQ(has_storage_error, 1,
-                               "dv_base_reg did not predict shadow storage error");
-                  `DV_SPINWAIT(while (!cfg.m_alert_agent_cfg[alert_name].vif.get_alert())
-                               cfg.clk_rst_vif.wait_clks(1);,
-                               $sformatf("%0s shadow_reg storage_err alert not detected",
-                                         shadowed_csrs[index].get_name()));
-
-                  // backdoor write back original value to avoid alert keep firing
-                  csr_poke(.ptr(shadowed_csrs[index]), .value(origin_val), .kind(kind), .predict(1));
-                  `DV_SPINWAIT(cfg.m_alert_agent_cfg[alert_name].vif.wait_ack_complete();,
-                               $sformatf("timeout for alert:%0s", alert_name))
-
-                  // wait at least two clock cycle between alert_handshakes
-                  cfg.clk_rst_vif.wait_clks(2);
-                end
-              end
-            end
-          end
-        end
-
-        // random read to check if the register values are equal to the predicted values,
-        // reading shadow registers after their first write will clear the phase tracker
-        if ($urandom_range(0, 1)) begin
-          all_csrs.shuffle();
-          foreach (all_csrs[i]) begin
-            do_check_csr_or_field_rd(.csr(all_csrs[i]),
-                                     .blocking(0),
-                                     .compare(1),
-                                     .compare_vs_ral(1),
-                                     .csr_excl_type(CsrExclWriteCheck),
-                                     .csr_test_type(CsrRwTest));
-            csr_utils_pkg::wait_if_max_outstanding_accesses_reached();
-          end
-          // read shadow_regs again in case they are excluded from read_check
-          foreach (shadowed_csrs[i]) begin
-            csr_rd_check(.ptr(shadowed_csrs[i]), .compare_vs_ral(1), .blocking(1));
-          end
-          csr_utils_pkg::wait_no_outstanding_access();
-        end
-      end
-    end
-    // Shadow register fatal error will continuously trigger alerts until reset
-    dut_init();
   endtask
 
   // test partial mem read with non-blocking random read/write
@@ -891,18 +749,18 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
     end
     num_accesses = (num_accesses < min_accesses) ? min_accesses : num_accesses;
 
-    repeat(num_accesses * num_times) begin
+    repeat (num_accesses * num_times) begin
       if (cfg.under_reset) break;
       fork
         begin
           bit [BUS_AW-1:0]  addr;
           bit [BUS_DW-1:0]  data;
           bit [BUS_DBW-1:0] mask;
-          uvm_status_e      status;
           randcase
             1: begin // write
               dv_base_mem mem;
               int mem_idx = $urandom_range(0, loc_mem_range.size - 1);
+              bit write_completed, write_error;
 
               `DV_CHECK_STD_RANDOMIZE_WITH_FATAL(addr,
                   addr inside {[loc_mem_range[mem_idx].start_addr :
@@ -915,11 +773,12 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
                 if (mem.get_mem_partial_write_support()) mask = get_rand_contiguous_mask();
                 else                                     mask = '1;
                 data = $urandom;
-                tl_access_w_abort(.addr(addr), .write(1), .data(data), .status(status), .mask(mask),
-                                  .blocking(1), .req_abort_pct($urandom_range(0, 100)),
+                tl_access_w_abort(.addr(addr), .write(1), .data(data),
+                                  .completed(write_completed), .saw_err(write_error),
+                                  .mask(mask), .blocking(1), .req_abort_pct($urandom_range(0, 100)),
                                   .tl_sequencer_h(p_sequencer.tl_sequencer_hs[ral_name]));
 
-                if (!cfg.under_reset && status == UVM_IS_OK) begin
+                if (!cfg.under_reset && write_completed && !write_error) begin
                   addr[1:0] = 0;
                   mem_exist_addr_q[ral_name].push_back(addr_mask_t'{addr, mask});
                 end
@@ -936,9 +795,12 @@ class cip_base_vseq #(type RAL_T               = dv_base_reg_block,
               if (addr_mask.mask == '1) begin
                 addr = addr_mask.addr;
                 if (get_mem_access_by_addr(local_ral, addr) != "WO") begin
+                  bit completed, saw_err;
                   mask = get_rand_contiguous_mask(addr_mask.mask);
-                  tl_access_w_abort(.addr(addr), .write(0), .data(data), .status(status), .mask(mask),
-                                    .blocking(1), .req_abort_pct($urandom_range(0, 100)),
+                  tl_access_w_abort(.addr(addr), .write(0), .data(data),
+                                    .completed(completed), .saw_err(saw_err),
+                                    .mask(mask), .blocking(1),
+                                    .req_abort_pct($urandom_range(0, 100)),
                                     .tl_sequencer_h(p_sequencer.tl_sequencer_hs[ral_name]));
                 end
               end

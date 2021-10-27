@@ -9,7 +9,6 @@
 module sram_ctrl_regs_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -112,6 +111,7 @@ module sram_ctrl_regs_reg_top (
   logic alert_test_we;
   logic alert_test_wd;
   logic status_bus_integ_error_qs;
+  logic status_init_error_qs;
   logic status_escalated_qs;
   logic status_scr_key_valid_qs;
   logic status_scr_key_seed_valid_qs;
@@ -120,8 +120,8 @@ module sram_ctrl_regs_reg_top (
   logic exec_regwen_qs;
   logic exec_regwen_wd;
   logic exec_we;
-  logic [2:0] exec_qs;
-  logic [2:0] exec_wd;
+  logic [3:0] exec_qs;
+  logic [3:0] exec_wd;
   logic ctrl_regwen_we;
   logic ctrl_regwen_qs;
   logic ctrl_regwen_wd;
@@ -131,7 +131,6 @@ module sram_ctrl_regs_reg_top (
 
   // Register instances
   // R[alert_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_alert_test (
@@ -147,7 +146,6 @@ module sram_ctrl_regs_reg_top (
 
 
   // R[status]: V(False)
-
   //   F[bus_integ_error]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -173,8 +171,32 @@ module sram_ctrl_regs_reg_top (
     .qs     (status_bus_integ_error_qs)
   );
 
+  //   F[init_error]: 1:1
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (1'h0)
+  ) u_status_init_error (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
 
-  //   F[escalated]: 1:1
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.status.init_error.de),
+    .d      (hw2reg.status.init_error.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.status.init_error.q),
+
+    // to register interface (read)
+    .qs     (status_init_error_qs)
+  );
+
+  //   F[escalated]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -199,8 +221,7 @@ module sram_ctrl_regs_reg_top (
     .qs     (status_escalated_qs)
   );
 
-
-  //   F[scr_key_valid]: 2:2
+  //   F[scr_key_valid]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -225,8 +246,7 @@ module sram_ctrl_regs_reg_top (
     .qs     (status_scr_key_valid_qs)
   );
 
-
-  //   F[scr_key_seed_valid]: 3:3
+  //   F[scr_key_seed_valid]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -251,8 +271,7 @@ module sram_ctrl_regs_reg_top (
     .qs     (status_scr_key_seed_valid_qs)
   );
 
-
-  //   F[init_done]: 4:4
+  //   F[init_done]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -279,7 +298,6 @@ module sram_ctrl_regs_reg_top (
 
 
   // R[exec_regwen]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -306,11 +324,10 @@ module sram_ctrl_regs_reg_top (
 
 
   // R[exec]: V(False)
-
   prim_subreg #(
-    .DW      (3),
+    .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
-    .RESVAL  (3'h0)
+    .RESVAL  (4'h5)
   ) u_exec (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
@@ -333,7 +350,6 @@ module sram_ctrl_regs_reg_top (
 
 
   // R[ctrl_regwen]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -360,7 +376,6 @@ module sram_ctrl_regs_reg_top (
 
 
   // R[ctrl]: V(False)
-
   //   F[renew_scr_key]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -386,7 +401,6 @@ module sram_ctrl_regs_reg_top (
     .qs     ()
   );
 
-
   //   F[init]: 1:1
   prim_subreg #(
     .DW      (1),
@@ -411,7 +425,6 @@ module sram_ctrl_regs_reg_top (
     // to register interface (read)
     .qs     ()
   );
-
 
 
 
@@ -446,7 +459,7 @@ module sram_ctrl_regs_reg_top (
   assign exec_regwen_wd = reg_wdata[0];
   assign exec_we = addr_hit[3] & reg_we & !reg_error;
 
-  assign exec_wd = reg_wdata[2:0];
+  assign exec_wd = reg_wdata[3:0];
   assign ctrl_regwen_we = addr_hit[4] & reg_we & !reg_error;
 
   assign ctrl_regwen_wd = reg_wdata[0];
@@ -466,10 +479,11 @@ module sram_ctrl_regs_reg_top (
 
       addr_hit[1]: begin
         reg_rdata_next[0] = status_bus_integ_error_qs;
-        reg_rdata_next[1] = status_escalated_qs;
-        reg_rdata_next[2] = status_scr_key_valid_qs;
-        reg_rdata_next[3] = status_scr_key_seed_valid_qs;
-        reg_rdata_next[4] = status_init_done_qs;
+        reg_rdata_next[1] = status_init_error_qs;
+        reg_rdata_next[2] = status_escalated_qs;
+        reg_rdata_next[3] = status_scr_key_valid_qs;
+        reg_rdata_next[4] = status_scr_key_seed_valid_qs;
+        reg_rdata_next[5] = status_init_done_qs;
       end
 
       addr_hit[2]: begin
@@ -477,7 +491,7 @@ module sram_ctrl_regs_reg_top (
       end
 
       addr_hit[3]: begin
-        reg_rdata_next[2:0] = exec_qs;
+        reg_rdata_next[3:0] = exec_qs;
       end
 
       addr_hit[4]: begin
@@ -495,12 +509,18 @@ module sram_ctrl_regs_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

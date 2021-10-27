@@ -1,10 +1,6 @@
 // Copyright lowRISC contributors.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
-// TODO: This module is only a draft implementation that covers most of the clkmgr
-// functionality but is incomplete
-
-
 
 # CLKMGR register template
 #
@@ -13,14 +9,22 @@
   scan: "true",
   clocking: [
     {clock: "clk_i", reset: "rst_ni", primary: true},
-% for rst in clocks.reset_signals():
-    {reset: "${rst}"},
+% for src in clocks.srcs.values():
+    {clock: "clk_${src.name}_i", reset: "rst_${src.name}_ni"},
+% endfor
+% for src in clocks.derived_srcs.values():
+    {clock: "clk_${src.name}_i", reset: "rst_${src.name}_ni", internal: true},
 % endfor
   ]
   bus_interfaces: [
     { protocol: "tlul", direction: "device" }
   ],
   alert_list: [
+    { name: "recov_fault",
+      desc: '''
+      This recoverable alert is triggered when there are measurement errors.
+      '''
+    }
     { name: "fatal_fault",
       desc: '''
       This fatal alert is triggered when a fatal TL-UL bus integrity fault is detected.
@@ -35,12 +39,31 @@
       default: "${len(clocks.groups)}",
       local: "true"
     },
+    { name: "NumSwGateableClocks",
+      desc: "Number of SW gateable clocks",
+      type: "int",
+      default: "${len(typed_clocks.sw_clks)}",
+      local: "true"
+    },
+    { name: "NumHintableClocks",
+      desc: "Number of hintable clocks",
+      type: "int",
+      default: "${len(hint_names)}",
+      local: "true"
+    },
   ],
 
   inter_signal_list: [
     { struct:  "clkmgr_out",
       type:    "uni",
       name:    "clocks",
+      act:     "req",
+      package: "clkmgr_pkg",
+    },
+
+    { struct:  "clkmgr_cg_en",
+      type:    "uni",
+      name:    "cg_en",
       act:     "req",
       package: "clkmgr_pkg",
     },
@@ -87,16 +110,6 @@
       package: ""
     },
 
-  // All clock inputs
-% for src in clocks.srcs.values():
-    { struct:  "logic",
-      type:    "uni",
-      name:    "clk_${src.name}",
-      act:     "rcv",
-      package: "",
-    },
-% endfor
-
   // Exported clocks
 % for intf in cfg['exported_clks']:
     { struct:  "clkmgr_${intf}_out",
@@ -124,8 +137,8 @@
 
 
   registers: [
-    { name: "EXTCLK_SEL_REGWEN",
-      desc: "External clock select write enable",
+    { name: "EXTCLK_CTRL_REGWEN",
+      desc: "External clock control write enable",
       swaccess: "rw0c",
       hwaccess: "none",
       fields: [
@@ -133,30 +146,41 @@
           name: "EN",
           resval: "1"
           desc: '''
-            When 1, the value of !!EXTCLK_SEL can be set.  When 0, writes to !!EXTCLK_SEL have no
+            When 1, the value of !!EXTCLK_CTRL can be set.  When 0, writes to !!EXTCLK_CTRL have no
             effect.
           '''
         },
       ]
     },
 
-    { name: "EXTCLK_SEL",
+    { name: "EXTCLK_CTRL",
       desc: '''
         Select external clock
       ''',
-      regwen: "EXTCLK_SEL_REGWEN",
+      regwen: "EXTCLK_CTRL_REGWEN",
       swaccess: "rw",
       hwaccess: "hro",
       fields: [
         {
           bits: "3:0",
-          name: "VAL",
+          name: "SEL",
           desc: '''
             A value of b1010 selects external clock as clock for the system.
             While this register can always be programmed, it only takes effect when the system is in
             life cycle TEST or RMA states when DFT is enabled.
 
             All other values are invalid and keep clocks on internal sources.
+          '''
+          resval: "0x5"
+        },
+        {
+          bits: "7:4",
+          name: "STEP_DOWN",
+          desc: '''
+            A value of b1010 steps down the clock dividers by a factor of 2 if the !!EXTCLK_CTRL.SEL
+            field is also set to b1010.
+
+            All other values have no effect.
           '''
           resval: "0x5"
         }
@@ -182,7 +206,7 @@
     { name: "CLK_ENABLES",
       desc: '''
         Clock enable for software gateable clocks.
-        These clocks are direclty controlled by software.
+        These clocks are directly controlled by software.
       ''',
       swaccess: "rw",
       hwaccess: "hro",
@@ -258,6 +282,106 @@
           '''
         }
 % endfor
+      ]
+    },
+
+    { name: "MEASURE_CTRL_REGWEN",
+      desc: "Measurement control write enable",
+      swaccess: "rw0c",
+      hwaccess: "none",
+      fields: [
+        { bits: "0",
+          name: "EN",
+          resval: "1"
+          desc: '''
+            When 1, the value of the measurement control can be set.  When 0, writes have no
+            effect.
+          '''
+        },
+      ]
+    },
+
+<% aon_freq = clocks.all_srcs['aon'].freq %>\
+% for src in typed_clocks.rg_srcs:
+  <%
+    freq = clocks.all_srcs[src].freq
+    ratio = int(freq / aon_freq)
+    # Add extra bit to width for margin
+    width = ratio.bit_length() + 1
+    max_msb = 4 + width - 1
+    min_msb = (max_msb + 1) + width - 1
+  %>\
+    { name: "${src.upper()}_MEASURE_CTRL",
+      desc: '''
+        Configuration controls for ${src} measurement.
+
+        The threshold fields are made wider than required (by 1 bit) to ensure
+        there is room to adjust for measurement inaccuracies.
+      ''',
+      regwen: "MEASURE_CTRL_REGWEN",
+      swaccess: "rw",
+      hwaccess: "hro",
+      async: "clk_${src}_i",
+      fields: [
+        {
+          bits: "0",
+          name: "EN",
+          desc: "Enable measurement for ${src}",
+          resval: "0",
+          // Measurements can cause recoverable errors depending on the
+          // thresholds which the CSR tests will not predict correctly.
+          // To provide better CSR coverage we allow writing the threshold
+          // fields, but not enabling the counters.
+          tags: ["excl:CsrNonInitTests:CsrExclWrite"]
+        },
+
+        {
+          bits: "${max_msb}:4",
+          name: "MAX_THRESH",
+          desc: "Max threshold for ${src} measurement",
+          resval: "${ratio + 10}"
+        },
+
+        {
+          bits: "${min_msb}:${max_msb+1}",
+          name: "MIN_THRESH",
+          desc: "Min threshold for ${src} measurement",
+          resval: "${ratio - 10}"
+        },
+      ]
+    },
+% endfor
+
+    { name: "RECOV_ERR_CODE",
+      desc: "Recoverable Error code ",
+      swaccess: "rw1c",
+      hwaccess: "hwo",
+      fields: [
+% for src in typed_clocks.rg_srcs:
+        {
+          bits: "${loop.index}",
+          name: "${src.upper()}_MEASURE_ERR",
+          resval: 0,
+          desc: '''
+            ${src} has encountered a measurement error.
+          '''
+        }
+% endfor
+      ]
+    },
+
+    { name: "FATAL_ERR_CODE",
+      desc: "Error code ",
+      swaccess: "ro",
+      hwaccess: "hrw",
+      fields: [
+        { bits: "0",
+          name: "REG_INTG",
+          resval: 0
+          desc: '''
+            Register file has experienced a fatal integrity error.
+          '''
+        },
       ]
     },
   ]

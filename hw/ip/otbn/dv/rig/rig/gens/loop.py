@@ -12,23 +12,24 @@ from .jump import Jump
 from .straight_line_insn import StraightLineInsn
 from ..config import Config
 from ..program import ProgInsn, Program
-from ..model import Model
-from ..snippet import LoopSnippet, Snippet
+from ..model import LoopStack, Model
+from ..snippet import LoopSnippet, ProgSnippet, Snippet
 from ..snippet_gen import GenCont, GenRet, SimpleGenRet, SnippetGen
 
 
 class Loop(SnippetGen):
     '''A generator that generates a LOOP / LOOPI'''
+    # An iteration count: the encoded value, the implied number of iterations
+    # and a possible loop warp.
+    IterCount = Tuple[int, int, Optional[LoopSnippet.Warp]]
 
-    # The shape of a loop that's being generated. The triple is (opval,
-    # num_iters, bodysize) where opval is the encoded value for the operand,
-    # num_iters is the number of iterations and bodysize is the size of the
-    # loop body.
-    Shape = Tuple[int, int, int]
+    # The shape of a loop that's being generated. Consists of bodysize and an
+    # iteration count, as described above.
+    Shape = Tuple[int, IterCount]
 
-    # The individual pieces of a generated loop. The tuple is (shape, hd_insn,
-    # body_snippet, model_afterwards)
-    Pieces = Tuple[Shape, ProgInsn, Snippet, Model]
+    # The individual pieces of a generated loop. The tuple is (bodysize,
+    # hd_insn, body_snippet, model_afterwards, warp)
+    Pieces = Tuple[int, ProgInsn, Snippet, Model, Optional[LoopSnippet.Warp]]
 
     def __init__(self, cfg: Config, insns_file: InsnsFile) -> None:
         super().__init__()
@@ -67,9 +68,21 @@ class Loop(SnippetGen):
         else:
             self.loopi_prob = loopi_weight / sum_weights
 
+        self.cfg_max_iters = cfg.ranges.get_max('loop-iters')
+        if self.cfg_max_iters is not None and self.cfg_max_iters < 1:
+            raise RuntimeError(f'Invalid max-loop-iters value of '
+                               f'{self.cfg_max_iters}: this must be '
+                               f'at least 1.')
+
+        self.cfg_max_tail = cfg.ranges.get_max('loop-tail-insns')
+        if self.cfg_max_tail is not None and self.cfg_max_tail < 1:
+            raise RuntimeError(f'Invalid max-loop-tail-insns value of '
+                               f'{self.cfg_max_tail}: this must be '
+                               f'at least 1.')
+
     def _pick_loop_iterations(self,
                               max_iters: int,
-                              model: Model) -> Optional[Tuple[int, int]]:
+                              model: Model) -> Optional[IterCount]:
         '''Pick the number of iterations for a LOOP loop
 
         To do this, we pick a register whose value we know and which doesn't
@@ -77,35 +90,69 @@ class Loop(SnippetGen):
         max_iters is the maximum number of iterations possible, given how much
         fuel we have left.
 
-        Returns the register index, together with the number of iterations that
-        implies.
+        Returns a tuple (idx, iters, warp) where idx is the register index,
+        iters is the number of iterations that will run and warp is either None
+        or is a pair (from, to) giving a loop warp that should apply. iters
+        will always be at most max_iters.
 
         '''
-        # Never generate more than 10 iterations (because the instruction
-        # sequences would be booooring). Obviously, we'll need to come back to
-        # this when filling coverage holes.
+        # Most of the time, we want to generate a very small number of
+        # iterations (since each iteration runs the same instructions, there's
+        # not much point in generating lots of them). However, we don't want to
+        # pick 1 iteration too often (since that's equivalent to no loop at
+        # all). To implement this, we use a weighting of 1/(1 + abs(x - 2)) and
+        # restrict to nonzero values less than 10.
         #
-        # In general, we'll weight by 1/(1 + abs(iters - 2)). This makes 2 the
-        # most likely iteration count (which is good, because 1 iteration is
-        # boring).
+        # However we also have a coverage point that we'd like to hit where we
+        # generate the maximal number of iterations. Thus we also allow the
+        # case where a register is all ones and give it a weighting of 0.001:
+        # we shouldn't hit this very often (and only need to see it once). In
+        # practice, this will mostly come up because we decided to do a LOOP
+        # and the only nonzero known value is 0xffffffff. We only allow this if
+        # max_iters is at least 10.
         max_iters = min(max_iters, 10)
+        if self.cfg_max_iters is not None:
+            max_iters = min(max_iters, self.cfg_max_iters)
+
+        allow_maximal_loop = max_iters >= 10
 
         # Iterate over the known registers, trying to pick a weight
         poss_pairs = []  # type: List[Tuple[int, int]]
         weights = []  # type: List[float]
         for idx, value in model.regs_with_known_vals('gpr'):
+            weight = 0.0
             if 0 < value <= max_iters:
+                weight = 1 / (1 + abs(value - 2))
+            elif allow_maximal_loop and value == (1 << 32) - 1:
+                weight = 0.001
+            if weight:
                 poss_pairs.append((idx, value))
-                # Weight higher iteration counts smaller (1 / count)
-                weights.append(1 / (1 + abs(value - 2)))
+                weights.append(weight)
+
         if not poss_pairs:
             return None
-        return random.choices(poss_pairs, weights=weights)[0]
+
+        idx, actual_iters = random.choices(poss_pairs, weights=weights)[0]
+        if actual_iters <= max_iters:
+            warp = None
+            iters = actual_iters
+        else:
+            # We will start '1 + lo' iterations before the warp (and finish
+            # 'lo' of them). We'll then finish 'max_iters - lo' iterations
+            # after the warp. Both '1 + lo' and 'max_iters - lo' must be
+            # positive.
+            lo = random.randint(0, max_iters - 1)
+            hi = actual_iters - (max_iters - lo)
+            assert 0 <= lo <= hi < actual_iters
+            warp = (lo, hi)
+            iters = max_iters
+
+        return (idx, iters, warp)
 
     def _pick_loopi_iterations(self,
                                max_iters: int,
                                op_type: OperandType,
-                               model: Model) -> Optional[Tuple[int, int]]:
+                               model: Model) -> Optional[IterCount]:
         '''Pick the number of iterations for a LOOPI loop
 
         max_iters is the maximum number of iterations possible, given how much
@@ -120,6 +167,12 @@ class Loop(SnippetGen):
         assert iters_range is not None
         iters_lo, iters_hi = iters_range
 
+        # Constrain iters_hi if the max-loop-iters configuration value was set.
+        if self.cfg_max_iters is not None:
+            iters_hi = min(iters_hi, self.cfg_max_iters)
+            if iters_hi < iters_lo:
+                return None
+
         # Very occasionally, generate iters_hi iterations (the maximum number
         # representable) if we've got fuel for it. We don't do this often,
         # because the instruction sequence will end up just testing loop
@@ -128,7 +181,7 @@ class Loop(SnippetGen):
             enc_val = op_type.op_val_to_enc_val(iters_hi, model.pc)
             # This should never fail, because iters_hi was encodable.
             assert enc_val is not None
-            return (enc_val, iters_hi)
+            return (enc_val, iters_hi, None)
 
         # The rest of the time, we don't usually (95%) generate more than 3
         # iterations (because the instruction sequences are rather
@@ -154,12 +207,12 @@ class Loop(SnippetGen):
         # This should never fail: the choice should have been in the encodable
         # range.
         assert enc_val is not None
-        return (enc_val, num_iters)
+        return (enc_val, num_iters, None)
 
     def pick_iterations(self,
                         op_type: OperandType,
                         bodysize: int,
-                        model: Model) -> Optional[Tuple[int, int]]:
+                        model: Model) -> Optional[IterCount]:
         '''Pick the number of iterations for a loop
 
         Returns the encoded value (register index or encoded number of
@@ -185,13 +238,18 @@ class Loop(SnippetGen):
                          op0_type: OperandType,
                          op1_type: ImmOperandType,
                          space_here: int,
+                         check: bool,
                          model: Model,
                          program: Program) -> Optional[Shape]:
         '''Pick the size of loop and number of iterations
 
-        op_type is the type of the first operand (either 'grs' for loop or
-        'iterations' for loopi). space_here is the number of instructions'
-        space available at the current position.
+        op0_type is the type of the first operand (either 'grs' for loop or
+        'iterations' for loopi). op1_type is the type of the bodysize operand.
+
+        space_here is the number of instructions' space available at the
+        current position. If check is true, we're generating a genuine loop and
+        should perform checks like making sure there's enough space to generate
+        everything.
 
         '''
         # The first upper bound on bodysize is that we've got to have an empty
@@ -238,15 +296,39 @@ class Loop(SnippetGen):
         # Decide on the bodysize value. tail_pc is the address of the last
         # instruction in the loop body.
         bodysize = random.randint(max(1, bs_min), min(bs_max, max_bodysize))
-        tail_pc = model.pc + 4 * bodysize
-        assert program.get_insn_space_at(tail_pc) >= 2
+        if check:
+            tail_pc = model.pc + 4 * bodysize
+            assert program.get_insn_space_at(tail_pc) >= 2
 
         iters = self.pick_iterations(op0_type, bodysize, model)
         if iters is None:
             return None
-        iter_opval, num_iters = iters
 
-        return (iter_opval, num_iters, bodysize)
+        return (bodysize, iters)
+
+    def _gen_tail_insns(self,
+                        num_insns: int,
+                        model: Model,
+                        program: Program) -> Optional[Tuple[List[ProgInsn],
+                                                            Model]]:
+        return self.sli_gen.gen_some(num_insns, model, program)
+
+    def _gen_tail(self,
+                  num_insns: int,
+                  model: Model,
+                  program: Program) -> Optional[Tuple[Snippet, Model]]:
+        pc = model.pc
+        ret = self._gen_tail_insns(num_insns, model, program)
+        if ret is None:
+            return None
+
+        insns, model = ret
+        assert len(insns) == num_insns
+
+        snippet = ProgSnippet(pc, insns)
+        snippet.insert_into_program(program)
+
+        return (snippet, model)
 
     def _gen_body(self,
                   bodysize: int,
@@ -293,6 +375,9 @@ class Loop(SnippetGen):
             max_tail_len = bodysize
         else:
             max_tail_len = min(bodysize, model.fuel - 1)
+
+        if self.cfg_max_tail is not None:
+            max_tail_len = min(max_tail_len, self.cfg_max_tail)
 
         # program.space gives another bound on the tail length. If the bodysize
         # is large enough that we'll need to jump to the tail, the tail can't
@@ -376,7 +461,7 @@ class Loop(SnippetGen):
                 if jump_ret is None:
                     return None
 
-                jump_snippet, model = jump_ret
+                jump_insn, jump_snippet, model = jump_ret
                 assert model.pc == tail_start
 
                 head_snippet = Snippet.cons_option(head_snippet, jump_snippet)
@@ -397,7 +482,7 @@ class Loop(SnippetGen):
         # points at tail_start. Generate the remaining straight line
         # instructions that we need.
         assert model.pc == tail_start
-        tail_ret = self.sli_gen.gen_some(tail_len, model, program)
+        tail_ret = self._gen_tail(tail_len, model, program)
         if tail_ret is None:
             return None
 
@@ -417,18 +502,64 @@ class Loop(SnippetGen):
 
     def _setup_body(self,
                     hd_insn: ProgInsn,
+                    end_addr: int,
                     model: Model,
-                    program: Program) -> Model:
-        '''Set up a Model for use in body; insert hd_insn into program'''
+                    program: Program,
+                    has_warp: bool) -> Tuple[Model, Optional[LoopStack]]:
+        '''Set up a Model for use in body; insert hd_insn into program
+
+        This may hack model.loop_stack to avoid generating further loops. If it
+        does so, it will return the "real" loop stack as a second return value.
+
+        '''
         body_model = model.copy()
         body_model.update_for_insn(hd_insn)
         body_model.pc += 4
-        body_model.loop_depth += 1
-        assert body_model.loop_depth <= Model.max_loop_depth
+        body_model.loop_stack.push(end_addr)
 
         program.add_insns(model.pc, [hd_insn])
 
-        return body_model
+        # If the loop we're generating has an associated warp, we want to avoid
+        # generating any more loops in the body. It's really bad if we generate
+        # a loop or loopi instruction as the first instruction of the body
+        # (because it breaks the warping). But there's also no real benefit to
+        # allowing it, so let's not. To avoid generating any more loops, we
+        # hack the loop stack to pretend it is full.
+        ret_loop_stack = None
+        if has_warp:
+            ret_loop_stack = body_model.loop_stack.copy()
+            body_model.loop_stack.force_full()
+
+        return (body_model, ret_loop_stack)
+
+    def _pick_head(self,
+                   space_here: int,
+                   check: bool,
+                   model: Model,
+                   program: Program) -> Optional[Tuple[ProgInsn, Shape]]:
+        insn = self.pick_loop_insn()
+
+        # Pick a loop count
+        op0_type = insn.operands[0].op_type
+        op1_type = insn.operands[1].op_type
+        assert isinstance(op1_type, ImmOperandType)
+        lshape = self._pick_loop_shape(op0_type, op1_type,
+                                       space_here, check, model, program)
+        if lshape is None:
+            return None
+
+        bodysize, iters = lshape
+
+        # Extract the encoded operand value from iters. We ignore num_iters and
+        # warp: they will be used in gen_pieces (returned in lshape), but we
+        # don't need them here.
+        iter_opval, num_iters, warp = iters
+
+        # Generate the head instruction (which runs once, unconditionally) and
+        # clone model and program to add it
+        enc_bodysize = op1_type.op_val_to_enc_val(bodysize, model.pc)
+        assert enc_bodysize is not None
+        return (ProgInsn(insn, [iter_opval, enc_bodysize], None), lshape)
 
     def _gen_pieces(self,
                     cont: GenCont,
@@ -439,8 +570,8 @@ class Loop(SnippetGen):
         This is useful for subclasses that alter the generated loop after the
         fact.
 
-        As with gen(), if this function succeeds, it will modify program and
-        may modify model.
+        If this function succeeds, it may modify model (but it will not insert
+        the generated instructions into program).
 
         '''
         # A loop or loopi sequence has a loop/loopi instruction, at least one
@@ -457,30 +588,24 @@ class Loop(SnippetGen):
             return None
 
         # Don't blow the loop stack
-        if model.loop_depth == Model.max_loop_depth:
+        if model.loop_stack.maybe_full():
             return None
 
-        insn = self.pick_loop_insn()
-
-        # Pick a loop count
-        op0_type = insn.operands[0].op_type
-        op1_type = insn.operands[1].op_type
-        assert isinstance(op1_type, ImmOperandType)
-        lshape = self._pick_loop_shape(op0_type,
-                                       op1_type, space_here, model, program)
-        if lshape is None:
+        ret = self._pick_head(space_here, True, model, program)
+        if ret is None:
             return None
 
-        iter_opval, num_iters, bodysize = lshape
+        hd_insn, lshape = ret
+        bodysize, iters = lshape
+        iter_opval, num_iters, warp = iters
 
-        # Generate the head instruction (which runs once, unconditionally) and
-        # clone model and program to add it
-        enc_bodysize = op1_type.op_val_to_enc_val(bodysize, model.pc)
-        assert enc_bodysize is not None
-        hd_insn = ProgInsn(insn, [iter_opval, enc_bodysize], None)
+        # The address of the final instruction in the loop
+        end_addr = model.pc + 4 * bodysize
 
         body_program = program.copy()
-        body_model = self._setup_body(hd_insn, model, body_program)
+        body_model, body_loop_stack = self._setup_body(hd_insn, end_addr,
+                                                       model, body_program,
+                                                       warp is not None)
 
         # Constrain fuel in body_model: subtract one (for the first instruction
         # after the loop) and then divide by the number of iterations. When we
@@ -503,23 +628,33 @@ class Loop(SnippetGen):
             return None
 
         body_snippet, body_model = body_ret
-        assert body_model.loop_depth == model.loop_depth + 1
-        body_model.loop_depth -= 1
+
+        # If we hacked the loop stack in _setup_body, the "correct" value of
+        # the loop stack is in body_loop_stack. Put it back.
+        if body_loop_stack is not None:
+            body_model.loop_stack = body_loop_stack
+
+        body_model.loop_stack.pop(end_addr)
 
         # Calculate the actual amount of fuel that we used
         body_fuel = fuel_per_iter - body_model.fuel
         assert body_fuel > 0
         fuel_afterwards = model.fuel - num_iters * body_fuel
 
-        # Update model to take the loop body into account. If we know we have
-        # exactly one iteration through the body, we can just take body_model.
-        # Otherwise, we merge the two after "teleporting" model to the loop
-        # match address.
-        assert body_model.pc == model.pc + 4 * (1 + bodysize)
+        # Update model to take the loop body into account. For the loop stack
+        # state, we just take whatever's in body_model. If everything was well
+        # balanced, this will match anyway (and, if not, it's the state that
+        # OTBN will be in at the end of the loop).
+        #
+        # For registers, if we know we have exactly one iteration through the
+        # body, we can just take them from body_model. Otherwise, we merge the
+        # two after "teleporting" model to the loop match address.
+        assert body_model.pc == end_addr + 4
         if num_iters == 1:
             model = body_model
         else:
             model.update_for_insn(hd_insn)
+            model.loop_stack = body_model.loop_stack
             model.pc = body_model.pc
             model.merge(body_model)
 
@@ -528,7 +663,7 @@ class Loop(SnippetGen):
             # we computed before.
             model.fuel = fuel_afterwards
 
-        return (lshape, hd_insn, body_snippet, model)
+        return (bodysize, hd_insn, body_snippet, model, warp)
 
     def gen(self,
             cont: GenCont,
@@ -540,9 +675,9 @@ class Loop(SnippetGen):
         if pieces is None:
             return None
 
-        shape, hd_insn, body_snippet, model = pieces
+        shape, hd_insn, body_snippet, model, warp = pieces
 
-        snippet = LoopSnippet(hd_addr, hd_insn, body_snippet)
+        snippet = LoopSnippet(hd_addr, hd_insn, body_snippet, warp)
         snippet.insert_into_program(program)
 
         return (snippet, False, model)

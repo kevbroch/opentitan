@@ -390,7 +390,7 @@
 // SCOPE_ : Hierarchical string path to the testbench where this macro is invoked, example: %m.
 // ID_    : Identifier string used for UVM logs.
 `ifndef DV_ASSERT_CTRL
-`define DV_ASSERT_CTRL(LABEL_, HIER_, LEVELS_ = 0, SCOPE_ = "", ID_ = "%m") \
+`define DV_ASSERT_CTRL(LABEL_, HIER_, LEVELS_ = 0, SCOPE_ = "", ID_ = $sformatf("%m")) \
   initial begin \
     bit assert_en; \
     forever begin \
@@ -510,3 +510,18 @@
 `endif
 
 `endif // UVM
+
+// Macros for constrain clk with common frequencies
+// constrain clock to run at 24Mhz - 100Mhz and use higher weights on 24, 25, 48, 50, 100
+`ifndef DV_COMMON_CLK_CONSTRAINT
+`define DV_COMMON_CLK_CONSTRAINT(FREQ_) \
+  FREQ_ dist { \
+    [24:25] :/ 2, \
+    [26:47] :/ 1, \
+    [48:50] :/ 2, \
+    [51:95] :/ 1, \
+    96      :/ 1, \
+    [97:99] :/ 1, \
+    100     :/ 1  \
+  };
+`endif

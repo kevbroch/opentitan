@@ -35,12 +35,12 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
   // The values detected from interface and EXEC csr writes - are not immediately valid
   // as they need to be "latched" by the internal scb logic whenever an addr_phase_write
   // is detected on the sram_tl_a_chan_fifo.
-  bit [2:0] detected_csr_exec = '0;
+  bit [3:0] detected_csr_exec = '0;
   bit [3:0] detected_hw_debug_en = '0;
   bit [7:0] detected_en_sram_ifetch = '0;
 
   // The values that are "latched" by sram_tl_a_chan_fifo and are assumed to be valid
-  bit [2:0] valid_csr_exec;
+  bit [3:0] valid_csr_exec;
   bit [3:0] valid_hw_debug_en;
   bit [7:0] valid_en_sram_ifetch;
 
@@ -200,7 +200,7 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
                         item.get_error_size_over_max()),
               UVM_HIGH)
 
-    if (item.a_user[15:14] == tlul_pkg::InstrType) begin
+    if (item.a_user[15:14] == prim_mubi_pkg::MuBi4True) begin
       // 2 error cases if an InstrType transaction is seen:
       // - if it is a write transaction
       // - if the SRAM is not configured in executable mode
@@ -286,13 +286,14 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
       exp_status[SramCtrlInitDone] = 0;
       // initialization process only starts once the corresponding key request finishes
       @(negedge in_key_req);
-      // wait 1 cycle for initialization to start
-      cfg.clk_rst_vif.wait_clks(1);
       // initialization process will randomize each line in the SRAM, one cycle each
       //
       // thus we just need to wait for a number of cycles equal to the total size
       // of the sram address space
+      `uvm_info(`gfn, "starting to wait for init", UVM_HIGH)
       cfg.clk_rst_vif.wait_clks(cfg.mem_bkdr_util_h.get_depth());
+      // Wait a small delay to latch the updated CSR status
+      #1;
       // if we are in escalated state, scr_key_seed_valid will always stay low. otherwise
       // we can set the init done flag here.
       exp_status[SramCtrlInitDone] = status_lc_esc ? 0 : 1;
@@ -326,6 +327,7 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
 
       exp_status[SramCtrlEscalated]       = 1;
       exp_status[SramCtrlScrKeySeedValid] = 0;
+      exp_status[SramCtrlScrKeyValid]     = 0;
       exp_status[SramCtrlInitDone]        = 0;
 
       // escalation resets the key and nonce back to defaults
@@ -402,7 +404,7 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
         valid_en_sram_ifetch = detected_en_sram_ifetch;
 
         allow_ifetch = (valid_en_sram_ifetch == otp_ctrl_pkg::Enabled) ?
-                       (valid_csr_exec == tlul_pkg::InstrEn)           :
+                       (valid_csr_exec == prim_mubi_pkg::MuBi4True)           :
                        (valid_hw_debug_en == lc_ctrl_pkg::On);
 
         if (!cfg.en_scb) continue;
@@ -565,9 +567,10 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
           // if we have an address collision (read address is the same as the pending write address)
           // return data based on the `held_data`
           if (eq_sram_addr(data_trans.addr, held_trans.addr)) begin
-            bit [TL_DW-1:0] exp_masked_rdata = held_data & expand_bit_mask(item.a_mask);
+            bit [TL_DW-1:0] bit_mask = expand_bit_mask(item.a_mask);
+            bit [TL_DW-1:0] exp_masked_rdata = held_data & bit_mask;
             `uvm_info(`gfn, $sformatf("exp_masked_rdata: 0x%0x", exp_masked_rdata), UVM_HIGH)
-            `DV_CHECK_EQ_FATAL(exp_masked_rdata, item.d_data)
+            `DV_CHECK_EQ_FATAL(exp_masked_rdata, item.d_data & bit_mask)
           end else begin
             // in this case we do not have a strict RAW hazard on the same address,
             // so we can check the read transaction normally, as it will complete
@@ -653,11 +656,15 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
       kdi_fifo.get(item);
       `uvm_info(`gfn, $sformatf("Received transaction from kdi_fifo:\n%0s", item.convert2string()), UVM_HIGH)
 
-      // after a KDI transaction is completed, it takes 4 clock cycles in the SRAM domain
+      // after a KDI transaction is completed, it takes 3 clock cycles in the SRAM domain
       // to properly synchronize and propagate the data through the DUT
-      cfg.clk_rst_vif.wait_clks(KDI_PROPAGATION_CYCLES);
+      cfg.clk_rst_vif.wait_clks(KDI_PROPAGATION_CYCLES + 1);
+
+      // Wait a small delay before updating CSR status
+      #1;
 
       in_key_req = 0;
+      `uvm_info(`gfn, "dropped in_key_req", UVM_HIGH)
 
       // When KDI item is seen, update key, nonce
       {key, nonce, seed_valid} = item.d_data;
@@ -672,7 +679,7 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
       exp_status[SramCtrlScrKeyValid]     = 1;
 
       // if we are in escalated state, scr_key_seed_valid will always stay low
-      exp_status[SramCtrlScrKeySeedValid] = status_lc_esc ? 0 :seed_valid;
+      exp_status[SramCtrlScrKeySeedValid] = status_lc_esc ? 0 : seed_valid;
 
       `uvm_info(`gfn, $sformatf("Updated key: 0x%0x", key), UVM_HIGH)
       `uvm_info(`gfn, $sformatf("Updated nonce: 0x%0x", nonce), UVM_HIGH)
@@ -747,7 +754,7 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
     uvm_reg csr;
     bit     do_read_check   = 1'b1;
     bit     write           = item.is_write();
-    uvm_reg_addr_t csr_addr = ral.get_word_aligned_addr(item.a_addr);
+    uvm_reg_addr_t csr_addr = cfg.ral_models[ral_name].get_word_aligned_addr(item.a_addr);
 
     bit addr_phase_read   = (!write && channel == AddrChannel);
     bit addr_phase_write  = (write && channel == AddrChannel);
@@ -756,7 +763,7 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
 
     // if access was to a valid csr, get the csr handle
     if (csr_addr inside {cfg.ral_models[ral_name].csr_addrs}) begin
-      csr = ral.default_map.get_reg_by_offset(csr_addr);
+      csr = cfg.ral_models[ral_name].default_map.get_reg_by_offset(csr_addr);
       `DV_CHECK_NE_FATAL(csr, null)
     end
     else begin
@@ -799,6 +806,7 @@ class sram_ctrl_scoreboard extends cip_base_scoreboard #(
           if (item.a_data[SramCtrlRenewScrKey]) begin
             in_key_req = 1;
             exp_status[SramCtrlScrKeyValid] = 0;
+            `uvm_info(`gfn, "raised in_key_req", UVM_HIGH)
           end
           if (item.a_data[SramCtrlInit]) begin
             in_init = 1;

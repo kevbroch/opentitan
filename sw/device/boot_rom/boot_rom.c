@@ -15,7 +15,7 @@
 #include "sw/device/lib/runtime/log.h"
 #include "sw/device/lib/runtime/print.h"
 #include "sw/device/lib/testing/check.h"
-#include "sw/device/lib/testing/test_status.h"
+#include "sw/device/lib/testing/test_framework/test_status.h"
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"  // Generated.
 
@@ -40,21 +40,15 @@ void _boot_start(void) {
   while (flash_get_init_status())
     ;
 
-  CHECK(
-      dif_uart_init(
-          (dif_uart_params_t){
-              .base_addr = mmio_region_from_addr(TOP_EARLGREY_UART0_BASE_ADDR),
-          },
-          &uart0) == kDifUartOk,
-      "failed to init UART");
-  CHECK(dif_uart_configure(&uart0,
-                           (dif_uart_config_t){
-                               .baudrate = kUartBaudrate,
-                               .clk_freq_hz = kClockFreqPeripheralHz,
-                               .parity_enable = kDifUartToggleDisabled,
-                               .parity = kDifUartParityEven,
-                           }) == kDifUartConfigOk,
-        "failed to configure UART");
+  CHECK_DIF_OK(dif_uart_init(
+      mmio_region_from_addr(TOP_EARLGREY_UART0_BASE_ADDR), &uart0));
+  CHECK_DIF_OK(
+      dif_uart_configure(&uart0, (dif_uart_config_t){
+                                     .baudrate = kUartBaudrate,
+                                     .clk_freq_hz = kClockFreqPeripheralHz,
+                                     .parity_enable = kDifToggleDisabled,
+                                     .parity = kDifUartParityEven,
+                                 }));
   base_uart_stdout(&uart0);
 
   LOG_INFO("%s", chip_info);

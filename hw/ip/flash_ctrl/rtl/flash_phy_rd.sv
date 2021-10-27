@@ -26,7 +26,10 @@
 // also kicked off. When the galois multiply stage AND read stage completes, the
 // de-scramble is then kicked off.
 
-module flash_phy_rd import flash_phy_pkg::*; (
+module flash_phy_rd
+  import flash_phy_pkg::*;
+  import prim_mubi_pkg::mubi4_e;
+(
   input clk_i,
   input rst_ni,
 
@@ -36,7 +39,7 @@ module flash_phy_rd import flash_phy_pkg::*; (
 
   // interface with arbitration unit
   input req_i,
-  input tlul_pkg::tl_type_e req_type_i,
+  input mubi4_e instr_type_i,
   input descramble_i,
   input ecc_i,
   input prog_i,
@@ -68,8 +71,9 @@ module flash_phy_rd import flash_phy_pkg::*; (
   input [FullDataWidth-1:0] data_i,
 
   // error status reporting
+  // only single bit error is shown here as multi-bit errors are
+  // actual data errors are reflected in-band through data_err_o
   output logic ecc_single_err_o,
-  output logic ecc_multi_err_o,
   output logic [BusBankAddrW-1:0] ecc_addr_o
   );
 
@@ -308,7 +312,7 @@ module flash_phy_rd import flash_phy_pkg::*; (
       rd_attrs.addr <= addr_i[BusBankAddrW-1:LsbAddrBit];
       rd_attrs.descramble <= descramble_i;
       rd_attrs.ecc <= ecc_i;
-      rd_attrs.req_type <= req_type_i;
+      rd_attrs.instr_type <= instr_type_i;
     end else if (rd_done) begin
       rd_busy <= 1'b0;
     end
@@ -339,6 +343,7 @@ module flash_phy_rd import flash_phy_pkg::*; (
 
   // scrambled data must pass through ECC first
   logic valid_ecc;
+  logic ecc_multi_err_raw;
   logic ecc_multi_err;
   logic ecc_single_err;
   logic [DataWidth-1:0] data_ecc_chk;
@@ -355,26 +360,28 @@ module flash_phy_rd import flash_phy_pkg::*; (
     .data_i(data_i[ScrDataWidth-1:0]),
     .data_o(data_ecc_chk),
     .syndrome_o(),
-    .err_o({ecc_multi_err, ecc_single_err})
+    .err_o({ecc_multi_err_raw, ecc_single_err})
   );
-
-  // If data needs to be de-scrambled and has not been erased, pass through ecc decoder.
-  // Otherwise, pass the data through untouched.
-  // Likewise, ecc error is only observed if the data needs to be de-scrambled and has not been
-  // erased.
-  // rd_done signal below is duplicated (already in data_erased) to show clear intent of the code.
-  assign data_int = valid_ecc ? data_ecc_chk :
-                                data_i[DataWidth-1:0];
 
   // For instruction type accesses, always return the transaction error
   // For data type accesses, allow the error return to be configurable, as the actual data may
   // need to be debugged
-  assign data_err = (rd_attrs.req_type == tlul_pkg::InstrType) ?
-                    ecc_multi_err_o :
-                    ecc_multi_err_o & ecc_multi_err_en_i;
+  import prim_mubi_pkg::mubi4_test_true_strict;
+  assign ecc_multi_err = mubi4_test_true_strict(rd_attrs.instr_type) ?
+                         ecc_multi_err_raw :
+                         ecc_multi_err_raw & ecc_multi_err_en_i;
+
+  // If there is a detected multi-bit error or a single bit error, always return the
+  // ECC corrected result (even though it is possibly wrong).
+  // There is no data error of any kind (specifically when multi_err is disabled), just
+  // return the raw data so that it can be debugged.
+  assign data_int = data_err | ecc_single_err_o ?
+                    data_ecc_chk :
+                    data_i[DataWidth-1:0];
+
+  assign data_err = valid_ecc & ecc_multi_err;
 
   // always send out sideband indication on error
-  assign ecc_multi_err_o = valid_ecc & ecc_multi_err;
   assign ecc_single_err_o = valid_ecc & ecc_single_err;
 
   // ecc address return is always the full flash word

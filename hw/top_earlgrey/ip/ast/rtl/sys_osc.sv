@@ -10,11 +10,13 @@ module sys_osc (
   input vcore_pok_h_i,    // VCORE POK @3.3V
   input sys_en_i,         // System Source Clock Enable
   input sys_jen_i,        // System Source Clock Jitter Enable
+`ifdef AST_BYPASS_CLK
   input clk_sys_ext_i,    // FPGA/VERILATOR Clock input
+`endif
   output logic sys_clk_o  // System Clock Output
 );
 
-`ifndef SYNTHESIS
+`ifndef AST_BYPASS_CLK
 // Behavioral Model
 ////////////////////////////////////////
 timeunit  1ns / 1ps;
@@ -46,7 +48,7 @@ always begin
   jitter = sys_jen_i ? $urandom_range(2000, 0) : 0;
   #((SysClkPeriod+jitter)/2000) clk = ~clk && en_osc;
 end
-`else  // of SYNTHESIS
+`else  // of AST_BYPASS_CLK
 // SYNTHESIS/VERILATOR/LINTER/FPGA
 ////////////////////////////////////////
 logic sys_clk_dly;
@@ -56,7 +58,9 @@ assign sys_clk_dly = 1'b1;
 ////////////////////////////////////////
 logic clk, en_osc;
 
-prim_clock_gating u_clk_ckgt (
+prim_clock_gating #(
+  .NoFpgaGate ( 1'b1 )
+) u_clk_ckgt (
   .clk_i ( clk_sys_ext_i ),
   .en_i ( en_osc ),
   .test_en_i ( 1'b0 ),
@@ -81,7 +85,9 @@ assign en_osc = en_osc_re || en_osc_fe;  // EN -> 1 || EN -> 0
 
 // Clock Output Buffer
 ////////////////////////////////////////
-prim_clock_buf u_buf (
+prim_clock_buf #(
+  .NoFpgaBuf ( 1'b1 )
+) u_buf (
   .clk_i ( clk ),
   .clk_o ( sys_clk_o )
 );

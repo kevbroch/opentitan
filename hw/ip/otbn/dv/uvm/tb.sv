@@ -6,6 +6,7 @@ module tb;
   // dep packages (test)
   import uvm_pkg::*;
   import dv_utils_pkg::*;
+  import mem_bkdr_util_pkg::mem_bkdr_util;
   import otbn_env_pkg::*;
   import otbn_test_pkg::*;
 
@@ -29,6 +30,10 @@ module tb;
   pins_if #(NUM_MAX_INTERRUPTS) intr_if    (interrupts);
   assign interrupts[0] = {intr_done};
 
+  // A hook to allow sequences to enable or disable the MatchingStatus_A assertion below. This is
+  // needed for sequences that trigger alerts (locking OTBN) without telling the model.
+  `DV_ASSERT_CTRL("otbn_status_assert_en", tb.MatchingStatus_A)
+
   otbn_model_if #(
     .ImemSizeByte (otbn_reg_pkg::OTBN_IMEM_SIZE)
   ) model_if (
@@ -36,19 +41,31 @@ module tb;
     .rst_ni (rst_n)
   );
 
+  // edn_clk, edn_rst_n and edn_if is defined and driven in below macro
+  `DV_EDN_IF_CONNECT
+
   `DV_ALERT_IF_CONNECT
+
+  // TODO(#8758): This disables an assertion that fires if we happen to drop the edn_rst_n line
+  // before rst_n when the EDN is providing data to the DUT. The proper fix is either to change the
+  // design, change the assertion, or change the DV code so this doesn't happen.
+  always @(negedge edn_rst_n or posedge edn_rst_n) begin
+    if (!edn_rst_n) begin
+      $assertoff(0,
+                 dut.u_prim_edn_rnd_req.u_prim_sync_reqack_data.
+                 gen_assert_data_dst2src.SyncReqAckDataHoldDst2Src);
+    end else begin
+      $asserton(0,
+                dut.u_prim_edn_rnd_req.u_prim_sync_reqack_data.
+                gen_assert_data_dst2src.SyncReqAckDataHoldDst2Src);
+    end
+  end
 
   // Mock up EDN & OTP that just instantly return fixed data when requested
   // TODO: Provide proper EDN and OTP agents
-  edn_req_t edn_rnd_req;
-  edn_rsp_t edn_rnd_rsp;
 
   edn_req_t edn_urnd_req;
   edn_rsp_t edn_urnd_rsp;
-
-  assign edn_rnd_rsp.edn_ack  = edn_rnd_req.edn_req;
-  assign edn_rnd_rsp.edn_fips = 1'b0;
-  assign edn_rnd_rsp.edn_bus  = 32'h99999999;
 
   assign edn_urnd_rsp.edn_ack  = edn_urnd_req.edn_req;
   assign edn_urnd_rsp.edn_fips = 1'b0;
@@ -99,10 +116,10 @@ module tb;
 
     .ram_cfg_i('0),
 
-    .clk_edn_i (clk),
-    .rst_edn_ni(rst_n),
-    .edn_rnd_o (edn_rnd_req),
-    .edn_rnd_i (edn_rnd_rsp),
+    .clk_edn_i (edn_clk),
+    .rst_edn_ni(edn_rst_n),
+    .edn_rnd_o (edn_if.req),
+    .edn_rnd_i ({edn_if.ack, edn_if.d_data}),
 
     .edn_urnd_o(edn_urnd_req),
     .edn_urnd_i(edn_urnd_rsp),
@@ -120,6 +137,8 @@ module tb;
 
   bind dut.u_otbn_core otbn_tracer u_otbn_tracer(.*, .otbn_trace(i_otbn_trace_if));
 
+  bind dut.u_otbn_core.u_otbn_controller otbn_controller_if i_otbn_controller_if (.*);
+
   bind dut.u_otbn_core.u_otbn_controller.u_otbn_loop_controller
     otbn_loop_if i_otbn_loop_if (
       .clk_i,
@@ -136,12 +155,16 @@ module tb;
       .loop_start_commit_i,
       .loop_iterations_i,
       .otbn_stall_i,
+
       // These addresses are start/end addresses for entries in the loop stack. As with insn_addr_i,
       // we expand them to 32 bits. Also the loop stack entries have a type that's not exposed
       // outside of the loop controller module so we need to extract the fields here.
       .current_loop_start (32'(current_loop_q.loop_start)),
       .current_loop_end   (32'(current_loop_q.loop_end)),
-      .next_loop_end      (32'(next_loop.loop_end))
+      .next_loop_end      (32'(next_loop.loop_end)),
+
+      // This count is used by the loop warping code.
+      .current_loop_d_iterations (current_loop_d.loop_iterations)
     );
 
   bind dut.u_otbn_core.u_otbn_alu_bignum otbn_alu_bignum_if i_otbn_alu_bignum_if (.*);
@@ -154,15 +177,15 @@ module tb;
   // to grab the decoded signal from TL transactions on the cycle it happens. We have an explicit
   // check in the scoreboard to ensure that this gets asserted at the time we expect (to spot any
   // decoding errors).
-  assign model_if.start = dut.start_q;
+  assign model_if.start = dut.start_d;
 
-  // Internally otbn_core uses a 256-bit width interface for EDN data. This maps to muliple EDN
-  // requests at this level (via a packing FIFO internal to otbn). The model works with the internal
-  // otbn_core interface so probe into it here to provide the relevant signals to the model.
-  logic edn_rnd_data_valid;
+  // Valid signals below are set when DUT finishes processing incoming 32b packages and constructs
+  // 256b EDN data. Model checks if the processing of the packages are done in maximum of 5 cycles
   logic edn_urnd_data_valid;
+  logic edn_rnd_cdc_done;
 
-  assign edn_rnd_data_valid = dut.edn_rnd_req & dut.edn_rnd_ack;
+  assign edn_rnd_cdc_done = dut.edn_rnd_req & dut.edn_rnd_ack;
+
   assign edn_urnd_data_valid = dut.edn_urnd_req & dut.edn_urnd_ack;
 
   bit [31:0] model_insn_cnt;
@@ -174,25 +197,37 @@ module tb;
     .DesignScope  ("..dut.u_otbn_core")
   ) u_model (
     .clk_i        (model_if.clk_i),
+    .clk_edn_i    (edn_clk),
     .rst_ni       (model_if.rst_ni),
+    .rst_edn_ni   (edn_rst_n),
 
     .start_i      (model_if.start),
-    .done_o       (model_if.done),
 
     .err_bits_o   (),
 
-    .start_addr_i (model_if.start_addr),
+    .edn_rnd_i             ({edn_if.ack, edn_if.d_data}),
+    .edn_rnd_cdc_done_i    (edn_rnd_cdc_done),
 
-    .edn_rnd_data_valid_i  (edn_rnd_data_valid),
-    .edn_rnd_data_i        (dut.edn_rnd_data),
     .edn_urnd_data_valid_i (edn_urnd_data_valid),
 
+    .status_o     (model_if.status),
     .insn_cnt_o   (model_insn_cnt),
+
+    .invalidate_imem_i (model_if.invalidate_imem),
+
+    .done_rr_o    (),
+
     .err_o        (model_if.err)
   );
 
-  // Pull the final PC out of the DUT
+  // Pull the final PC and the OtbnModel handle out of the SV model wrapper.
   assign model_if.stop_pc = u_model.stop_pc_q;
+  // The always_ff is because the spec doesn't allow continuous assignments for chandles. The value
+  // is populated in an init block and we'll only read this when the start signal is asserted, which
+  // will be much more than 1 cycle later, so we shouldn't need to worry about a stale value.
+  always_ff @(posedge model_if.clk_i) begin
+    model_if.handle <= u_model.model_handle;
+  end
 
   otbn_insn_cnt_if insn_cnt_if (
    .clk_i            (clk),
@@ -211,14 +246,15 @@ module tb;
   // These are the sort of checks that are easier to state at the design level than in terms of UVM
   // transactions.
 
-  // Check that the idle output from the DUT is the inverse of the model's "done" signal.
-  // Separately, the code in otbn_idle_checker.sv checks that the idle output from the DUT is also
-  // the inverse of the "done" signal that we expect. Combining the two tells us that the RTL and
-  // model agree about whether they are running or not.
-  `ASSERT(MatchingDone_A, idle == !model_if.done, clk, rst_n)
-
+  // Check that the status output from the model exactly matches the register from the dut. In
+  // theory, we could see mismatches by probing the STATUS register over the TL bus, but we have to
+  // be lucky with exactly when the reads happen if we want to see off-by-one cycle errors. This
+  // assertion gives a continuous check.
+  `ASSERT(MatchingStatus_A, dut.u_reg.u_status.q == model_if.status, clk, !rst_n)
 
   initial begin
+    mem_bkdr_util imem_util, dmem_util;
+
     // drive clk and rst_n from clk_if
     clk_rst_if.set_active();
 
@@ -230,6 +266,9 @@ module tb;
 
     uvm_config_db#(virtual otbn_trace_if)::set(null, "*.env", "trace_vif",
                                                dut.u_otbn_core.i_otbn_trace_if);
+    uvm_config_db#(virtual otbn_controller_if)::set(
+      null, "*.env", "controller_vif",
+      dut.u_otbn_core.u_otbn_controller.i_otbn_controller_if);
     uvm_config_db#(virtual otbn_loop_if)::set(
       null, "*.env", "loop_vif",
       dut.u_otbn_core.u_otbn_controller.u_otbn_loop_controller.i_otbn_loop_if);
@@ -242,6 +281,23 @@ module tb;
     uvm_config_db#(virtual otbn_rf_base_if)::set(
       null, "*.env", "rf_base_vif",
       dut.u_otbn_core.u_otbn_rf_base.i_otbn_rf_base_if);
+
+    // Instantiate mem_bkdr_util objects to allow access to IMEM and DMEM
+    imem_util = new(.name ("imem_util"),
+                    .path ({"tb.dut.u_imem.u_prim_ram_1p_adv.",
+                            "u_mem.gen_generic.u_impl_generic.mem"}),
+                    .depth (otbn_reg_pkg::OTBN_IMEM_SIZE / 4),
+                    .n_bits (8 * otbn_reg_pkg::OTBN_IMEM_SIZE),
+                    .err_detection_scheme (mem_bkdr_util_pkg::Ecc_39_32));
+    dmem_util = new(.name ("dmem_util"),
+                    .path ({"tb.dut.u_dmem.u_prim_ram_1p_adv.",
+                            "u_mem.gen_generic.u_impl_generic.mem"}),
+                    .depth (otbn_reg_pkg::OTBN_DMEM_SIZE / 32),
+                    .n_bits (8 * otbn_reg_pkg::OTBN_DMEM_SIZE),
+                    .err_detection_scheme (mem_bkdr_util_pkg::Ecc_39_32));
+
+    uvm_config_db#(mem_bkdr_util)::set(null, "*.env", imem_util.get_name(), imem_util);
+    uvm_config_db#(mem_bkdr_util)::set(null, "*.env", dmem_util.get_name(), dmem_util);
 
     $timeformat(-12, 0, " ps", 12);
     run_test();

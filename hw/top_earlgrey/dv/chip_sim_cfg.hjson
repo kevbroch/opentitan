@@ -25,6 +25,7 @@
 
   // Add additional tops for simulation.
   sim_tops: ["pwrmgr_bind",
+             "rstmgr_bind",
              "xbar_main_bind",
              "xbar_peri_bind"]
 
@@ -41,7 +42,7 @@
                 "{proj_root}/hw/dv/verilator/memutil_dpi_scrambled_opts.hjson",
                 "{proj_root}/hw/ip/otbn/dv/memutil/otbn_memutil_sim_opts.hjson",
                 "{proj_root}/hw/ip/otbn/dv/tracer/otbn_tracer_sim_opts.hjson",
-                "{proj_root}/hw/top_earlgrey/dv/chip_dif_tests.hjson",
+                "{proj_root}/hw/top_earlgrey/dv/chip_smoketests.hjson",
                 "{proj_root}/hw/top_earlgrey/dv/chip_mask_rom_tests.hjson",
                 ]
 
@@ -59,7 +60,7 @@
     // IPs. See `hw/dv/tools/dvsim/common_sim_cfg.hjson` for the default value.
     {
       name: default_vcs_cov_cfg_file
-      value: "-cm_hier {proj_root}/hw/top_earlgrey/dv/cov/chip_cover.cfg"
+      value: "-cm_hier {proj_root}/hw/top_earlgrey/dv/cov/chip_cover.cfg+{proj_root}/hw/top_earlgrey/dv/autogen/xbar_tgl_excl.cfg"
     }
     // Used by 'cover_reg_top' only builds - we only cover the *_reg_top of
     // the non-pre-verified modules at the chip level. See
@@ -80,6 +81,9 @@
       value: "top"
     }
   ]
+
+  // exclusion files
+  vcs_cov_excl_files: ["{proj_root}/hw/top_earlgrey/dv/cov/ast_mem_cfg.el"]
 
   // Default iterations for all tests - each test entry can override this.
   reseed: 1
@@ -127,7 +131,6 @@
       // Append stub cpu mode to csr_tests_mode, run with 20 reseeds.
       name: csr_tests_mode
       en_run_modes: ["stub_cpu_mode"]
-      reseed: 20
     }
     {
       // Append stub cpu mode to mem_tests_mode, run with 20 reseeds.
@@ -149,9 +152,9 @@
   // dictionary declared in `sw/device/tests/meson.build`, the `sw_images` list
   // below should contain `sw/device/tests/<sw_test_name>` (without any more
   // subdirectories) because that is where the meson target is created. For
-  // example `dif_plic_smoketest` is added to `sw_tests` in
-  // `sw/device/tests/dif/meson.build`, but the final meson targets all start
-  // `sw/device/tests/dif_plic_smoketest_`.
+  // example `gpio_test` is added to `sw_tests` in
+  // `sw/device/tests/sim_dv/meson.build`, but the final meson targets all
+  // start with `sw/device/tests/gpio_test_`.
   //
   // Each entry in `sw_images` is followed by an index separated with ':' which
   // is used by the testbench to know what type of image is it:
@@ -166,7 +169,8 @@
       uvm_test_seq: chip_sw_uart_tx_rx_vseq
       sw_images: ["sw/device/tests/uart_tx_rx_test:1"]
       en_run_modes: ["sw_test_mode"]
-      reseed: 10
+      run_opts: ["+uart_idx=0"]
+      reseed: 5
     }
     {
       name: chip_sw_uart_tx_rx_idx1
@@ -174,7 +178,7 @@
       sw_images: ["sw/device/tests/uart_tx_rx_test:1"]
       en_run_modes: ["sw_test_mode"]
       run_opts: ["+uart_idx=1"]
-      reseed: 10
+      reseed: 5
     }
     {
       name: chip_sw_uart_tx_rx_idx2
@@ -182,7 +186,7 @@
       sw_images: ["sw/device/tests/uart_tx_rx_test:1"]
       en_run_modes: ["sw_test_mode"]
       run_opts: ["+uart_idx=2"]
-      reseed: 10
+      reseed: 5
     }
     {
       name: chip_sw_uart_tx_rx_idx3
@@ -190,7 +194,7 @@
       sw_images: ["sw/device/tests/uart_tx_rx_test:1"]
       en_run_modes: ["sw_test_mode"]
       run_opts: ["+uart_idx=3"]
-      reseed: 10
+      reseed: 5
     }
     {
       name: chip_sw_uart_tx_rx_bootstrap
@@ -198,6 +202,13 @@
       sw_images: ["sw/device/tests/uart_tx_rx_test:1"]
       en_run_modes: ["sw_test_mode"]
       run_opts: ["+use_spi_load_bootstrap=1"]
+    }
+    {
+      name: chip_sw_uart_rand_baudrate
+      uvm_test_seq: chip_sw_uart_rand_baudrate_vseq
+      sw_images: ["sw/device/tests/uart_tx_rx_test:1"]
+      en_run_modes: ["sw_test_mode"]
+      reseed: 20
     }
     {
       name: chip_sw_spi_device_tx_rx
@@ -224,22 +235,49 @@
       en_run_modes: ["sw_test_mode"]
     }
     {
+      // Set higher reseed value to reach all kmac_data to lc_ctrl toggle coverage.
       name: chip_sw_lc_ctrl_transition
       uvm_test_seq: chip_sw_lc_ctrl_transition_vseq
       sw_images: ["sw/device/tests/lc_ctrl_transition_test:1"]
       en_run_modes: ["sw_test_mode"]
+      reseed: 15
     }
     {
-      name: chip_sw_pwrmgr_usbdev_smoketest
+      name: chip_sw_rstmgr_sw_req
+      uvm_test_seq: chip_sw_base_vseq
+      sw_images: ["sw/device/tests/rstmgr_sw_req_test:1"]
+      en_run_modes: ["sw_test_mode"]
+    }
+    {
+      name: chip_sw_pwrmgr_usbdev_wakeup
       uvm_test_seq: chip_sw_base_vseq
       sw_images: ["sw/device/tests/pwrmgr_usbdev_smoketest:1"]
       en_run_modes: ["sw_test_mode"]
-      run_opts: ["+sw_test_timeout_ns=2000000"]
+      run_opts: ["+sw_test_timeout_ns=4000000"]
+    }
+    {
+      name: chip_sw_pwrmgr_power_glitch_reset
+      uvm_test_seq: chip_sw_power_glitch_vseq
+      sw_images: ["sw/device/tests/pwrmgr_power_glitch_test:1"]
+      en_run_modes: ["sw_test_mode"]
+      run_opts: ["+sw_test_timeout_ns=4000000"]
     }
     {
       name: chip_sw_rv_timer_irq
       uvm_test_seq: chip_sw_base_vseq
-      sw_images: ["sw/device/tests/dif_rv_timer_smoketest:1"]
+      sw_images: ["sw/device/tests/rv_timer_smoketest:1"]
+      en_run_modes: ["sw_test_mode"]
+    }
+    {
+      name: chip_sw_kmac_mode_cshake_test
+      uvm_test_seq: chip_sw_base_vseq
+      sw_images: ["sw/device/tests/kmac_mode_cshake_test:1"]
+      en_run_modes: ["sw_test_mode"]
+    }
+    {
+      name: chip_sw_kmac_mode_kmac_test
+      uvm_test_seq: chip_sw_base_vseq
+      sw_images: ["sw/device/tests/kmac_mode_kmac_test:1"]
       en_run_modes: ["sw_test_mode"]
     }
 
@@ -263,13 +301,19 @@
       en_run_modes: ["stub_cpu_mode"]
       reseed: 20
     }
+    {
+      name: chip_plic_all_irqs
+      uvm_test_seq: chip_sw_base_vseq
+      sw_images: ["sw/device/tests/plic_all_irqs_test:1"]
+      en_run_modes: ["sw_test_mode"]
+    }
   ]
 
   // List of regressions.
   regressions: [
     {
       name: smoke
-      tests: ["chip_sw_uart_tx_rx"]
+      tests: ["chip_sw_uart_tx_rx", "chip_plic_all_irqs"]
     }
   ]
 }

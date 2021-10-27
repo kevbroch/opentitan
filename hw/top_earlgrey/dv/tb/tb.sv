@@ -47,13 +47,14 @@ module tb;
 
   // internal clocks and resets
   // cpu clock cannot reference cpu_hier since cpu clocks are forced off in stub_cpu mode
-  wire cpu_clk = `CLKMGR_HIER.clocks_o.clk_proc_main;
+  wire cpu_clk = `CPU_HIER.clk_i;
   wire cpu_rst_n = `CPU_HIER.rst_ni;
   wire alert_handler_clk = `ALERT_HANDLER_HIER.clk_i;
+  wire alert_handler_rst_n = `ALERT_HANDLER_HIER.rst_ni;
 
   // interfaces
   clk_rst_if clk_rst_if(.clk, .rst_n);
-  alert_esc_if alert_if[NUM_ALERTS](.clk(alert_handler_clk), .rst_n(rst_n));
+  alert_esc_if alert_if[NUM_ALERTS](.clk(alert_handler_clk), .rst_n(alert_handler_rst_n));
   pins_if #(NUM_GPIOS) gpio_if(.pins(gpio_pins));
   pins_if #(1) srst_n_if(.pins(srst_n));
   pins_if #(2) tap_straps_if(.pins(tap_straps));
@@ -64,6 +65,11 @@ module tb;
   tl_if cpu_d_tl_if(.clk(cpu_clk), .rst_n(cpu_rst_n));
   uart_if uart_if[NUM_UARTS-1:0]();
   jtag_if jtag_if();
+
+  bind dut ast_supply_if ast_supply_if (
+    .clk(top_earlgrey.clk_aon_i),
+    .trigger(top_earlgrey.rv_core_ibex_pwrmgr.core_sleeping)
+  );
 
   // TODO: Replace with correct interfaces once
   // pinmux/padring and pinout have been updated.
@@ -113,13 +119,15 @@ module tb;
     .IOB5(gpio_pins[14]),  // MIO 14
     .IOB6(gpio_pins[15]),  // MIO 15
     .IOB7(tie_off[0]),     // MIO 16
-    .IOB8(tie_off[1]),     // MIO 17
-    .IOB9(tie_off[2]),     // MIO 18
-    .IOB10(tie_off[3]),    // MIO 19
-    .IOB11(tie_off[4]),    // MIO 20
-    .IOB12(tie_off[5]),    // MIO 21
+    // TODO, we probably need to change this when we have the final pinout configuration
+    // Connect this to IOB8 to align with SW bootstrap.c
+    .IOB8(sw_straps[0]),   // MIO 17
+    .IOB9(tie_off[1]),     // MIO 18
+    .IOB10(tie_off[2]),    // MIO 19
+    .IOB11(tie_off[3]),    // MIO 20
+    .IOB12(tie_off[4]),    // MIO 21
     // Bank C (VCC domain)
-    .IOC0(sw_straps[0]),   // MIO 22
+    .IOC0(tie_off[5]),     // MIO 22
     .IOC1(sw_straps[1]),   // MIO 23
     .IOC2(sw_straps[2]),   // MIO 24
     .IOC3(dft_straps[0]),  // MIO 25
@@ -261,6 +269,10 @@ module tb;
     uvm_config_db#(virtual sw_logger_if)::set(
         null, "*.env", "sw_logger_vif", `SIM_SRAM_IF.u_sw_logger_if);
 
+    // AST supply interface.
+    uvm_config_db#(virtual ast_supply_if)::set(
+        null, "*.env", "ast_supply_vif", dut.ast_supply_if);
+
     // temp disable pinmux assertion AonWkupReqKnownO_A because driving X in spi_device.sdi and
     // WkupPadSel choose IO_DPS1 in MIO will trigger this assertion
     // TODO: remove this assertion once pinmux is templatized
@@ -375,7 +387,7 @@ module tb;
       force `CPU_HIER.u_ibus_trans.rst_ni = 1'b0;
       force `CPU_HIER.u_dbus_trans.rst_ni = 1'b0;
       // tl type is used to calculate ECC and we use DataType for cpu data interface
-      force cpu_d_tl_if.h2d.a_user.tl_type = tlul_pkg::DataType;
+      force cpu_d_tl_if.h2d.a_user.instr_type = prim_mubi_pkg::MuBi4False;
       force `CPU_TL_ADAPT_D_HIER.tl_out = cpu_d_tl_if.h2d;
       force cpu_d_tl_if.d2h = `CPU_TL_ADAPT_D_HIER.tl_i;
     end else begin

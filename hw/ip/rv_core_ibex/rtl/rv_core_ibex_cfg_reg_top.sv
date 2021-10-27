@@ -9,7 +9,6 @@
 module rv_core_ibex_cfg_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -193,10 +192,12 @@ module rv_core_ibex_cfg_reg_top (
   logic err_status_fatal_core_err_wd;
   logic err_status_recov_core_err_qs;
   logic err_status_recov_core_err_wd;
+  logic [31:0] rnd_data_qs;
+  logic rnd_status_re;
+  logic rnd_status_qs;
 
   // Register instances
   // R[alert_test]: V(True)
-
   //   F[fatal_sw_err]: 0:0
   prim_subreg_ext #(
     .DW    (1)
@@ -210,7 +211,6 @@ module rv_core_ibex_cfg_reg_top (
     .q      (reg2hw.alert_test.fatal_sw_err.q),
     .qs     ()
   );
-
 
   //   F[recov_sw_err]: 1:1
   prim_subreg_ext #(
@@ -226,7 +226,6 @@ module rv_core_ibex_cfg_reg_top (
     .qs     ()
   );
 
-
   //   F[fatal_hw_err]: 2:2
   prim_subreg_ext #(
     .DW    (1)
@@ -240,7 +239,6 @@ module rv_core_ibex_cfg_reg_top (
     .q      (reg2hw.alert_test.fatal_hw_err.q),
     .qs     ()
   );
-
 
   //   F[recov_hw_err]: 3:3
   prim_subreg_ext #(
@@ -257,10 +255,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg sw_alert_regwen
   // R[sw_alert_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -285,9 +281,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (sw_alert_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg sw_alert_regwen
   // R[sw_alert_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -313,10 +309,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg sw_alert
   // R[sw_alert_0]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -341,9 +335,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (sw_alert_0_qs)
   );
 
+
   // Subregister 1 of Multireg sw_alert
   // R[sw_alert_1]: V(False)
-
   prim_subreg #(
     .DW      (2),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -369,10 +363,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg ibus_regwen
   // R[ibus_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -397,9 +389,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (ibus_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg ibus_regwen
   // R[ibus_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -425,10 +417,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg ibus_addr_en
   // R[ibus_addr_en_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -453,9 +443,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (ibus_addr_en_0_qs)
   );
 
+
   // Subregister 1 of Multireg ibus_addr_en
   // R[ibus_addr_en_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -481,10 +471,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg ibus_addr_matching
   // R[ibus_addr_matching_0]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -509,9 +497,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (ibus_addr_matching_0_qs)
   );
 
+
   // Subregister 1 of Multireg ibus_addr_matching
   // R[ibus_addr_matching_1]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -537,10 +525,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg ibus_remap_addr
   // R[ibus_remap_addr_0]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -565,9 +551,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (ibus_remap_addr_0_qs)
   );
 
+
   // Subregister 1 of Multireg ibus_remap_addr
   // R[ibus_remap_addr_1]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -593,10 +579,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg dbus_regwen
   // R[dbus_regwen_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -621,9 +605,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (dbus_regwen_0_qs)
   );
 
+
   // Subregister 1 of Multireg dbus_regwen
   // R[dbus_regwen_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
@@ -649,10 +633,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg dbus_addr_en
   // R[dbus_addr_en_0]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -677,9 +659,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (dbus_addr_en_0_qs)
   );
 
+
   // Subregister 1 of Multireg dbus_addr_en
   // R[dbus_addr_en_1]: V(False)
-
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -705,10 +687,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg dbus_addr_matching
   // R[dbus_addr_matching_0]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -733,9 +713,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (dbus_addr_matching_0_qs)
   );
 
+
   // Subregister 1 of Multireg dbus_addr_matching
   // R[dbus_addr_matching_1]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -761,10 +741,8 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg dbus_remap_addr
   // R[dbus_remap_addr_0]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -789,9 +767,9 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (dbus_remap_addr_0_qs)
   );
 
+
   // Subregister 1 of Multireg dbus_remap_addr
   // R[dbus_remap_addr_1]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -818,7 +796,6 @@ module rv_core_ibex_cfg_reg_top (
 
 
   // R[nmi_enable]: V(False)
-
   //   F[alert_en]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -843,7 +820,6 @@ module rv_core_ibex_cfg_reg_top (
     // to register interface (read)
     .qs     (nmi_enable_alert_en_qs)
   );
-
 
   //   F[wdog_en]: 1:1
   prim_subreg #(
@@ -872,7 +848,6 @@ module rv_core_ibex_cfg_reg_top (
 
 
   // R[nmi_state]: V(False)
-
   //   F[alert]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -897,7 +872,6 @@ module rv_core_ibex_cfg_reg_top (
     // to register interface (read)
     .qs     (nmi_state_alert_qs)
   );
-
 
   //   F[wdog]: 1:1
   prim_subreg #(
@@ -926,7 +900,6 @@ module rv_core_ibex_cfg_reg_top (
 
 
   // R[err_status]: V(False)
-
   //   F[reg_intg_err]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -951,7 +924,6 @@ module rv_core_ibex_cfg_reg_top (
     // to register interface (read)
     .qs     (err_status_reg_intg_err_qs)
   );
-
 
   //   F[fatal_intg_err]: 8:8
   prim_subreg #(
@@ -978,7 +950,6 @@ module rv_core_ibex_cfg_reg_top (
     .qs     (err_status_fatal_intg_err_qs)
   );
 
-
   //   F[fatal_core_err]: 9:9
   prim_subreg #(
     .DW      (1),
@@ -1003,7 +974,6 @@ module rv_core_ibex_cfg_reg_top (
     // to register interface (read)
     .qs     (err_status_fatal_core_err_qs)
   );
-
 
   //   F[recov_core_err]: 10:10
   prim_subreg #(
@@ -1031,9 +1001,49 @@ module rv_core_ibex_cfg_reg_top (
   );
 
 
+  // R[rnd_data]: V(False)
+  prim_subreg #(
+    .DW      (32),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (32'h0)
+  ) u_rnd_data (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.rnd_data.de),
+    .d      (hw2reg.rnd_data.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (rnd_data_qs)
+  );
 
 
-  logic [23:0] addr_hit;
+  // R[rnd_status]: V(True)
+  prim_subreg_ext #(
+    .DW    (1)
+  ) u_rnd_status (
+    .re     (rnd_status_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      (hw2reg.rnd_status.d),
+    .qre    (),
+    .qe     (),
+    .q      (),
+    .qs     (rnd_status_qs)
+  );
+
+
+
+  logic [25:0] addr_hit;
   always_comb begin
     addr_hit = '0;
     addr_hit[ 0] = (reg_addr == RV_CORE_IBEX_ALERT_TEST_OFFSET);
@@ -1060,6 +1070,8 @@ module rv_core_ibex_cfg_reg_top (
     addr_hit[21] = (reg_addr == RV_CORE_IBEX_NMI_ENABLE_OFFSET);
     addr_hit[22] = (reg_addr == RV_CORE_IBEX_NMI_STATE_OFFSET);
     addr_hit[23] = (reg_addr == RV_CORE_IBEX_ERR_STATUS_OFFSET);
+    addr_hit[24] = (reg_addr == RV_CORE_IBEX_RND_DATA_OFFSET);
+    addr_hit[25] = (reg_addr == RV_CORE_IBEX_RND_STATUS_OFFSET);
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -1090,7 +1102,9 @@ module rv_core_ibex_cfg_reg_top (
                (addr_hit[20] & (|(RV_CORE_IBEX_CFG_PERMIT[20] & ~reg_be))) |
                (addr_hit[21] & (|(RV_CORE_IBEX_CFG_PERMIT[21] & ~reg_be))) |
                (addr_hit[22] & (|(RV_CORE_IBEX_CFG_PERMIT[22] & ~reg_be))) |
-               (addr_hit[23] & (|(RV_CORE_IBEX_CFG_PERMIT[23] & ~reg_be)))));
+               (addr_hit[23] & (|(RV_CORE_IBEX_CFG_PERMIT[23] & ~reg_be))) |
+               (addr_hit[24] & (|(RV_CORE_IBEX_CFG_PERMIT[24] & ~reg_be))) |
+               (addr_hit[25] & (|(RV_CORE_IBEX_CFG_PERMIT[25] & ~reg_be)))));
   end
   assign alert_test_we = addr_hit[0] & reg_we & !reg_error;
 
@@ -1180,6 +1194,7 @@ module rv_core_ibex_cfg_reg_top (
   assign err_status_fatal_core_err_wd = reg_wdata[9];
 
   assign err_status_recov_core_err_wd = reg_wdata[10];
+  assign rnd_status_re = addr_hit[25] & reg_re & !reg_error;
 
   // Read data return
   always_comb begin
@@ -1289,18 +1304,32 @@ module rv_core_ibex_cfg_reg_top (
         reg_rdata_next[10] = err_status_recov_core_err_qs;
       end
 
+      addr_hit[24]: begin
+        reg_rdata_next[31:0] = rnd_data_qs;
+      end
+
+      addr_hit[25]: begin
+        reg_rdata_next[0] = rnd_status_qs;
+      end
+
       default: begin
         reg_rdata_next = '1;
       end
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

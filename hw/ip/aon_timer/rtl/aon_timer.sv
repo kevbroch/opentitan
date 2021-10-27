@@ -29,7 +29,7 @@ module aon_timer import aon_timer_reg_pkg::*;
   output logic                nmi_wdog_timer_bark_o,
 
   // clk_aon_i domain
-  output logic                aon_timer_wkup_req_o,
+  output logic                wkup_req_o,
   output logic                aon_timer_rst_req_o,
 
   // async domain
@@ -166,31 +166,15 @@ module aon_timer import aon_timer_reg_pkg::*;
   assign hw2reg.wkup_cause.d  = 1'b1;
 
   // cause register resides in AON domain.
-  assign aon_timer_wkup_req_o = reg2hw.wkup_cause.q;
+  assign wkup_req_o = reg2hw.wkup_cause.q;
 
   // The wakeup signal is not latched in the pwrmgr so must be held until acked by software
-  `ASSERT(WkupStable_A, aon_timer_wkup_req_o |=> aon_timer_wkup_req_o ||
+  `ASSERT(WkupStable_A, wkup_req_o |=> wkup_req_o ||
       $fell(reg2hw.wkup_cause.q) && !aon_sleep_mode, clk_aon_i, !rst_aon_ni)
 
   ////////////////////////
   // Interrupt Handling //
   ////////////////////////
-
-  // capture these signals as the origin sets are pulsed and it may
-  // happen when the bus clocks are not available.
-  logic [1:0] aon_intr_event_q;
-  always_ff @(posedge clk_aon_i or negedge rst_aon_ni) begin
-    if (!rst_aon_ni) begin
-      aon_intr_event_q <= '0;
-    end else begin
-      if (aon_wdog_intr_set) begin
-        aon_intr_event_q[AON_WDOG] <= ~aon_intr_event_q[AON_WDOG];
-      end
-      if (aon_wkup_intr_set) begin
-        aon_intr_event_q[AON_WKUP] <= ~aon_intr_event_q[AON_WKUP];
-      end
-    end
-  end
 
   logic [1:0] aon_intr_set, intr_set;
   assign aon_intr_set[AON_WDOG] = aon_wdog_intr_set;
@@ -209,17 +193,17 @@ module aon_timer import aon_timer_reg_pkg::*;
 
   // Registers to interrupt
   assign intr_test_qe           = reg2hw.intr_test.wkup_timer_expired.qe |
-                                  reg2hw.intr_test.wdog_timer_expired.qe;
+                                  reg2hw.intr_test.wdog_timer_bark.qe;
   assign intr_test_q [AON_WKUP] = reg2hw.intr_test.wkup_timer_expired.q;
   assign intr_state_q[AON_WKUP] = reg2hw.intr_state.wkup_timer_expired.q;
-  assign intr_test_q [AON_WDOG] = reg2hw.intr_test.wdog_timer_expired.q;
-  assign intr_state_q[AON_WDOG] = reg2hw.intr_state.wdog_timer_expired.q;
+  assign intr_test_q [AON_WDOG] = reg2hw.intr_test.wdog_timer_bark.q;
+  assign intr_state_q[AON_WDOG] = reg2hw.intr_state.wdog_timer_bark.q;
 
   // Interrupts to registers
   assign hw2reg.intr_state.wkup_timer_expired.d  = intr_state_d[AON_WKUP];
   assign hw2reg.intr_state.wkup_timer_expired.de = intr_state_de;
-  assign hw2reg.intr_state.wdog_timer_expired.d  = intr_state_d[AON_WDOG];
-  assign hw2reg.intr_state.wdog_timer_expired.de = intr_state_de;
+  assign hw2reg.intr_state.wdog_timer_bark.d  = intr_state_d[AON_WDOG];
+  assign hw2reg.intr_state.wdog_timer_bark.de = intr_state_de;
 
   prim_intr_hw #(
     .Width (2)
@@ -271,7 +255,7 @@ module aon_timer import aon_timer_reg_pkg::*;
   `ASSERT_KNOWN(IntrWkupKnown_A, intr_wkup_timer_expired_o)
   `ASSERT_KNOWN(IntrWdogKnown_A, intr_wdog_timer_bark_o)
   // clk_aon_i domain
-  `ASSERT_KNOWN(WkupReqKnown_A, aon_timer_wkup_req_o, clk_aon_i, !rst_aon_ni)
+  `ASSERT_KNOWN(WkupReqKnown_A, wkup_req_o, clk_aon_i, !rst_aon_ni)
   `ASSERT_KNOWN(RstReqKnown_A, aon_timer_rst_req_o, clk_aon_i, !rst_aon_ni)
 
 endmodule

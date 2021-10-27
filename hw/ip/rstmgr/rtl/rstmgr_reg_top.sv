@@ -9,7 +9,6 @@
 module rstmgr_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -127,11 +126,11 @@ module rstmgr_reg_top (
   logic [3:0] alert_info_attr_qs;
   logic alert_info_re;
   logic [31:0] alert_info_qs;
-  logic sw_rst_regen_we;
-  logic sw_rst_regen_en_0_qs;
-  logic sw_rst_regen_en_0_wd;
-  logic sw_rst_regen_en_1_qs;
-  logic sw_rst_regen_en_1_wd;
+  logic sw_rst_regwen_we;
+  logic sw_rst_regwen_en_0_qs;
+  logic sw_rst_regwen_en_0_wd;
+  logic sw_rst_regwen_en_1_qs;
+  logic sw_rst_regwen_en_1_wd;
   logic sw_rst_ctrl_n_re;
   logic sw_rst_ctrl_n_we;
   logic sw_rst_ctrl_n_val_0_qs;
@@ -141,7 +140,6 @@ module rstmgr_reg_top (
 
   // Register instances
   // R[reset_info]: V(False)
-
   //   F[por]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -166,7 +164,6 @@ module rstmgr_reg_top (
     // to register interface (read)
     .qs     (reset_info_por_qs)
   );
-
 
   //   F[low_power_exit]: 1:1
   prim_subreg #(
@@ -193,7 +190,6 @@ module rstmgr_reg_top (
     .qs     (reset_info_low_power_exit_qs)
   );
 
-
   //   F[ndm_reset]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -218,7 +214,6 @@ module rstmgr_reg_top (
     // to register interface (read)
     .qs     (reset_info_ndm_reset_qs)
   );
-
 
   //   F[hw_req]: 3:3
   prim_subreg #(
@@ -247,7 +242,6 @@ module rstmgr_reg_top (
 
 
   // R[alert_info_ctrl]: V(False)
-
   //   F[en]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -272,7 +266,6 @@ module rstmgr_reg_top (
     // to register interface (read)
     .qs     (alert_info_ctrl_en_qs)
   );
-
 
   //   F[index]: 7:4
   prim_subreg #(
@@ -301,7 +294,6 @@ module rstmgr_reg_top (
 
 
   // R[alert_info_attr]: V(True)
-
   prim_subreg_ext #(
     .DW    (4)
   ) u_alert_info_attr (
@@ -317,7 +309,6 @@ module rstmgr_reg_top (
 
 
   // R[alert_info]: V(True)
-
   prim_subreg_ext #(
     .DW    (32)
   ) u_alert_info (
@@ -332,22 +323,20 @@ module rstmgr_reg_top (
   );
 
 
-
-  // Subregister 0 of Multireg sw_rst_regen
-  // R[sw_rst_regen]: V(False)
-
-  // F[en_0]: 0:0
+  // Subregister 0 of Multireg sw_rst_regwen
+  // R[sw_rst_regwen]: V(False)
+  //   F[en_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h1)
-  ) u_sw_rst_regen_en_0 (
+  ) u_sw_rst_regwen_en_0 (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
-    .we     (sw_rst_regen_we),
-    .wd     (sw_rst_regen_en_0_wd),
+    .we     (sw_rst_regwen_we),
+    .wd     (sw_rst_regwen_en_0_wd),
 
     // from internal hardware
     .de     (1'b0),
@@ -355,25 +344,24 @@ module rstmgr_reg_top (
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.sw_rst_regen[0].q),
+    .q      (reg2hw.sw_rst_regwen[0].q),
 
     // to register interface (read)
-    .qs     (sw_rst_regen_en_0_qs)
+    .qs     (sw_rst_regwen_en_0_qs)
   );
 
-
-  // F[en_1]: 1:1
+  //   F[en_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW0C),
     .RESVAL  (1'h1)
-  ) u_sw_rst_regen_en_1 (
+  ) u_sw_rst_regwen_en_1 (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
-    .we     (sw_rst_regen_we),
-    .wd     (sw_rst_regen_en_1_wd),
+    .we     (sw_rst_regwen_we),
+    .wd     (sw_rst_regwen_en_1_wd),
 
     // from internal hardware
     .de     (1'b0),
@@ -381,19 +369,16 @@ module rstmgr_reg_top (
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.sw_rst_regen[1].q),
+    .q      (reg2hw.sw_rst_regwen[1].q),
 
     // to register interface (read)
-    .qs     (sw_rst_regen_en_1_qs)
+    .qs     (sw_rst_regwen_en_1_qs)
   );
-
-
 
 
   // Subregister 0 of Multireg sw_rst_ctrl_n
   // R[sw_rst_ctrl_n]: V(True)
-
-  // F[val_0]: 0:0
+  //   F[val_0]: 0:0
   prim_subreg_ext #(
     .DW    (1)
   ) u_sw_rst_ctrl_n_val_0 (
@@ -407,8 +392,7 @@ module rstmgr_reg_top (
     .qs     (sw_rst_ctrl_n_val_0_qs)
   );
 
-
-  // F[val_1]: 1:1
+  //   F[val_1]: 1:1
   prim_subreg_ext #(
     .DW    (1)
   ) u_sw_rst_ctrl_n_val_1 (
@@ -424,8 +408,6 @@ module rstmgr_reg_top (
 
 
 
-
-
   logic [5:0] addr_hit;
   always_comb begin
     addr_hit = '0;
@@ -433,7 +415,7 @@ module rstmgr_reg_top (
     addr_hit[1] = (reg_addr == RSTMGR_ALERT_INFO_CTRL_OFFSET);
     addr_hit[2] = (reg_addr == RSTMGR_ALERT_INFO_ATTR_OFFSET);
     addr_hit[3] = (reg_addr == RSTMGR_ALERT_INFO_OFFSET);
-    addr_hit[4] = (reg_addr == RSTMGR_SW_RST_REGEN_OFFSET);
+    addr_hit[4] = (reg_addr == RSTMGR_SW_RST_REGWEN_OFFSET);
     addr_hit[5] = (reg_addr == RSTMGR_SW_RST_CTRL_N_OFFSET);
   end
 
@@ -465,11 +447,11 @@ module rstmgr_reg_top (
   assign alert_info_ctrl_index_wd = reg_wdata[7:4];
   assign alert_info_attr_re = addr_hit[2] & reg_re & !reg_error;
   assign alert_info_re = addr_hit[3] & reg_re & !reg_error;
-  assign sw_rst_regen_we = addr_hit[4] & reg_we & !reg_error;
+  assign sw_rst_regwen_we = addr_hit[4] & reg_we & !reg_error;
 
-  assign sw_rst_regen_en_0_wd = reg_wdata[0];
+  assign sw_rst_regwen_en_0_wd = reg_wdata[0];
 
-  assign sw_rst_regen_en_1_wd = reg_wdata[1];
+  assign sw_rst_regwen_en_1_wd = reg_wdata[1];
   assign sw_rst_ctrl_n_re = addr_hit[5] & reg_re & !reg_error;
   assign sw_rst_ctrl_n_we = addr_hit[5] & reg_we & !reg_error;
 
@@ -502,8 +484,8 @@ module rstmgr_reg_top (
       end
 
       addr_hit[4]: begin
-        reg_rdata_next[0] = sw_rst_regen_en_0_qs;
-        reg_rdata_next[1] = sw_rst_regen_en_1_qs;
+        reg_rdata_next[0] = sw_rst_regwen_en_0_qs;
+        reg_rdata_next[1] = sw_rst_regwen_en_1_qs;
       end
 
       addr_hit[5]: begin
@@ -517,12 +499,18 @@ module rstmgr_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

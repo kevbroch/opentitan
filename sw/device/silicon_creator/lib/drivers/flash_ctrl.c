@@ -110,3 +110,8 @@ size_t flash_ctrl_fifo_read(size_t word_count, uint32_t *data_out) {
 
   return words_read;
 }
+
+void flash_ctrl_exec_set(flash_ctrl_exec_t enable) {
+  // Enable or disable flash execution.
+  abs_mmio_write32(kBase + FLASH_CTRL_EXEC_REG_OFFSET, (uint32_t)enable);
+}

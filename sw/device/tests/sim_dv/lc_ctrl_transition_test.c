@@ -11,7 +11,7 @@
 #include "sw/device/lib/dif/dif_lc_ctrl.h"
 #include "sw/device/lib/runtime/log.h"
 #include "sw/device/lib/testing/check.h"
-#include "sw/device/lib/testing/test_main.h"
+#include "sw/device/lib/testing/test_framework/test_main.h"
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"
 
@@ -21,9 +21,22 @@ static dif_lc_ctrl_t lc;
 
 const test_config_t kTestConfig;
 
-// TODO: Issue more resets and andomize this array in each reset.
+/**
+ * Track number of iterations of this C test.
+ *
+ * From the software / compiler's perspective, this is a constant (hence the
+ * `const` qualifier). However, the external DV testbench finds this symbol's
+ * address and modifies it via backdoor, to track how many transactions have
+ * been sent. Hence, we add the `volatile` keyword to prevent the compiler from
+ * optimizing it out.
+ * The `const` is needed to put it in the .rodata section, otherwise it gets
+ * placed in .data section in the main SRAM. We cannot backdoor write anything
+ * in SRAM at the start of the test because the CRT init code wipes it to 0s.
+ */
+static volatile const uint8_t kTestIterationCount = 0x0;
+
 // LC exit token value for LC state transition.
-static const uint8_t lc_exit_token[LC_TOKEN_SIZE] = {
+static volatile const uint8_t kLcExitToken[LC_TOKEN_SIZE] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
 };
@@ -31,7 +44,7 @@ static const uint8_t lc_exit_token[LC_TOKEN_SIZE] = {
 static void check_lc_state_transition_count(uint8_t exp_lc_count) {
   LOG_INFO("Read LC count and check with expect_val=%0d", exp_lc_count);
   uint8_t lc_count;
-  CHECK(dif_lc_ctrl_get_attempts(&lc, &lc_count) == kDifLcCtrlAttemptsOk,
+  CHECK(dif_lc_ctrl_get_attempts(&lc, &lc_count) == kDifOk,
         "Read lc_count register failed!");
   CHECK(lc_count == exp_lc_count,
         "LC_count error, expected %0d but actual count is %0d", exp_lc_count,
@@ -50,21 +63,24 @@ static void check_lc_state_transition_count(uint8_t exp_lc_count) {
  * 5). Issue hard reset.
  * 6). Wait for LC_CTRL is ready, then check if LC_STATE advanced to `Dev`
  * state, and lc_count advanced to `9`.
+ * 7). Issue hard reset and override OTP's LC partition, and reset LC state to
+ * `TestUnlocked2` state.
  */
 
 bool test_main(void) {
   LOG_INFO("Start LC_CTRL transition test.");
 
   mmio_region_t lc_reg = mmio_region_from_addr(TOP_EARLGREY_LC_CTRL_BASE_ADDR);
-  CHECK(dif_lc_ctrl_init((dif_lc_ctrl_params_t){.base_addr = lc_reg}, &lc) ==
-        kDifLcCtrlOk);
+  CHECK_DIF_OK(dif_lc_ctrl_init(lc_reg, &lc));
 
   LOG_INFO("Read and check LC state.");
   dif_lc_ctrl_state_t curr_state;
-  CHECK(dif_lc_ctrl_get_state(&lc, &curr_state) == kDifLcCtrlOk);
+  CHECK_DIF_OK(dif_lc_ctrl_get_state(&lc, &curr_state));
 
-  // The OTP preload image hardcode lc_count as 8.
-  const uint8_t LcStateTransitionCount = 8;
+  // The OTP preload image hardcodes the initial LC state transition count to 8.
+  // With each iteration of the test, we increment it.
+  // `kTestIterationCount` starts with 1 in SystemVerilog.
+  const uint8_t LcStateTransitionCount = 8 + kTestIterationCount - 1;
 
   if (curr_state == kDifLcCtrlStateTestUnlocked2) {
     // LC TestUnlocked2 is the intial test state for this sequence.
@@ -73,10 +89,14 @@ bool test_main(void) {
 
     // Request lc_state transfer to Dev state.
     dif_lc_ctrl_token_t token;
-    memcpy(token.data, lc_exit_token, sizeof(lc_exit_token));
-    CHECK(dif_lc_ctrl_mutex_try_acquire(&lc) == kDifLcCtrlMutexOk);
-    CHECK(dif_lc_ctrl_transition(&lc, kDifLcCtrlStateDev, &token) ==
-              kDifLcCtrlMutexOk,
+    dif_lc_ctrl_settings_t settings;
+    settings.clock_select = kDifLcCtrlInternalClockEn;
+    for (int i = 0; i < LC_TOKEN_SIZE; i++) {
+      token.data[i] = kLcExitToken[i];
+    }
+    CHECK(dif_lc_ctrl_mutex_try_acquire(&lc) == kDifOk);
+    CHECK(dif_lc_ctrl_transition(&lc, kDifLcCtrlStateDev, &token, &settings) ==
+              kDifOk,
           "LC_transition failed!");
 
     LOG_INFO("Waiting for LC transtition done and reboot.");

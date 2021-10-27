@@ -9,7 +9,6 @@
 module gpio_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
   // To HW
@@ -168,7 +167,6 @@ module gpio_reg_top (
 
   // Register instances
   // R[intr_state]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
@@ -195,7 +193,6 @@ module gpio_reg_top (
 
 
   // R[intr_enable]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -222,7 +219,6 @@ module gpio_reg_top (
 
 
   // R[intr_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (32)
   ) u_intr_test (
@@ -238,7 +234,6 @@ module gpio_reg_top (
 
 
   // R[alert_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_alert_test (
@@ -254,7 +249,6 @@ module gpio_reg_top (
 
 
   // R[data_in]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRO),
@@ -281,7 +275,6 @@ module gpio_reg_top (
 
 
   // R[direct_out]: V(True)
-
   prim_subreg_ext #(
     .DW    (32)
   ) u_direct_out (
@@ -297,7 +290,6 @@ module gpio_reg_top (
 
 
   // R[masked_out_lower]: V(True)
-
   //   F[data]: 15:0
   prim_subreg_ext #(
     .DW    (16)
@@ -311,7 +303,6 @@ module gpio_reg_top (
     .q      (reg2hw.masked_out_lower.data.q),
     .qs     (masked_out_lower_data_qs)
   );
-
 
   //   F[mask]: 31:16
   prim_subreg_ext #(
@@ -329,7 +320,6 @@ module gpio_reg_top (
 
 
   // R[masked_out_upper]: V(True)
-
   //   F[data]: 15:0
   prim_subreg_ext #(
     .DW    (16)
@@ -343,7 +333,6 @@ module gpio_reg_top (
     .q      (reg2hw.masked_out_upper.data.q),
     .qs     (masked_out_upper_data_qs)
   );
-
 
   //   F[mask]: 31:16
   prim_subreg_ext #(
@@ -361,7 +350,6 @@ module gpio_reg_top (
 
 
   // R[direct_oe]: V(True)
-
   prim_subreg_ext #(
     .DW    (32)
   ) u_direct_oe (
@@ -377,7 +365,6 @@ module gpio_reg_top (
 
 
   // R[masked_oe_lower]: V(True)
-
   //   F[data]: 15:0
   prim_subreg_ext #(
     .DW    (16)
@@ -391,7 +378,6 @@ module gpio_reg_top (
     .q      (reg2hw.masked_oe_lower.data.q),
     .qs     (masked_oe_lower_data_qs)
   );
-
 
   //   F[mask]: 31:16
   prim_subreg_ext #(
@@ -409,7 +395,6 @@ module gpio_reg_top (
 
 
   // R[masked_oe_upper]: V(True)
-
   //   F[data]: 15:0
   prim_subreg_ext #(
     .DW    (16)
@@ -423,7 +408,6 @@ module gpio_reg_top (
     .q      (reg2hw.masked_oe_upper.data.q),
     .qs     (masked_oe_upper_data_qs)
   );
-
 
   //   F[mask]: 31:16
   prim_subreg_ext #(
@@ -441,7 +425,6 @@ module gpio_reg_top (
 
 
   // R[intr_ctrl_en_rising]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -468,7 +451,6 @@ module gpio_reg_top (
 
 
   // R[intr_ctrl_en_falling]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -495,7 +477,6 @@ module gpio_reg_top (
 
 
   // R[intr_ctrl_en_lvlhigh]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -522,7 +503,6 @@ module gpio_reg_top (
 
 
   // R[intr_ctrl_en_lvllow]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -549,7 +529,6 @@ module gpio_reg_top (
 
 
   // R[ctrl_en_input_filter]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -573,7 +552,6 @@ module gpio_reg_top (
     // to register interface (read)
     .qs     (ctrl_en_input_filter_qs)
   );
-
 
 
 
@@ -758,12 +736,18 @@ module gpio_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

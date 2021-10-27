@@ -7,13 +7,12 @@ module otbn_top_sim (
   input IO_RST_N
 );
   import otbn_pkg::*;
+  import edn_pkg::*;
 
   // Size of the instruction memory, in bytes
   parameter int ImemSizeByte = otbn_reg_pkg::OTBN_IMEM_SIZE;
   // Size of the data memory, in bytes
   parameter int DmemSizeByte = otbn_reg_pkg::OTBN_DMEM_SIZE;
-  // Start address of first instruction in IMem
-  parameter int ImemStartAddr = 32'h0;
 
   localparam int ImemAddrWidth = prim_util_pkg::vbits(ImemSizeByte);
   localparam int DmemAddrWidth = prim_util_pkg::vbits(DmemSizeByte);
@@ -22,8 +21,8 @@ module otbn_top_sim (
   localparam logic [127:0] TestScrambleKey   = 128'h48ecf6c738f0f108a5b08620695ffd4d;
   localparam logic [63:0]  TestScrambleNonce = 64'hf88c2578fa4cd123;
 
-  logic      otbn_done_d, otbn_done_q;
-  err_bits_t otbn_err_bits_d, otbn_err_bits_q;
+  logic      otbn_done, otbn_done_r, otbn_done_rr;
+  err_bits_t otbn_err_bits, otbn_err_bits_r, otbn_err_bits_rr;
   logic      otbn_start;
 
   // Intialise otbn_start_done to 1 so that we only signal otbn_start after we have seen a reset. If
@@ -61,42 +60,46 @@ module otbn_top_sim (
     .ImemSizeByte ( ImemSizeByte ),
     .DmemSizeByte ( DmemSizeByte )
   ) u_otbn_core (
-    .clk_i           ( IO_CLK           ),
-    .rst_ni          ( IO_RST_N         ),
+    .clk_i                  ( IO_CLK           ),
+    .rst_ni                 ( IO_RST_N         ),
 
-    .start_i         ( otbn_start       ),
-    .done_o          ( otbn_done_d      ),
+    .start_i                ( otbn_start       ),
+    .done_o                 ( otbn_done        ),
+    .locked_o               (                  ),
 
-    .err_bits_o      ( otbn_err_bits_d  ),
+    .err_bits_o             ( otbn_err_bits    ),
 
-    .start_addr_i    ( ImemStartAddr    ),
+    .imem_req_o             ( imem_req         ),
+    .imem_addr_o            ( imem_addr        ),
+    .imem_wdata_o           (                  ),
+    .imem_rdata_i           ( imem_rdata[31:0] ),
+    .imem_rvalid_i          ( imem_rvalid      ),
+    .imem_rerror_i          ( imem_rerror      ),
 
-    .imem_req_o      ( imem_req         ),
-    .imem_addr_o     ( imem_addr        ),
-    .imem_wdata_o    (                  ),
-    .imem_rdata_i    ( imem_rdata[31:0] ),
-    .imem_rvalid_i   ( imem_rvalid      ),
-    .imem_rerror_i   ( imem_rerror      ),
+    .dmem_req_o             ( dmem_req         ),
+    .dmem_write_o           ( dmem_write       ),
+    .dmem_addr_o            ( dmem_addr        ),
+    .dmem_wdata_o           ( dmem_wdata       ),
+    .dmem_wmask_o           ( dmem_wmask       ),
+    .dmem_rmask_o           ( ),
+    .dmem_rdata_i           ( dmem_rdata       ),
+    .dmem_rvalid_i          ( dmem_rvalid      ),
+    .dmem_rerror_i          ( dmem_rerror      ),
 
-    .dmem_req_o      ( dmem_req         ),
-    .dmem_write_o    ( dmem_write       ),
-    .dmem_addr_o     ( dmem_addr        ),
-    .dmem_wdata_o    ( dmem_wdata       ),
-    .dmem_wmask_o    ( dmem_wmask       ),
-    .dmem_rmask_o    ( ),
-    .dmem_rdata_i    ( dmem_rdata       ),
-    .dmem_rvalid_i   ( dmem_rvalid      ),
-    .dmem_rerror_i   ( dmem_rerror      ),
+    .edn_rnd_req_o          ( edn_rnd_req      ),
+    .edn_rnd_ack_i          ( edn_rnd_ack      ),
+    .edn_rnd_data_i         ( edn_rnd_data     ),
 
-    .edn_rnd_req_o   ( edn_rnd_req      ),
-    .edn_rnd_ack_i   ( edn_rnd_ack      ),
-    .edn_rnd_data_i  ( edn_rnd_data     ),
+    .edn_urnd_req_o         ( edn_urnd_req     ),
+    .edn_urnd_ack_i         ( edn_urnd_ack     ),
+    .edn_urnd_data_i        ( edn_urnd_data    ),
 
-    .edn_urnd_req_o  ( edn_urnd_req     ),
-    .edn_urnd_ack_i  ( edn_urnd_ack     ),
-    .edn_urnd_data_i ( edn_urnd_data    ),
+    .insn_cnt_o             ( insn_cnt         ),
 
-    .insn_cnt_o      ( insn_cnt )
+    .bus_intg_violation_i   ( 1'b0             ),
+    .illegal_bus_access_i   ( 1'b0             ),
+    .lifecycle_escalation_i ( 1'b0             ),
+    .software_errs_fatal_i  ( 1'b0             )
   );
 
   // The top bits of IMEM rdata aren't currently used (they will eventually be used for integrity
@@ -105,6 +108,11 @@ module otbn_top_sim (
   assign unused_imem_top_rdata = &{1'b0, imem_rdata[38:32]};
 
   localparam logic [WLEN-1:0] FixedEdnVal = {{(WLEN / 4){4'h9}}};
+ 
+  edn_req_t rnd_req;
+  edn_rsp_t rnd_rsp;
+
+  assign rnd_req.edn_req = edn_rnd_req;
 
   otbn_mock_edn #(
     .Width       ( WLEN        ),
@@ -113,12 +121,18 @@ module otbn_top_sim (
     .clk_i      ( IO_CLK       ),
     .rst_ni     ( IO_RST_N     ),
 
-    .edn_req_i  ( edn_rnd_req  ),
-    .edn_ack_o  ( edn_rnd_ack  ),
-    .edn_data_o ( edn_rnd_data )
+    .edn_req_i  ( rnd_req  ),
+    .edn_rsp_o  ( rnd_rsp  ),
+
+    .edn_data_o ( edn_rnd_data ),
+    .edn_ack_o  ( edn_rnd_ack  )
   );
 
   assign edn_rnd_data_valid = edn_rnd_req & edn_rnd_ack;
+ 
+  edn_req_t urnd_req;
+
+  assign urnd_req.edn_req = edn_urnd_req;
 
   otbn_mock_edn #(
     .Width       ( WLEN        ),
@@ -127,7 +141,9 @@ module otbn_top_sim (
     .clk_i      ( IO_CLK       ),
     .rst_ni     ( IO_RST_N     ),
 
-    .edn_req_i  ( edn_urnd_req  ),
+    .edn_req_i  ( urnd_req ),
+    .edn_rsp_o  (  ),
+
     .edn_ack_o  ( edn_urnd_ack  ),
     .edn_data_o ( edn_urnd_data )
   );
@@ -141,10 +157,12 @@ module otbn_top_sim (
   // Flop `done_o` from otbn_core to match up with model done signal.
   always @(posedge IO_CLK or negedge IO_RST_N) begin
     if (!IO_RST_N) begin
-      otbn_start      <= 1'b0;
-      otbn_start_done <= 1'b0;
-      otbn_done_q     <= 1'b0;
-      otbn_err_bits_q <= '0;
+      otbn_start       <= 1'b0;
+      otbn_start_done  <= 1'b0;
+      otbn_done_r      <= 1'b0;
+      otbn_done_rr     <= 1'b0;
+      otbn_err_bits_r  <= '0;
+      otbn_err_bits_rr <= '0;
     end else begin
       if (!otbn_start_done) begin
         otbn_start      <= 1'b1;
@@ -153,8 +171,10 @@ module otbn_top_sim (
         otbn_start <= 1'b0;
       end
 
-      otbn_done_q <= otbn_done_d;
-      otbn_err_bits_q <= otbn_err_bits_d;
+      otbn_done_r <= otbn_done;
+      otbn_done_rr <= otbn_done_r;
+      otbn_err_bits_r <= otbn_err_bits;
+      otbn_err_bits_rr <= otbn_err_bits_r;
     end
   end
 
@@ -246,7 +266,7 @@ module otbn_top_sim (
     if (!IO_RST_N) begin
       finish_counter <= 2'd0;
     end else begin
-      if (otbn_done_q) begin
+      if (otbn_done_r) begin
         finish_counter <= 2'd1;
       end
 
@@ -266,9 +286,9 @@ module otbn_top_sim (
 
   localparam string DesignScope = "..u_otbn_core";
 
-  logic      otbn_model_done;
   err_bits_t otbn_model_err_bits;
   bit [31:0] otbn_model_insn_cnt;
+  bit        otbn_model_done_rr;
   bit        otbn_model_err;
 
   otbn_core_model #(
@@ -278,26 +298,30 @@ module otbn_top_sim (
     .DesignScope     ( DesignScope )
   ) u_otbn_core_model (
     .clk_i                 ( IO_CLK ),
+    .clk_edn_i             ( IO_CLK ),
     .rst_ni                ( IO_RST_N ),
+    .rst_edn_ni            ( IO_RST_N ),
 
     .start_i               ( otbn_start ),
-    .done_o                ( otbn_model_done ),
-
-    .start_addr_i          ( ImemStartAddr ),
 
     .err_bits_o            ( otbn_model_err_bits ),
 
-    .edn_rnd_data_valid_i  ( edn_rnd_data_valid ),
-    .edn_rnd_data_i        ( edn_rnd_data ),
+    .edn_rnd_i             ( rnd_rsp ),
+    .edn_rnd_cdc_done_i    ( edn_rnd_data_valid ),
     .edn_urnd_data_valid_i ( edn_urnd_data_valid ),
 
+    .status_o              ( ),
     .insn_cnt_o            ( otbn_model_insn_cnt ),
+
+    .invalidate_imem_i     ( 1'b0 ),
+
+    .done_rr_o             ( otbn_model_done_rr ),
 
     .err_o                 ( otbn_model_err )
   );
 
   bit done_mismatch_latched, err_bits_mismatch_latched, cnt_mismatch_latched;
-  bit model_err_latched;
+  bit model_err_latched, loop_warp_model_err;
 
   always_ff @(posedge IO_CLK or negedge IO_RST_N) begin
     if (!IO_RST_N) begin
@@ -306,26 +330,72 @@ module otbn_top_sim (
       cnt_mismatch_latched      <= 1'b0;
       model_err_latched         <= 1'b0;
     end else begin
-      if (otbn_done_q != otbn_model_done) begin
-        $display("ERROR: At time %0t, otbn_done_q != otbn_model_done (%0d != %0d).",
-                 $time, otbn_done_q, otbn_model_done);
+      // Check that the 'done_o' output from the RTL matches the 'done_rr_o' output from the model
+      // (with two cycles' delay).
+      if (otbn_done_rr && !otbn_model_done_rr) begin
+        $display("ERROR: At time %0t, RTL done on previous cycle, but model still busy.", $time);
         done_mismatch_latched <= 1'b1;
       end
-      if (otbn_done_q && otbn_model_done) begin
-        if (otbn_err_bits_q != otbn_model_err_bits) begin
-          $display("ERROR: At time %0t, otbn_err_bits != otbn_model_err_bits (%0x != %0x).",
-                   $time, otbn_err_bits_q, otbn_model_err_bits);
+      if (otbn_model_done_rr && !otbn_done_rr) begin
+        $display("ERROR: At time %0t, model finished, but RTL not done in time.", $time);
+        done_mismatch_latched <= 1'b1;
+      end
+      if (otbn_model_done_rr && otbn_done_rr) begin
+        if (otbn_err_bits_rr != otbn_model_err_bits) begin
+          $display("ERROR: At time %0t, otbn_err_bits != otbn_model_err_bits (0x%0x != 0x%0x).",
+                   $time, otbn_err_bits_rr, otbn_model_err_bits);
           err_bits_mismatch_latched <= 1'b1;
         end
       end
       if (insn_cnt != otbn_model_insn_cnt) begin
         if (!cnt_mismatch_latched) begin
-          $display("ERROR: At time %0t, insn_cnt != otbn_model_insn_cnt (%0x != %0x).",
+          $display("ERROR: At time %0t, insn_cnt != otbn_model_insn_cnt (0x%0x != 0x%0x).",
                    $time, insn_cnt, otbn_model_insn_cnt);
         end
         cnt_mismatch_latched <= 1'b1;
       end
-      model_err_latched <= model_err_latched | otbn_model_err;
+      model_err_latched <= model_err_latched | otbn_model_err | loop_warp_model_err;
+    end
+  end
+
+  bit err_latched;
+  assign err_latched = model_err_latched | done_mismatch_latched | err_bits_mismatch_latched;
+
+  int bad_cycles;
+  always_ff @(negedge IO_CLK or negedge IO_RST_N) begin
+    if (!IO_RST_N) begin
+      bad_cycles <= 0;
+    end else begin
+      if (err_latched) begin
+        bad_cycles <= bad_cycles + 1;
+      end
+      if (bad_cycles >= 3) begin
+        $error("Mismatch or model error (see message above)");
+      end
+    end
+  end
+
+  // Defined in otbn_top_sim.cc
+  import "DPI-C" context function int OtbnTopInstallLoopWarps();
+  import "DPI-C" context function void OtbnTopApplyLoopWarp();
+  bit warps_installed;
+
+  always_ff @(negedge IO_CLK or negedge IO_RST_N) begin
+    if (!IO_RST_N) begin
+      warps_installed <= 1'b0;
+    end else begin
+      if (!warps_installed) begin
+        if (OtbnTopInstallLoopWarps() != 0) begin
+          $display("ERROR: At time %0t, OtbnTopInstallLoopWarps() failed.", $time);
+          loop_warp_model_err <= 1'b1;
+        end
+      end
+      warps_installed <= 1'b1;
+    end
+  end
+  always_ff @(posedge IO_CLK or negedge IO_RST_N) begin
+    if (IO_RST_N) begin
+      OtbnTopApplyLoopWarp();
     end
   end
 
@@ -356,7 +426,7 @@ module otbn_top_sim (
   export "DPI-C" function otbn_err_get;
 
   function automatic bit otbn_err_get();
-    return model_err_latched | done_mismatch_latched | err_bits_mismatch_latched;
+    return err_latched;
   endfunction
 
 endmodule

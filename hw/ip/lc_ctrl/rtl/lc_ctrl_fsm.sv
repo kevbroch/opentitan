@@ -64,7 +64,7 @@ module lc_ctrl_fsm
   output logic                  otp_prog_error_o,
   output logic                  state_invalid_error_o,
   // Local life cycle signal
-  output lc_tx_t                lc_test_or_rma_o,
+  output lc_tx_t                lc_raw_test_rma_o,
   // Life cycle broadcast outputs.
   output lc_tx_t                lc_dft_en_o,
   output lc_tx_t                lc_nvm_debug_en_o,
@@ -120,7 +120,7 @@ module lc_ctrl_fsm
   ///////////////
   fsm_state_e fsm_state_d, fsm_state_q;
 
-  // Continously feed in valid signal for LC state.
+  // Continuously feed in valid signal for LC state.
   logic lc_state_valid_d, lc_state_valid_q;
   assign lc_state_valid_d = lc_state_valid_i;
 
@@ -142,6 +142,9 @@ module lc_ctrl_fsm
   // Hashed token to compare against.
   logic hashed_token_valid_mux;
   lc_token_t hashed_token_mux;
+
+  // Multibit state error from state decoder
+  logic [5:0] state_invalid_error;
 
   always_comb begin : p_fsm
     // FSM default state assignments.
@@ -223,10 +226,18 @@ module lc_ctrl_fsm
                                LcStTestLocked0,
                                LcStTestLocked1,
                                LcStTestLocked2,
+                               LcStTestLocked3,
+                               LcStTestLocked4,
+                               LcStTestLocked5,
+                               LcStTestLocked6,
                                LcStTestUnlocked0,
                                LcStTestUnlocked1,
                                LcStTestUnlocked2,
                                LcStTestUnlocked3,
+                               LcStTestUnlocked4,
+                               LcStTestUnlocked5,
+                               LcStTestUnlocked6,
+                               LcStTestUnlocked7,
                                LcStRma}) begin
           if (use_ext_clock_i) begin
             lc_clk_byp_req = On;
@@ -397,7 +408,9 @@ module lc_ctrl_fsm
 
     // If at any time the life cycle state encoding is not valid,
     // we jump into the terminal error state right away.
-    if (state_invalid_error_o) begin
+    // Note that state_invalid_error is a multibit error signal
+    // with different error sources - need to reduce this to one bit here.
+    if (|state_invalid_error) begin
       fsm_state_d = InvalidSt;
     end else if (esc_scrap_state0_i || esc_scrap_state1_i) begin
       fsm_state_d = EscalateSt;
@@ -438,7 +451,7 @@ module lc_ctrl_fsm
   assign lc_cnt_q = lc_cnt_e'(lc_cnt_raw_q);
   prim_flop #(
     .Width(LcCountWidth),
-    .ResetValue(LcCountWidth'(LcCnt16))
+    .ResetValue(LcCountWidth'(LcCnt24))
   ) u_cnt_regs (
     .clk_i,
     .rst_ni,
@@ -495,16 +508,19 @@ module lc_ctrl_fsm
   // and flags any errors in the state encoding. Errors will move the
   // main FSM into INVALID right away.
   lc_ctrl_state_decode u_lc_ctrl_state_decode (
-    .lc_state_valid_i  ( lc_state_valid_q ),
-    .lc_state_i        ( lc_state_q       ),
-    .lc_cnt_i          ( lc_cnt_q         ),
+    .lc_state_valid_i      ( lc_state_valid_q  ),
+    .lc_state_i            ( lc_state_q        ),
+    .lc_cnt_i              ( lc_cnt_q          ),
     .secrets_valid_i,
-    .fsm_state_i       ( fsm_state_q      ),
+    .fsm_state_i           ( fsm_state_q       ),
     .dec_lc_state_o,
     .dec_lc_id_state_o,
     .dec_lc_cnt_o,
-    .state_invalid_error_o
+    .state_invalid_error_o (state_invalid_error)
   );
+
+  // Output logically reduced version.
+  assign state_invalid_error_o = |state_invalid_error;
 
   // LC transition checker logic and next state generation.
   lc_ctrl_state_transition u_lc_ctrl_state_transition (
@@ -531,7 +547,7 @@ module lc_ctrl_fsm
     .lc_state_i         ( lc_state_q       ),
     .secrets_valid_i,
     .fsm_state_i        ( fsm_state_q      ),
-    .lc_test_or_rma_o,
+    .lc_raw_test_rma_o,
     .lc_dft_en_o,
     .lc_nvm_debug_en_o,
     .lc_hw_debug_en_o,
@@ -571,14 +587,24 @@ module lc_ctrl_fsm
   // Assertions //
   ////////////////
 
-  `ASSERT(ClkBypStaysOnOnceAsserted_A,
+  `ASSERT(EscStaysOnOnceAsserted_A,
       lc_escalate_en_o == On
       |=>
       lc_escalate_en_o == On)
+
+  `ASSERT(ClkBypStaysOnOnceAsserted_A,
+      lc_clk_byp_req_o == On
+      |=>
+      lc_clk_byp_req_o == On)
 
   `ASSERT(FlashRmaStaysOnOnceAsserted_A,
       lc_flash_rma_req_o == On
       |=>
       lc_flash_rma_req_o == On)
+
+  `ASSERT(NoClkBypInProdStates_A,
+      lc_state_q inside {LcStProd, LcStProdEnd, LcStDev}
+      |=>
+      lc_clk_byp_req_o == Off)
 
 endmodule : lc_ctrl_fsm

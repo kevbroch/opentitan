@@ -72,9 +72,7 @@
  */
 module spi_passthrough
   import spi_device_pkg::*;
-#(
-  parameter int unsigned NumCmdInfo = 16
-) (
+(
   input clk_i,   // SPI input clk
   input rst_ni,  // SPI reset
 
@@ -572,7 +570,9 @@ module spi_passthrough
                                     cmd_info.addr_en,
                                     cmd_info.addr_swap_en,
                                     cmd_info.addr_4b_affected,
-                                    cmd_info.opcode};
+                                    cmd_info.opcode,
+                                    cmd_info.upload,
+                                    cmd_info.busy};
 
   always_comb begin
     cmd_info_d = '0;

@@ -43,6 +43,16 @@ class otbn_env extends cip_base_env #(
                                                       cfg.rf_base_vif)) begin
       `uvm_fatal(`gfn, "failed to get otbn_rf_base_if handle from uvm_config_db")
     end
+    if (!uvm_config_db#(virtual otbn_controller_if)::get(this, "", "controller_vif",
+                                                      cfg.controller_vif)) begin
+      `uvm_fatal(`gfn, "failed to get otbn_controller_if handle from uvm_config_db")
+    end
+    if (!uvm_config_db#(mem_bkdr_util)::get(this, "", "imem_util", cfg.imem_util)) begin
+      `uvm_fatal(`gfn, "failed to get imem_util from uvm_config_db")
+    end
+    if (!uvm_config_db#(mem_bkdr_util)::get(this, "", "dmem_util", cfg.dmem_util)) begin
+      `uvm_fatal(`gfn, "failed to get dmem_util from uvm_config_db")
+    end
 
     trace_monitor = otbn_trace_monitor::type_id::create("trace_monitor", this);
     trace_monitor.cfg = cfg;
@@ -53,6 +63,7 @@ class otbn_env extends cip_base_env #(
     super.connect_phase(phase);
     model_agent.monitor.analysis_port.connect(scoreboard.model_fifo.analysis_export);
     trace_monitor.analysis_port.connect(scoreboard.trace_fifo.analysis_export);
+    cfg.scoreboard = scoreboard;
   endfunction
 
   function void final_phase(uvm_phase phase);

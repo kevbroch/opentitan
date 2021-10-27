@@ -9,7 +9,6 @@
 module spi_device_reg_top (
   input clk_i,
   input rst_ni,
-
   input  tlul_pkg::tl_h2d_t tl_i,
   output tlul_pkg::tl_d2h_t tl_o,
 
@@ -158,38 +157,43 @@ module spi_device_reg_top (
   // Format: <reg>_<field>_{wd|we|qs}
   //        or <reg>_{wd|we|qs} if field == 1 or 0
   logic intr_state_we;
-  logic intr_state_rxf_qs;
-  logic intr_state_rxf_wd;
-  logic intr_state_rxlvl_qs;
-  logic intr_state_rxlvl_wd;
-  logic intr_state_txlvl_qs;
-  logic intr_state_txlvl_wd;
-  logic intr_state_rxerr_qs;
-  logic intr_state_rxerr_wd;
-  logic intr_state_rxoverflow_qs;
-  logic intr_state_rxoverflow_wd;
-  logic intr_state_txunderflow_qs;
-  logic intr_state_txunderflow_wd;
+  logic intr_state_rx_full_qs;
+  logic intr_state_rx_full_wd;
+  logic intr_state_rx_watermark_qs;
+  logic intr_state_rx_watermark_wd;
+  logic intr_state_tx_watermark_qs;
+  logic intr_state_tx_watermark_wd;
+  logic intr_state_rx_error_qs;
+  logic intr_state_rx_error_wd;
+  logic intr_state_rx_overflow_qs;
+  logic intr_state_rx_overflow_wd;
+  logic intr_state_tx_underflow_qs;
+  logic intr_state_tx_underflow_wd;
+  logic intr_state_tpm_header_not_empty_qs;
+  logic intr_state_tpm_header_not_empty_wd;
   logic intr_enable_we;
-  logic intr_enable_rxf_qs;
-  logic intr_enable_rxf_wd;
-  logic intr_enable_rxlvl_qs;
-  logic intr_enable_rxlvl_wd;
-  logic intr_enable_txlvl_qs;
-  logic intr_enable_txlvl_wd;
-  logic intr_enable_rxerr_qs;
-  logic intr_enable_rxerr_wd;
-  logic intr_enable_rxoverflow_qs;
-  logic intr_enable_rxoverflow_wd;
-  logic intr_enable_txunderflow_qs;
-  logic intr_enable_txunderflow_wd;
+  logic intr_enable_rx_full_qs;
+  logic intr_enable_rx_full_wd;
+  logic intr_enable_rx_watermark_qs;
+  logic intr_enable_rx_watermark_wd;
+  logic intr_enable_tx_watermark_qs;
+  logic intr_enable_tx_watermark_wd;
+  logic intr_enable_rx_error_qs;
+  logic intr_enable_rx_error_wd;
+  logic intr_enable_rx_overflow_qs;
+  logic intr_enable_rx_overflow_wd;
+  logic intr_enable_tx_underflow_qs;
+  logic intr_enable_tx_underflow_wd;
+  logic intr_enable_tpm_header_not_empty_qs;
+  logic intr_enable_tpm_header_not_empty_wd;
   logic intr_test_we;
-  logic intr_test_rxf_wd;
-  logic intr_test_rxlvl_wd;
-  logic intr_test_txlvl_wd;
-  logic intr_test_rxerr_wd;
-  logic intr_test_rxoverflow_wd;
-  logic intr_test_txunderflow_wd;
+  logic intr_test_rx_full_wd;
+  logic intr_test_rx_watermark_wd;
+  logic intr_test_tx_watermark_wd;
+  logic intr_test_rx_error_wd;
+  logic intr_test_rx_overflow_wd;
+  logic intr_test_tx_underflow_wd;
+  logic intr_test_tpm_header_not_empty_wd;
   logic alert_test_we;
   logic alert_test_wd;
   logic control_we;
@@ -216,6 +220,8 @@ module spi_device_reg_top (
   logic [7:0] cfg_timer_v_wd;
   logic cfg_addr_4b_en_qs;
   logic cfg_addr_4b_en_wd;
+  logic cfg_mailbox_en_qs;
+  logic cfg_mailbox_en_wd;
   logic fifo_level_we;
   logic [15:0] fifo_level_rxlvl_qs;
   logic [15:0] fifo_level_rxlvl_wd;
@@ -265,6 +271,18 @@ module spi_device_reg_top (
   logic read_threshold_we;
   logic [9:0] read_threshold_qs;
   logic [9:0] read_threshold_wd;
+  logic mailbox_addr_we;
+  logic [31:0] mailbox_addr_qs;
+  logic [31:0] mailbox_addr_wd;
+  logic [4:0] upload_status_cmdfifo_depth_qs;
+  logic upload_status_cmdfifo_notempty_qs;
+  logic [4:0] upload_status_addrfifo_depth_qs;
+  logic upload_status_addrfifo_notempty_qs;
+  logic [8:0] upload_status_payload_depth_qs;
+  logic upload_cmdfifo_re;
+  logic [7:0] upload_cmdfifo_qs;
+  logic upload_addrfifo_re;
+  logic [31:0] upload_addrfifo_qs;
   logic cmd_filter_0_we;
   logic cmd_filter_0_filter_0_qs;
   logic cmd_filter_0_filter_0_wd;
@@ -810,6 +828,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_0_payload_en_0_wd;
   logic cmd_info_0_payload_dir_0_qs;
   logic cmd_info_0_payload_dir_0_wd;
+  logic cmd_info_0_upload_0_qs;
+  logic cmd_info_0_upload_0_wd;
+  logic cmd_info_0_busy_0_qs;
+  logic cmd_info_0_busy_0_wd;
   logic cmd_info_1_we;
   logic [7:0] cmd_info_1_opcode_1_qs;
   logic [7:0] cmd_info_1_opcode_1_wd;
@@ -829,6 +851,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_1_payload_en_1_wd;
   logic cmd_info_1_payload_dir_1_qs;
   logic cmd_info_1_payload_dir_1_wd;
+  logic cmd_info_1_upload_1_qs;
+  logic cmd_info_1_upload_1_wd;
+  logic cmd_info_1_busy_1_qs;
+  logic cmd_info_1_busy_1_wd;
   logic cmd_info_2_we;
   logic [7:0] cmd_info_2_opcode_2_qs;
   logic [7:0] cmd_info_2_opcode_2_wd;
@@ -848,6 +874,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_2_payload_en_2_wd;
   logic cmd_info_2_payload_dir_2_qs;
   logic cmd_info_2_payload_dir_2_wd;
+  logic cmd_info_2_upload_2_qs;
+  logic cmd_info_2_upload_2_wd;
+  logic cmd_info_2_busy_2_qs;
+  logic cmd_info_2_busy_2_wd;
   logic cmd_info_3_we;
   logic [7:0] cmd_info_3_opcode_3_qs;
   logic [7:0] cmd_info_3_opcode_3_wd;
@@ -867,6 +897,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_3_payload_en_3_wd;
   logic cmd_info_3_payload_dir_3_qs;
   logic cmd_info_3_payload_dir_3_wd;
+  logic cmd_info_3_upload_3_qs;
+  logic cmd_info_3_upload_3_wd;
+  logic cmd_info_3_busy_3_qs;
+  logic cmd_info_3_busy_3_wd;
   logic cmd_info_4_we;
   logic [7:0] cmd_info_4_opcode_4_qs;
   logic [7:0] cmd_info_4_opcode_4_wd;
@@ -886,6 +920,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_4_payload_en_4_wd;
   logic cmd_info_4_payload_dir_4_qs;
   logic cmd_info_4_payload_dir_4_wd;
+  logic cmd_info_4_upload_4_qs;
+  logic cmd_info_4_upload_4_wd;
+  logic cmd_info_4_busy_4_qs;
+  logic cmd_info_4_busy_4_wd;
   logic cmd_info_5_we;
   logic [7:0] cmd_info_5_opcode_5_qs;
   logic [7:0] cmd_info_5_opcode_5_wd;
@@ -905,6 +943,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_5_payload_en_5_wd;
   logic cmd_info_5_payload_dir_5_qs;
   logic cmd_info_5_payload_dir_5_wd;
+  logic cmd_info_5_upload_5_qs;
+  logic cmd_info_5_upload_5_wd;
+  logic cmd_info_5_busy_5_qs;
+  logic cmd_info_5_busy_5_wd;
   logic cmd_info_6_we;
   logic [7:0] cmd_info_6_opcode_6_qs;
   logic [7:0] cmd_info_6_opcode_6_wd;
@@ -924,6 +966,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_6_payload_en_6_wd;
   logic cmd_info_6_payload_dir_6_qs;
   logic cmd_info_6_payload_dir_6_wd;
+  logic cmd_info_6_upload_6_qs;
+  logic cmd_info_6_upload_6_wd;
+  logic cmd_info_6_busy_6_qs;
+  logic cmd_info_6_busy_6_wd;
   logic cmd_info_7_we;
   logic [7:0] cmd_info_7_opcode_7_qs;
   logic [7:0] cmd_info_7_opcode_7_wd;
@@ -943,6 +989,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_7_payload_en_7_wd;
   logic cmd_info_7_payload_dir_7_qs;
   logic cmd_info_7_payload_dir_7_wd;
+  logic cmd_info_7_upload_7_qs;
+  logic cmd_info_7_upload_7_wd;
+  logic cmd_info_7_busy_7_qs;
+  logic cmd_info_7_busy_7_wd;
   logic cmd_info_8_we;
   logic [7:0] cmd_info_8_opcode_8_qs;
   logic [7:0] cmd_info_8_opcode_8_wd;
@@ -962,6 +1012,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_8_payload_en_8_wd;
   logic cmd_info_8_payload_dir_8_qs;
   logic cmd_info_8_payload_dir_8_wd;
+  logic cmd_info_8_upload_8_qs;
+  logic cmd_info_8_upload_8_wd;
+  logic cmd_info_8_busy_8_qs;
+  logic cmd_info_8_busy_8_wd;
   logic cmd_info_9_we;
   logic [7:0] cmd_info_9_opcode_9_qs;
   logic [7:0] cmd_info_9_opcode_9_wd;
@@ -981,6 +1035,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_9_payload_en_9_wd;
   logic cmd_info_9_payload_dir_9_qs;
   logic cmd_info_9_payload_dir_9_wd;
+  logic cmd_info_9_upload_9_qs;
+  logic cmd_info_9_upload_9_wd;
+  logic cmd_info_9_busy_9_qs;
+  logic cmd_info_9_busy_9_wd;
   logic cmd_info_10_we;
   logic [7:0] cmd_info_10_opcode_10_qs;
   logic [7:0] cmd_info_10_opcode_10_wd;
@@ -1000,6 +1058,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_10_payload_en_10_wd;
   logic cmd_info_10_payload_dir_10_qs;
   logic cmd_info_10_payload_dir_10_wd;
+  logic cmd_info_10_upload_10_qs;
+  logic cmd_info_10_upload_10_wd;
+  logic cmd_info_10_busy_10_qs;
+  logic cmd_info_10_busy_10_wd;
   logic cmd_info_11_we;
   logic [7:0] cmd_info_11_opcode_11_qs;
   logic [7:0] cmd_info_11_opcode_11_wd;
@@ -1019,6 +1081,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_11_payload_en_11_wd;
   logic cmd_info_11_payload_dir_11_qs;
   logic cmd_info_11_payload_dir_11_wd;
+  logic cmd_info_11_upload_11_qs;
+  logic cmd_info_11_upload_11_wd;
+  logic cmd_info_11_busy_11_qs;
+  logic cmd_info_11_busy_11_wd;
   logic cmd_info_12_we;
   logic [7:0] cmd_info_12_opcode_12_qs;
   logic [7:0] cmd_info_12_opcode_12_wd;
@@ -1038,6 +1104,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_12_payload_en_12_wd;
   logic cmd_info_12_payload_dir_12_qs;
   logic cmd_info_12_payload_dir_12_wd;
+  logic cmd_info_12_upload_12_qs;
+  logic cmd_info_12_upload_12_wd;
+  logic cmd_info_12_busy_12_qs;
+  logic cmd_info_12_busy_12_wd;
   logic cmd_info_13_we;
   logic [7:0] cmd_info_13_opcode_13_qs;
   logic [7:0] cmd_info_13_opcode_13_wd;
@@ -1057,6 +1127,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_13_payload_en_13_wd;
   logic cmd_info_13_payload_dir_13_qs;
   logic cmd_info_13_payload_dir_13_wd;
+  logic cmd_info_13_upload_13_qs;
+  logic cmd_info_13_upload_13_wd;
+  logic cmd_info_13_busy_13_qs;
+  logic cmd_info_13_busy_13_wd;
   logic cmd_info_14_we;
   logic [7:0] cmd_info_14_opcode_14_qs;
   logic [7:0] cmd_info_14_opcode_14_wd;
@@ -1076,6 +1150,10 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_14_payload_en_14_wd;
   logic cmd_info_14_payload_dir_14_qs;
   logic cmd_info_14_payload_dir_14_wd;
+  logic cmd_info_14_upload_14_qs;
+  logic cmd_info_14_upload_14_wd;
+  logic cmd_info_14_busy_14_qs;
+  logic cmd_info_14_busy_14_wd;
   logic cmd_info_15_we;
   logic [7:0] cmd_info_15_opcode_15_qs;
   logic [7:0] cmd_info_15_opcode_15_wd;
@@ -1095,180 +1173,446 @@ module spi_device_reg_top (
   logic [3:0] cmd_info_15_payload_en_15_wd;
   logic cmd_info_15_payload_dir_15_qs;
   logic cmd_info_15_payload_dir_15_wd;
+  logic cmd_info_15_upload_15_qs;
+  logic cmd_info_15_upload_15_wd;
+  logic cmd_info_15_busy_15_qs;
+  logic cmd_info_15_busy_15_wd;
+  logic cmd_info_16_we;
+  logic [7:0] cmd_info_16_opcode_16_qs;
+  logic [7:0] cmd_info_16_opcode_16_wd;
+  logic cmd_info_16_addr_en_16_qs;
+  logic cmd_info_16_addr_en_16_wd;
+  logic cmd_info_16_addr_swap_en_16_qs;
+  logic cmd_info_16_addr_swap_en_16_wd;
+  logic cmd_info_16_addr_4b_affected_16_qs;
+  logic cmd_info_16_addr_4b_affected_16_wd;
+  logic cmd_info_16_mbyte_en_16_qs;
+  logic cmd_info_16_mbyte_en_16_wd;
+  logic [2:0] cmd_info_16_dummy_size_16_qs;
+  logic [2:0] cmd_info_16_dummy_size_16_wd;
+  logic cmd_info_16_dummy_en_16_qs;
+  logic cmd_info_16_dummy_en_16_wd;
+  logic [3:0] cmd_info_16_payload_en_16_qs;
+  logic [3:0] cmd_info_16_payload_en_16_wd;
+  logic cmd_info_16_payload_dir_16_qs;
+  logic cmd_info_16_payload_dir_16_wd;
+  logic cmd_info_16_upload_16_qs;
+  logic cmd_info_16_upload_16_wd;
+  logic cmd_info_16_busy_16_qs;
+  logic cmd_info_16_busy_16_wd;
+  logic cmd_info_17_we;
+  logic [7:0] cmd_info_17_opcode_17_qs;
+  logic [7:0] cmd_info_17_opcode_17_wd;
+  logic cmd_info_17_addr_en_17_qs;
+  logic cmd_info_17_addr_en_17_wd;
+  logic cmd_info_17_addr_swap_en_17_qs;
+  logic cmd_info_17_addr_swap_en_17_wd;
+  logic cmd_info_17_addr_4b_affected_17_qs;
+  logic cmd_info_17_addr_4b_affected_17_wd;
+  logic cmd_info_17_mbyte_en_17_qs;
+  logic cmd_info_17_mbyte_en_17_wd;
+  logic [2:0] cmd_info_17_dummy_size_17_qs;
+  logic [2:0] cmd_info_17_dummy_size_17_wd;
+  logic cmd_info_17_dummy_en_17_qs;
+  logic cmd_info_17_dummy_en_17_wd;
+  logic [3:0] cmd_info_17_payload_en_17_qs;
+  logic [3:0] cmd_info_17_payload_en_17_wd;
+  logic cmd_info_17_payload_dir_17_qs;
+  logic cmd_info_17_payload_dir_17_wd;
+  logic cmd_info_17_upload_17_qs;
+  logic cmd_info_17_upload_17_wd;
+  logic cmd_info_17_busy_17_qs;
+  logic cmd_info_17_busy_17_wd;
+  logic cmd_info_18_we;
+  logic [7:0] cmd_info_18_opcode_18_qs;
+  logic [7:0] cmd_info_18_opcode_18_wd;
+  logic cmd_info_18_addr_en_18_qs;
+  logic cmd_info_18_addr_en_18_wd;
+  logic cmd_info_18_addr_swap_en_18_qs;
+  logic cmd_info_18_addr_swap_en_18_wd;
+  logic cmd_info_18_addr_4b_affected_18_qs;
+  logic cmd_info_18_addr_4b_affected_18_wd;
+  logic cmd_info_18_mbyte_en_18_qs;
+  logic cmd_info_18_mbyte_en_18_wd;
+  logic [2:0] cmd_info_18_dummy_size_18_qs;
+  logic [2:0] cmd_info_18_dummy_size_18_wd;
+  logic cmd_info_18_dummy_en_18_qs;
+  logic cmd_info_18_dummy_en_18_wd;
+  logic [3:0] cmd_info_18_payload_en_18_qs;
+  logic [3:0] cmd_info_18_payload_en_18_wd;
+  logic cmd_info_18_payload_dir_18_qs;
+  logic cmd_info_18_payload_dir_18_wd;
+  logic cmd_info_18_upload_18_qs;
+  logic cmd_info_18_upload_18_wd;
+  logic cmd_info_18_busy_18_qs;
+  logic cmd_info_18_busy_18_wd;
+  logic cmd_info_19_we;
+  logic [7:0] cmd_info_19_opcode_19_qs;
+  logic [7:0] cmd_info_19_opcode_19_wd;
+  logic cmd_info_19_addr_en_19_qs;
+  logic cmd_info_19_addr_en_19_wd;
+  logic cmd_info_19_addr_swap_en_19_qs;
+  logic cmd_info_19_addr_swap_en_19_wd;
+  logic cmd_info_19_addr_4b_affected_19_qs;
+  logic cmd_info_19_addr_4b_affected_19_wd;
+  logic cmd_info_19_mbyte_en_19_qs;
+  logic cmd_info_19_mbyte_en_19_wd;
+  logic [2:0] cmd_info_19_dummy_size_19_qs;
+  logic [2:0] cmd_info_19_dummy_size_19_wd;
+  logic cmd_info_19_dummy_en_19_qs;
+  logic cmd_info_19_dummy_en_19_wd;
+  logic [3:0] cmd_info_19_payload_en_19_qs;
+  logic [3:0] cmd_info_19_payload_en_19_wd;
+  logic cmd_info_19_payload_dir_19_qs;
+  logic cmd_info_19_payload_dir_19_wd;
+  logic cmd_info_19_upload_19_qs;
+  logic cmd_info_19_upload_19_wd;
+  logic cmd_info_19_busy_19_qs;
+  logic cmd_info_19_busy_19_wd;
+  logic cmd_info_20_we;
+  logic [7:0] cmd_info_20_opcode_20_qs;
+  logic [7:0] cmd_info_20_opcode_20_wd;
+  logic cmd_info_20_addr_en_20_qs;
+  logic cmd_info_20_addr_en_20_wd;
+  logic cmd_info_20_addr_swap_en_20_qs;
+  logic cmd_info_20_addr_swap_en_20_wd;
+  logic cmd_info_20_addr_4b_affected_20_qs;
+  logic cmd_info_20_addr_4b_affected_20_wd;
+  logic cmd_info_20_mbyte_en_20_qs;
+  logic cmd_info_20_mbyte_en_20_wd;
+  logic [2:0] cmd_info_20_dummy_size_20_qs;
+  logic [2:0] cmd_info_20_dummy_size_20_wd;
+  logic cmd_info_20_dummy_en_20_qs;
+  logic cmd_info_20_dummy_en_20_wd;
+  logic [3:0] cmd_info_20_payload_en_20_qs;
+  logic [3:0] cmd_info_20_payload_en_20_wd;
+  logic cmd_info_20_payload_dir_20_qs;
+  logic cmd_info_20_payload_dir_20_wd;
+  logic cmd_info_20_upload_20_qs;
+  logic cmd_info_20_upload_20_wd;
+  logic cmd_info_20_busy_20_qs;
+  logic cmd_info_20_busy_20_wd;
+  logic cmd_info_21_we;
+  logic [7:0] cmd_info_21_opcode_21_qs;
+  logic [7:0] cmd_info_21_opcode_21_wd;
+  logic cmd_info_21_addr_en_21_qs;
+  logic cmd_info_21_addr_en_21_wd;
+  logic cmd_info_21_addr_swap_en_21_qs;
+  logic cmd_info_21_addr_swap_en_21_wd;
+  logic cmd_info_21_addr_4b_affected_21_qs;
+  logic cmd_info_21_addr_4b_affected_21_wd;
+  logic cmd_info_21_mbyte_en_21_qs;
+  logic cmd_info_21_mbyte_en_21_wd;
+  logic [2:0] cmd_info_21_dummy_size_21_qs;
+  logic [2:0] cmd_info_21_dummy_size_21_wd;
+  logic cmd_info_21_dummy_en_21_qs;
+  logic cmd_info_21_dummy_en_21_wd;
+  logic [3:0] cmd_info_21_payload_en_21_qs;
+  logic [3:0] cmd_info_21_payload_en_21_wd;
+  logic cmd_info_21_payload_dir_21_qs;
+  logic cmd_info_21_payload_dir_21_wd;
+  logic cmd_info_21_upload_21_qs;
+  logic cmd_info_21_upload_21_wd;
+  logic cmd_info_21_busy_21_qs;
+  logic cmd_info_21_busy_21_wd;
+  logic cmd_info_22_we;
+  logic [7:0] cmd_info_22_opcode_22_qs;
+  logic [7:0] cmd_info_22_opcode_22_wd;
+  logic cmd_info_22_addr_en_22_qs;
+  logic cmd_info_22_addr_en_22_wd;
+  logic cmd_info_22_addr_swap_en_22_qs;
+  logic cmd_info_22_addr_swap_en_22_wd;
+  logic cmd_info_22_addr_4b_affected_22_qs;
+  logic cmd_info_22_addr_4b_affected_22_wd;
+  logic cmd_info_22_mbyte_en_22_qs;
+  logic cmd_info_22_mbyte_en_22_wd;
+  logic [2:0] cmd_info_22_dummy_size_22_qs;
+  logic [2:0] cmd_info_22_dummy_size_22_wd;
+  logic cmd_info_22_dummy_en_22_qs;
+  logic cmd_info_22_dummy_en_22_wd;
+  logic [3:0] cmd_info_22_payload_en_22_qs;
+  logic [3:0] cmd_info_22_payload_en_22_wd;
+  logic cmd_info_22_payload_dir_22_qs;
+  logic cmd_info_22_payload_dir_22_wd;
+  logic cmd_info_22_upload_22_qs;
+  logic cmd_info_22_upload_22_wd;
+  logic cmd_info_22_busy_22_qs;
+  logic cmd_info_22_busy_22_wd;
+  logic cmd_info_23_we;
+  logic [7:0] cmd_info_23_opcode_23_qs;
+  logic [7:0] cmd_info_23_opcode_23_wd;
+  logic cmd_info_23_addr_en_23_qs;
+  logic cmd_info_23_addr_en_23_wd;
+  logic cmd_info_23_addr_swap_en_23_qs;
+  logic cmd_info_23_addr_swap_en_23_wd;
+  logic cmd_info_23_addr_4b_affected_23_qs;
+  logic cmd_info_23_addr_4b_affected_23_wd;
+  logic cmd_info_23_mbyte_en_23_qs;
+  logic cmd_info_23_mbyte_en_23_wd;
+  logic [2:0] cmd_info_23_dummy_size_23_qs;
+  logic [2:0] cmd_info_23_dummy_size_23_wd;
+  logic cmd_info_23_dummy_en_23_qs;
+  logic cmd_info_23_dummy_en_23_wd;
+  logic [3:0] cmd_info_23_payload_en_23_qs;
+  logic [3:0] cmd_info_23_payload_en_23_wd;
+  logic cmd_info_23_payload_dir_23_qs;
+  logic cmd_info_23_payload_dir_23_wd;
+  logic cmd_info_23_upload_23_qs;
+  logic cmd_info_23_upload_23_wd;
+  logic cmd_info_23_busy_23_qs;
+  logic cmd_info_23_busy_23_wd;
+  logic [7:0] tpm_cap_rev_qs;
+  logic tpm_cap_locality_qs;
+  logic [2:0] tpm_cap_max_xfer_size_qs;
+  logic tpm_cfg_we;
+  logic tpm_cfg_en_qs;
+  logic tpm_cfg_en_wd;
+  logic tpm_cfg_tpm_mode_qs;
+  logic tpm_cfg_tpm_mode_wd;
+  logic tpm_cfg_hw_reg_dis_qs;
+  logic tpm_cfg_hw_reg_dis_wd;
+  logic tpm_cfg_tpm_reg_chk_dis_qs;
+  logic tpm_cfg_tpm_reg_chk_dis_wd;
+  logic tpm_cfg_invalid_locality_qs;
+  logic tpm_cfg_invalid_locality_wd;
+  logic tpm_status_cmdaddr_notempty_qs;
+  logic tpm_status_rdfifo_notempty_qs;
+  logic [2:0] tpm_status_rdfifo_depth_qs;
+  logic [2:0] tpm_status_wrfifo_depth_qs;
+  logic tpm_access_0_we;
+  logic [7:0] tpm_access_0_access_0_qs;
+  logic [7:0] tpm_access_0_access_0_wd;
+  logic [7:0] tpm_access_0_access_1_qs;
+  logic [7:0] tpm_access_0_access_1_wd;
+  logic [7:0] tpm_access_0_access_2_qs;
+  logic [7:0] tpm_access_0_access_2_wd;
+  logic [7:0] tpm_access_0_access_3_qs;
+  logic [7:0] tpm_access_0_access_3_wd;
+  logic tpm_access_1_we;
+  logic [7:0] tpm_access_1_qs;
+  logic [7:0] tpm_access_1_wd;
+  logic tpm_sts_we;
+  logic [31:0] tpm_sts_qs;
+  logic [31:0] tpm_sts_wd;
+  logic tpm_intf_capability_we;
+  logic [31:0] tpm_intf_capability_qs;
+  logic [31:0] tpm_intf_capability_wd;
+  logic tpm_int_enable_we;
+  logic [31:0] tpm_int_enable_qs;
+  logic [31:0] tpm_int_enable_wd;
+  logic tpm_int_vector_we;
+  logic [7:0] tpm_int_vector_qs;
+  logic [7:0] tpm_int_vector_wd;
+  logic tpm_int_status_we;
+  logic [31:0] tpm_int_status_qs;
+  logic [31:0] tpm_int_status_wd;
+  logic tpm_did_vid_we;
+  logic [15:0] tpm_did_vid_vid_qs;
+  logic [15:0] tpm_did_vid_vid_wd;
+  logic [15:0] tpm_did_vid_did_qs;
+  logic [15:0] tpm_did_vid_did_wd;
+  logic tpm_rid_we;
+  logic [7:0] tpm_rid_qs;
+  logic [7:0] tpm_rid_wd;
+  logic tpm_cmd_addr_re;
+  logic [23:0] tpm_cmd_addr_addr_qs;
+  logic [7:0] tpm_cmd_addr_cmd_qs;
+  logic tpm_read_fifo_we;
+  logic [7:0] tpm_read_fifo_wd;
+  logic tpm_write_fifo_re;
+  logic [7:0] tpm_write_fifo_qs;
 
   // Register instances
   // R[intr_state]: V(False)
-
-  //   F[rxf]: 0:0
+  //   F[rx_full]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
     .RESVAL  (1'h0)
-  ) u_intr_state_rxf (
+  ) u_intr_state_rx_full (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_state_we),
-    .wd     (intr_state_rxf_wd),
+    .wd     (intr_state_rx_full_wd),
 
     // from internal hardware
-    .de     (hw2reg.intr_state.rxf.de),
-    .d      (hw2reg.intr_state.rxf.d),
+    .de     (hw2reg.intr_state.rx_full.de),
+    .d      (hw2reg.intr_state.rx_full.d),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_state.rxf.q),
+    .q      (reg2hw.intr_state.rx_full.q),
 
     // to register interface (read)
-    .qs     (intr_state_rxf_qs)
+    .qs     (intr_state_rx_full_qs)
   );
 
-
-  //   F[rxlvl]: 1:1
+  //   F[rx_watermark]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
     .RESVAL  (1'h0)
-  ) u_intr_state_rxlvl (
+  ) u_intr_state_rx_watermark (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_state_we),
-    .wd     (intr_state_rxlvl_wd),
+    .wd     (intr_state_rx_watermark_wd),
 
     // from internal hardware
-    .de     (hw2reg.intr_state.rxlvl.de),
-    .d      (hw2reg.intr_state.rxlvl.d),
+    .de     (hw2reg.intr_state.rx_watermark.de),
+    .d      (hw2reg.intr_state.rx_watermark.d),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_state.rxlvl.q),
+    .q      (reg2hw.intr_state.rx_watermark.q),
 
     // to register interface (read)
-    .qs     (intr_state_rxlvl_qs)
+    .qs     (intr_state_rx_watermark_qs)
   );
 
-
-  //   F[txlvl]: 2:2
+  //   F[tx_watermark]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
     .RESVAL  (1'h0)
-  ) u_intr_state_txlvl (
+  ) u_intr_state_tx_watermark (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_state_we),
-    .wd     (intr_state_txlvl_wd),
+    .wd     (intr_state_tx_watermark_wd),
 
     // from internal hardware
-    .de     (hw2reg.intr_state.txlvl.de),
-    .d      (hw2reg.intr_state.txlvl.d),
+    .de     (hw2reg.intr_state.tx_watermark.de),
+    .d      (hw2reg.intr_state.tx_watermark.d),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_state.txlvl.q),
+    .q      (reg2hw.intr_state.tx_watermark.q),
 
     // to register interface (read)
-    .qs     (intr_state_txlvl_qs)
+    .qs     (intr_state_tx_watermark_qs)
   );
 
-
-  //   F[rxerr]: 3:3
+  //   F[rx_error]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
     .RESVAL  (1'h0)
-  ) u_intr_state_rxerr (
+  ) u_intr_state_rx_error (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_state_we),
-    .wd     (intr_state_rxerr_wd),
+    .wd     (intr_state_rx_error_wd),
 
     // from internal hardware
-    .de     (hw2reg.intr_state.rxerr.de),
-    .d      (hw2reg.intr_state.rxerr.d),
+    .de     (hw2reg.intr_state.rx_error.de),
+    .d      (hw2reg.intr_state.rx_error.d),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_state.rxerr.q),
+    .q      (reg2hw.intr_state.rx_error.q),
 
     // to register interface (read)
-    .qs     (intr_state_rxerr_qs)
+    .qs     (intr_state_rx_error_qs)
   );
 
-
-  //   F[rxoverflow]: 4:4
+  //   F[rx_overflow]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
     .RESVAL  (1'h0)
-  ) u_intr_state_rxoverflow (
+  ) u_intr_state_rx_overflow (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_state_we),
-    .wd     (intr_state_rxoverflow_wd),
+    .wd     (intr_state_rx_overflow_wd),
 
     // from internal hardware
-    .de     (hw2reg.intr_state.rxoverflow.de),
-    .d      (hw2reg.intr_state.rxoverflow.d),
+    .de     (hw2reg.intr_state.rx_overflow.de),
+    .d      (hw2reg.intr_state.rx_overflow.d),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_state.rxoverflow.q),
+    .q      (reg2hw.intr_state.rx_overflow.q),
 
     // to register interface (read)
-    .qs     (intr_state_rxoverflow_qs)
+    .qs     (intr_state_rx_overflow_qs)
   );
 
-
-  //   F[txunderflow]: 5:5
+  //   F[tx_underflow]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessW1C),
     .RESVAL  (1'h0)
-  ) u_intr_state_txunderflow (
+  ) u_intr_state_tx_underflow (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_state_we),
-    .wd     (intr_state_txunderflow_wd),
+    .wd     (intr_state_tx_underflow_wd),
 
     // from internal hardware
-    .de     (hw2reg.intr_state.txunderflow.de),
-    .d      (hw2reg.intr_state.txunderflow.d),
+    .de     (hw2reg.intr_state.tx_underflow.de),
+    .d      (hw2reg.intr_state.tx_underflow.d),
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_state.txunderflow.q),
+    .q      (reg2hw.intr_state.tx_underflow.q),
 
     // to register interface (read)
-    .qs     (intr_state_txunderflow_qs)
+    .qs     (intr_state_tx_underflow_qs)
+  );
+
+  //   F[tpm_header_not_empty]: 6:6
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessW1C),
+    .RESVAL  (1'h0)
+  ) u_intr_state_tpm_header_not_empty (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (intr_state_we),
+    .wd     (intr_state_tpm_header_not_empty_wd),
+
+    // from internal hardware
+    .de     (hw2reg.intr_state.tpm_header_not_empty.de),
+    .d      (hw2reg.intr_state.tpm_header_not_empty.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.intr_state.tpm_header_not_empty.q),
+
+    // to register interface (read)
+    .qs     (intr_state_tpm_header_not_empty_qs)
   );
 
 
   // R[intr_enable]: V(False)
-
-  //   F[rxf]: 0:0
+  //   F[rx_full]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
-  ) u_intr_enable_rxf (
+  ) u_intr_enable_rx_full (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_enable_we),
-    .wd     (intr_enable_rxf_wd),
+    .wd     (intr_enable_rx_full_wd),
 
     // from internal hardware
     .de     (1'b0),
@@ -1276,25 +1620,24 @@ module spi_device_reg_top (
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_enable.rxf.q),
+    .q      (reg2hw.intr_enable.rx_full.q),
 
     // to register interface (read)
-    .qs     (intr_enable_rxf_qs)
+    .qs     (intr_enable_rx_full_qs)
   );
 
-
-  //   F[rxlvl]: 1:1
+  //   F[rx_watermark]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
-  ) u_intr_enable_rxlvl (
+  ) u_intr_enable_rx_watermark (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_enable_we),
-    .wd     (intr_enable_rxlvl_wd),
+    .wd     (intr_enable_rx_watermark_wd),
 
     // from internal hardware
     .de     (1'b0),
@@ -1302,25 +1645,24 @@ module spi_device_reg_top (
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_enable.rxlvl.q),
+    .q      (reg2hw.intr_enable.rx_watermark.q),
 
     // to register interface (read)
-    .qs     (intr_enable_rxlvl_qs)
+    .qs     (intr_enable_rx_watermark_qs)
   );
 
-
-  //   F[txlvl]: 2:2
+  //   F[tx_watermark]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
-  ) u_intr_enable_txlvl (
+  ) u_intr_enable_tx_watermark (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_enable_we),
-    .wd     (intr_enable_txlvl_wd),
+    .wd     (intr_enable_tx_watermark_wd),
 
     // from internal hardware
     .de     (1'b0),
@@ -1328,25 +1670,24 @@ module spi_device_reg_top (
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_enable.txlvl.q),
+    .q      (reg2hw.intr_enable.tx_watermark.q),
 
     // to register interface (read)
-    .qs     (intr_enable_txlvl_qs)
+    .qs     (intr_enable_tx_watermark_qs)
   );
 
-
-  //   F[rxerr]: 3:3
+  //   F[rx_error]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
-  ) u_intr_enable_rxerr (
+  ) u_intr_enable_rx_error (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_enable_we),
-    .wd     (intr_enable_rxerr_wd),
+    .wd     (intr_enable_rx_error_wd),
 
     // from internal hardware
     .de     (1'b0),
@@ -1354,25 +1695,24 @@ module spi_device_reg_top (
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_enable.rxerr.q),
+    .q      (reg2hw.intr_enable.rx_error.q),
 
     // to register interface (read)
-    .qs     (intr_enable_rxerr_qs)
+    .qs     (intr_enable_rx_error_qs)
   );
 
-
-  //   F[rxoverflow]: 4:4
+  //   F[rx_overflow]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
-  ) u_intr_enable_rxoverflow (
+  ) u_intr_enable_rx_overflow (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_enable_we),
-    .wd     (intr_enable_rxoverflow_wd),
+    .wd     (intr_enable_rx_overflow_wd),
 
     // from internal hardware
     .de     (1'b0),
@@ -1380,25 +1720,24 @@ module spi_device_reg_top (
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_enable.rxoverflow.q),
+    .q      (reg2hw.intr_enable.rx_overflow.q),
 
     // to register interface (read)
-    .qs     (intr_enable_rxoverflow_qs)
+    .qs     (intr_enable_rx_overflow_qs)
   );
 
-
-  //   F[txunderflow]: 5:5
+  //   F[tx_underflow]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
     .RESVAL  (1'h0)
-  ) u_intr_enable_txunderflow (
+  ) u_intr_enable_tx_underflow (
     .clk_i   (clk_i),
     .rst_ni  (rst_ni),
 
     // from register interface
     .we     (intr_enable_we),
-    .wd     (intr_enable_txunderflow_wd),
+    .wd     (intr_enable_tx_underflow_wd),
 
     // from internal hardware
     .de     (1'b0),
@@ -1406,107 +1745,139 @@ module spi_device_reg_top (
 
     // to internal hardware
     .qe     (),
-    .q      (reg2hw.intr_enable.txunderflow.q),
+    .q      (reg2hw.intr_enable.tx_underflow.q),
 
     // to register interface (read)
-    .qs     (intr_enable_txunderflow_qs)
+    .qs     (intr_enable_tx_underflow_qs)
+  );
+
+  //   F[tpm_header_not_empty]: 6:6
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_intr_enable_tpm_header_not_empty (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (intr_enable_we),
+    .wd     (intr_enable_tpm_header_not_empty_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.intr_enable.tpm_header_not_empty.q),
+
+    // to register interface (read)
+    .qs     (intr_enable_tpm_header_not_empty_qs)
   );
 
 
   // R[intr_test]: V(True)
-
-  //   F[rxf]: 0:0
+  //   F[rx_full]: 0:0
   prim_subreg_ext #(
     .DW    (1)
-  ) u_intr_test_rxf (
+  ) u_intr_test_rx_full (
     .re     (1'b0),
     .we     (intr_test_we),
-    .wd     (intr_test_rxf_wd),
+    .wd     (intr_test_rx_full_wd),
     .d      ('0),
     .qre    (),
-    .qe     (reg2hw.intr_test.rxf.qe),
-    .q      (reg2hw.intr_test.rxf.q),
+    .qe     (reg2hw.intr_test.rx_full.qe),
+    .q      (reg2hw.intr_test.rx_full.q),
     .qs     ()
   );
 
-
-  //   F[rxlvl]: 1:1
+  //   F[rx_watermark]: 1:1
   prim_subreg_ext #(
     .DW    (1)
-  ) u_intr_test_rxlvl (
+  ) u_intr_test_rx_watermark (
     .re     (1'b0),
     .we     (intr_test_we),
-    .wd     (intr_test_rxlvl_wd),
+    .wd     (intr_test_rx_watermark_wd),
     .d      ('0),
     .qre    (),
-    .qe     (reg2hw.intr_test.rxlvl.qe),
-    .q      (reg2hw.intr_test.rxlvl.q),
+    .qe     (reg2hw.intr_test.rx_watermark.qe),
+    .q      (reg2hw.intr_test.rx_watermark.q),
     .qs     ()
   );
 
-
-  //   F[txlvl]: 2:2
+  //   F[tx_watermark]: 2:2
   prim_subreg_ext #(
     .DW    (1)
-  ) u_intr_test_txlvl (
+  ) u_intr_test_tx_watermark (
     .re     (1'b0),
     .we     (intr_test_we),
-    .wd     (intr_test_txlvl_wd),
+    .wd     (intr_test_tx_watermark_wd),
     .d      ('0),
     .qre    (),
-    .qe     (reg2hw.intr_test.txlvl.qe),
-    .q      (reg2hw.intr_test.txlvl.q),
+    .qe     (reg2hw.intr_test.tx_watermark.qe),
+    .q      (reg2hw.intr_test.tx_watermark.q),
     .qs     ()
   );
 
-
-  //   F[rxerr]: 3:3
+  //   F[rx_error]: 3:3
   prim_subreg_ext #(
     .DW    (1)
-  ) u_intr_test_rxerr (
+  ) u_intr_test_rx_error (
     .re     (1'b0),
     .we     (intr_test_we),
-    .wd     (intr_test_rxerr_wd),
+    .wd     (intr_test_rx_error_wd),
     .d      ('0),
     .qre    (),
-    .qe     (reg2hw.intr_test.rxerr.qe),
-    .q      (reg2hw.intr_test.rxerr.q),
+    .qe     (reg2hw.intr_test.rx_error.qe),
+    .q      (reg2hw.intr_test.rx_error.q),
     .qs     ()
   );
 
-
-  //   F[rxoverflow]: 4:4
+  //   F[rx_overflow]: 4:4
   prim_subreg_ext #(
     .DW    (1)
-  ) u_intr_test_rxoverflow (
+  ) u_intr_test_rx_overflow (
     .re     (1'b0),
     .we     (intr_test_we),
-    .wd     (intr_test_rxoverflow_wd),
+    .wd     (intr_test_rx_overflow_wd),
     .d      ('0),
     .qre    (),
-    .qe     (reg2hw.intr_test.rxoverflow.qe),
-    .q      (reg2hw.intr_test.rxoverflow.q),
+    .qe     (reg2hw.intr_test.rx_overflow.qe),
+    .q      (reg2hw.intr_test.rx_overflow.q),
     .qs     ()
   );
 
-
-  //   F[txunderflow]: 5:5
+  //   F[tx_underflow]: 5:5
   prim_subreg_ext #(
     .DW    (1)
-  ) u_intr_test_txunderflow (
+  ) u_intr_test_tx_underflow (
     .re     (1'b0),
     .we     (intr_test_we),
-    .wd     (intr_test_txunderflow_wd),
+    .wd     (intr_test_tx_underflow_wd),
     .d      ('0),
     .qre    (),
-    .qe     (reg2hw.intr_test.txunderflow.qe),
-    .q      (reg2hw.intr_test.txunderflow.q),
+    .qe     (reg2hw.intr_test.tx_underflow.qe),
+    .q      (reg2hw.intr_test.tx_underflow.q),
+    .qs     ()
+  );
+
+  //   F[tpm_header_not_empty]: 6:6
+  prim_subreg_ext #(
+    .DW    (1)
+  ) u_intr_test_tpm_header_not_empty (
+    .re     (1'b0),
+    .we     (intr_test_we),
+    .wd     (intr_test_tpm_header_not_empty_wd),
+    .d      ('0),
+    .qre    (),
+    .qe     (reg2hw.intr_test.tpm_header_not_empty.qe),
+    .q      (reg2hw.intr_test.tpm_header_not_empty.q),
     .qs     ()
   );
 
 
   // R[alert_test]: V(True)
-
   prim_subreg_ext #(
     .DW    (1)
   ) u_alert_test (
@@ -1522,7 +1893,6 @@ module spi_device_reg_top (
 
 
   // R[control]: V(False)
-
   //   F[abort]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -1547,7 +1917,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (control_abort_qs)
   );
-
 
   //   F[mode]: 5:4
   prim_subreg #(
@@ -1574,7 +1943,6 @@ module spi_device_reg_top (
     .qs     (control_mode_qs)
   );
 
-
   //   F[rst_txfifo]: 16:16
   prim_subreg #(
     .DW      (1),
@@ -1600,7 +1968,6 @@ module spi_device_reg_top (
     .qs     (control_rst_txfifo_qs)
   );
 
-
   //   F[rst_rxfifo]: 17:17
   prim_subreg #(
     .DW      (1),
@@ -1625,7 +1992,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (control_rst_rxfifo_qs)
   );
-
 
   //   F[sram_clk_en]: 31:31
   prim_subreg #(
@@ -1654,7 +2020,6 @@ module spi_device_reg_top (
 
 
   // R[cfg]: V(False)
-
   //   F[cpol]: 0:0
   prim_subreg #(
     .DW      (1),
@@ -1679,7 +2044,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (cfg_cpol_qs)
   );
-
 
   //   F[cpha]: 1:1
   prim_subreg #(
@@ -1706,7 +2070,6 @@ module spi_device_reg_top (
     .qs     (cfg_cpha_qs)
   );
 
-
   //   F[tx_order]: 2:2
   prim_subreg #(
     .DW      (1),
@@ -1731,7 +2094,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (cfg_tx_order_qs)
   );
-
 
   //   F[rx_order]: 3:3
   prim_subreg #(
@@ -1758,7 +2120,6 @@ module spi_device_reg_top (
     .qs     (cfg_rx_order_qs)
   );
 
-
   //   F[timer_v]: 15:8
   prim_subreg #(
     .DW      (8),
@@ -1783,7 +2144,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (cfg_timer_v_qs)
   );
-
 
   //   F[addr_4b_en]: 16:16
   prim_subreg #(
@@ -1810,9 +2170,33 @@ module spi_device_reg_top (
     .qs     (cfg_addr_4b_en_qs)
   );
 
+  //   F[mailbox_en]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cfg_mailbox_en (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cfg_we),
+    .wd     (cfg_mailbox_en_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cfg.mailbox_en.q),
+
+    // to register interface (read)
+    .qs     (cfg_mailbox_en_qs)
+  );
+
 
   // R[fifo_level]: V(False)
-
   //   F[rxlvl]: 15:0
   prim_subreg #(
     .DW      (16),
@@ -1837,7 +2221,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (fifo_level_rxlvl_qs)
   );
-
 
   //   F[txlvl]: 31:16
   prim_subreg #(
@@ -1866,7 +2249,6 @@ module spi_device_reg_top (
 
 
   // R[async_fifo_level]: V(True)
-
   //   F[rxlvl]: 7:0
   prim_subreg_ext #(
     .DW    (8)
@@ -1880,7 +2262,6 @@ module spi_device_reg_top (
     .q      (),
     .qs     (async_fifo_level_rxlvl_qs)
   );
-
 
   //   F[txlvl]: 23:16
   prim_subreg_ext #(
@@ -1898,7 +2279,6 @@ module spi_device_reg_top (
 
 
   // R[status]: V(True)
-
   //   F[rxf_full]: 0:0
   prim_subreg_ext #(
     .DW    (1)
@@ -1912,7 +2292,6 @@ module spi_device_reg_top (
     .q      (),
     .qs     (status_rxf_full_qs)
   );
-
 
   //   F[rxf_empty]: 1:1
   prim_subreg_ext #(
@@ -1928,7 +2307,6 @@ module spi_device_reg_top (
     .qs     (status_rxf_empty_qs)
   );
 
-
   //   F[txf_full]: 2:2
   prim_subreg_ext #(
     .DW    (1)
@@ -1942,7 +2320,6 @@ module spi_device_reg_top (
     .q      (),
     .qs     (status_txf_full_qs)
   );
-
 
   //   F[txf_empty]: 3:3
   prim_subreg_ext #(
@@ -1958,7 +2335,6 @@ module spi_device_reg_top (
     .qs     (status_txf_empty_qs)
   );
 
-
   //   F[abort_done]: 4:4
   prim_subreg_ext #(
     .DW    (1)
@@ -1972,7 +2348,6 @@ module spi_device_reg_top (
     .q      (),
     .qs     (status_abort_done_qs)
   );
-
 
   //   F[csb]: 5:5
   prim_subreg_ext #(
@@ -1990,7 +2365,6 @@ module spi_device_reg_top (
 
 
   // R[rxf_ptr]: V(False)
-
   //   F[rptr]: 15:0
   prim_subreg #(
     .DW      (16),
@@ -2015,7 +2389,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (rxf_ptr_rptr_qs)
   );
-
 
   //   F[wptr]: 31:16
   prim_subreg #(
@@ -2044,7 +2417,6 @@ module spi_device_reg_top (
 
 
   // R[txf_ptr]: V(False)
-
   //   F[rptr]: 15:0
   prim_subreg #(
     .DW      (16),
@@ -2069,7 +2441,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (txf_ptr_rptr_qs)
   );
-
 
   //   F[wptr]: 31:16
   prim_subreg #(
@@ -2098,7 +2469,6 @@ module spi_device_reg_top (
 
 
   // R[rxf_addr]: V(False)
-
   //   F[base]: 15:0
   prim_subreg #(
     .DW      (16),
@@ -2123,7 +2493,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (rxf_addr_base_qs)
   );
-
 
   //   F[limit]: 31:16
   prim_subreg #(
@@ -2152,7 +2521,6 @@ module spi_device_reg_top (
 
 
   // R[txf_addr]: V(False)
-
   //   F[base]: 15:0
   prim_subreg #(
     .DW      (16),
@@ -2177,7 +2545,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (txf_addr_base_qs)
   );
-
 
   //   F[limit]: 31:16
   prim_subreg #(
@@ -2206,7 +2573,6 @@ module spi_device_reg_top (
 
 
   // R[last_read_addr]: V(True)
-
   prim_subreg_ext #(
     .DW    (32)
   ) u_last_read_addr (
@@ -2222,7 +2588,6 @@ module spi_device_reg_top (
 
 
   // R[flash_status]: V(True)
-
   //   F[busy]: 0:0
   prim_subreg_ext #(
     .DW    (1)
@@ -2236,7 +2601,6 @@ module spi_device_reg_top (
     .q      (reg2hw.flash_status.busy.q),
     .qs     (flash_status_busy_qs)
   );
-
 
   //   F[status]: 23:1
   prim_subreg_ext #(
@@ -2254,7 +2618,6 @@ module spi_device_reg_top (
 
 
   // R[jedec_id]: V(False)
-
   //   F[id]: 15:0
   prim_subreg #(
     .DW      (16),
@@ -2279,7 +2642,6 @@ module spi_device_reg_top (
     // to register interface (read)
     .qs     (jedec_id_id_qs)
   );
-
 
   //   F[mf]: 23:16
   prim_subreg #(
@@ -2308,7 +2670,6 @@ module spi_device_reg_top (
 
 
   // R[read_threshold]: V(False)
-
   prim_subreg #(
     .DW      (10),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2334,11 +2695,192 @@ module spi_device_reg_top (
   );
 
 
+  // R[mailbox_addr]: V(False)
+  prim_subreg #(
+    .DW      (32),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (32'h0)
+  ) u_mailbox_addr (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (mailbox_addr_we),
+    .wd     (mailbox_addr_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.mailbox_addr.q),
+
+    // to register interface (read)
+    .qs     (mailbox_addr_qs)
+  );
+
+
+  // R[upload_status]: V(False)
+  //   F[cmdfifo_depth]: 4:0
+  prim_subreg #(
+    .DW      (5),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (5'h0)
+  ) u_upload_status_cmdfifo_depth (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.upload_status.cmdfifo_depth.de),
+    .d      (hw2reg.upload_status.cmdfifo_depth.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (upload_status_cmdfifo_depth_qs)
+  );
+
+  //   F[cmdfifo_notempty]: 7:7
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (1'h0)
+  ) u_upload_status_cmdfifo_notempty (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.upload_status.cmdfifo_notempty.de),
+    .d      (hw2reg.upload_status.cmdfifo_notempty.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (upload_status_cmdfifo_notempty_qs)
+  );
+
+  //   F[addrfifo_depth]: 12:8
+  prim_subreg #(
+    .DW      (5),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (5'h0)
+  ) u_upload_status_addrfifo_depth (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.upload_status.addrfifo_depth.de),
+    .d      (hw2reg.upload_status.addrfifo_depth.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (upload_status_addrfifo_depth_qs)
+  );
+
+  //   F[addrfifo_notempty]: 15:15
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (1'h0)
+  ) u_upload_status_addrfifo_notempty (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.upload_status.addrfifo_notempty.de),
+    .d      (hw2reg.upload_status.addrfifo_notempty.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (upload_status_addrfifo_notempty_qs)
+  );
+
+  //   F[payload_depth]: 24:16
+  prim_subreg #(
+    .DW      (9),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (9'h0)
+  ) u_upload_status_payload_depth (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.upload_status.payload_depth.de),
+    .d      (hw2reg.upload_status.payload_depth.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (upload_status_payload_depth_qs)
+  );
+
+
+  // R[upload_cmdfifo]: V(True)
+  prim_subreg_ext #(
+    .DW    (8)
+  ) u_upload_cmdfifo (
+    .re     (upload_cmdfifo_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      (hw2reg.upload_cmdfifo.d),
+    .qre    (reg2hw.upload_cmdfifo.re),
+    .qe     (),
+    .q      (reg2hw.upload_cmdfifo.q),
+    .qs     (upload_cmdfifo_qs)
+  );
+
+
+  // R[upload_addrfifo]: V(True)
+  prim_subreg_ext #(
+    .DW    (32)
+  ) u_upload_addrfifo (
+    .re     (upload_addrfifo_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      (hw2reg.upload_addrfifo.d),
+    .qre    (reg2hw.upload_addrfifo.re),
+    .qe     (),
+    .q      (reg2hw.upload_addrfifo.q),
+    .qs     (upload_addrfifo_qs)
+  );
+
 
   // Subregister 0 of Multireg cmd_filter
   // R[cmd_filter_0]: V(False)
-
-  // F[filter_0]: 0:0
+  //   F[filter_0]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2363,8 +2905,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_0_qs)
   );
 
-
-  // F[filter_1]: 1:1
+  //   F[filter_1]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2389,8 +2930,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_1_qs)
   );
 
-
-  // F[filter_2]: 2:2
+  //   F[filter_2]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2415,8 +2955,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_2_qs)
   );
 
-
-  // F[filter_3]: 3:3
+  //   F[filter_3]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2441,8 +2980,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_3_qs)
   );
 
-
-  // F[filter_4]: 4:4
+  //   F[filter_4]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2467,8 +3005,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_4_qs)
   );
 
-
-  // F[filter_5]: 5:5
+  //   F[filter_5]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2493,8 +3030,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_5_qs)
   );
 
-
-  // F[filter_6]: 6:6
+  //   F[filter_6]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2519,8 +3055,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_6_qs)
   );
 
-
-  // F[filter_7]: 7:7
+  //   F[filter_7]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2545,8 +3080,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_7_qs)
   );
 
-
-  // F[filter_8]: 8:8
+  //   F[filter_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2571,8 +3105,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_8_qs)
   );
 
-
-  // F[filter_9]: 9:9
+  //   F[filter_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2597,8 +3130,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_9_qs)
   );
 
-
-  // F[filter_10]: 10:10
+  //   F[filter_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2623,8 +3155,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_10_qs)
   );
 
-
-  // F[filter_11]: 11:11
+  //   F[filter_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2649,8 +3180,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_11_qs)
   );
 
-
-  // F[filter_12]: 12:12
+  //   F[filter_12]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2675,8 +3205,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_12_qs)
   );
 
-
-  // F[filter_13]: 13:13
+  //   F[filter_13]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2701,8 +3230,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_13_qs)
   );
 
-
-  // F[filter_14]: 14:14
+  //   F[filter_14]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2727,8 +3255,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_14_qs)
   );
 
-
-  // F[filter_15]: 15:15
+  //   F[filter_15]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2753,8 +3280,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_15_qs)
   );
 
-
-  // F[filter_16]: 16:16
+  //   F[filter_16]: 16:16
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2779,8 +3305,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_16_qs)
   );
 
-
-  // F[filter_17]: 17:17
+  //   F[filter_17]: 17:17
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2805,8 +3330,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_17_qs)
   );
 
-
-  // F[filter_18]: 18:18
+  //   F[filter_18]: 18:18
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2831,8 +3355,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_18_qs)
   );
 
-
-  // F[filter_19]: 19:19
+  //   F[filter_19]: 19:19
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2857,8 +3380,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_19_qs)
   );
 
-
-  // F[filter_20]: 20:20
+  //   F[filter_20]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2883,8 +3405,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_20_qs)
   );
 
-
-  // F[filter_21]: 21:21
+  //   F[filter_21]: 21:21
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2909,8 +3430,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_21_qs)
   );
 
-
-  // F[filter_22]: 22:22
+  //   F[filter_22]: 22:22
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2935,8 +3455,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_22_qs)
   );
 
-
-  // F[filter_23]: 23:23
+  //   F[filter_23]: 23:23
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2961,8 +3480,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_23_qs)
   );
 
-
-  // F[filter_24]: 24:24
+  //   F[filter_24]: 24:24
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -2987,8 +3505,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_24_qs)
   );
 
-
-  // F[filter_25]: 25:25
+  //   F[filter_25]: 25:25
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3013,8 +3530,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_25_qs)
   );
 
-
-  // F[filter_26]: 26:26
+  //   F[filter_26]: 26:26
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3039,8 +3555,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_26_qs)
   );
 
-
-  // F[filter_27]: 27:27
+  //   F[filter_27]: 27:27
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3065,8 +3580,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_27_qs)
   );
 
-
-  // F[filter_28]: 28:28
+  //   F[filter_28]: 28:28
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3091,8 +3605,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_28_qs)
   );
 
-
-  // F[filter_29]: 29:29
+  //   F[filter_29]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3117,8 +3630,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_29_qs)
   );
 
-
-  // F[filter_30]: 30:30
+  //   F[filter_30]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3143,8 +3655,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_0_filter_30_qs)
   );
 
-
-  // F[filter_31]: 31:31
+  //   F[filter_31]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3170,10 +3681,9 @@ module spi_device_reg_top (
   );
 
 
-  // Subregister 32 of Multireg cmd_filter
+  // Subregister 1 of Multireg cmd_filter
   // R[cmd_filter_1]: V(False)
-
-  // F[filter_32]: 0:0
+  //   F[filter_32]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3198,8 +3708,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_32_qs)
   );
 
-
-  // F[filter_33]: 1:1
+  //   F[filter_33]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3224,8 +3733,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_33_qs)
   );
 
-
-  // F[filter_34]: 2:2
+  //   F[filter_34]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3250,8 +3758,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_34_qs)
   );
 
-
-  // F[filter_35]: 3:3
+  //   F[filter_35]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3276,8 +3783,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_35_qs)
   );
 
-
-  // F[filter_36]: 4:4
+  //   F[filter_36]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3302,8 +3808,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_36_qs)
   );
 
-
-  // F[filter_37]: 5:5
+  //   F[filter_37]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3328,8 +3833,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_37_qs)
   );
 
-
-  // F[filter_38]: 6:6
+  //   F[filter_38]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3354,8 +3858,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_38_qs)
   );
 
-
-  // F[filter_39]: 7:7
+  //   F[filter_39]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3380,8 +3883,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_39_qs)
   );
 
-
-  // F[filter_40]: 8:8
+  //   F[filter_40]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3406,8 +3908,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_40_qs)
   );
 
-
-  // F[filter_41]: 9:9
+  //   F[filter_41]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3432,8 +3933,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_41_qs)
   );
 
-
-  // F[filter_42]: 10:10
+  //   F[filter_42]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3458,8 +3958,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_42_qs)
   );
 
-
-  // F[filter_43]: 11:11
+  //   F[filter_43]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3484,8 +3983,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_43_qs)
   );
 
-
-  // F[filter_44]: 12:12
+  //   F[filter_44]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3510,8 +4008,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_44_qs)
   );
 
-
-  // F[filter_45]: 13:13
+  //   F[filter_45]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3536,8 +4033,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_45_qs)
   );
 
-
-  // F[filter_46]: 14:14
+  //   F[filter_46]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3562,8 +4058,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_46_qs)
   );
 
-
-  // F[filter_47]: 15:15
+  //   F[filter_47]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3588,8 +4083,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_47_qs)
   );
 
-
-  // F[filter_48]: 16:16
+  //   F[filter_48]: 16:16
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3614,8 +4108,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_48_qs)
   );
 
-
-  // F[filter_49]: 17:17
+  //   F[filter_49]: 17:17
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3640,8 +4133,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_49_qs)
   );
 
-
-  // F[filter_50]: 18:18
+  //   F[filter_50]: 18:18
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3666,8 +4158,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_50_qs)
   );
 
-
-  // F[filter_51]: 19:19
+  //   F[filter_51]: 19:19
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3692,8 +4183,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_51_qs)
   );
 
-
-  // F[filter_52]: 20:20
+  //   F[filter_52]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3718,8 +4208,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_52_qs)
   );
 
-
-  // F[filter_53]: 21:21
+  //   F[filter_53]: 21:21
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3744,8 +4233,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_53_qs)
   );
 
-
-  // F[filter_54]: 22:22
+  //   F[filter_54]: 22:22
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3770,8 +4258,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_54_qs)
   );
 
-
-  // F[filter_55]: 23:23
+  //   F[filter_55]: 23:23
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3796,8 +4283,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_55_qs)
   );
 
-
-  // F[filter_56]: 24:24
+  //   F[filter_56]: 24:24
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3822,8 +4308,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_56_qs)
   );
 
-
-  // F[filter_57]: 25:25
+  //   F[filter_57]: 25:25
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3848,8 +4333,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_57_qs)
   );
 
-
-  // F[filter_58]: 26:26
+  //   F[filter_58]: 26:26
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3874,8 +4358,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_58_qs)
   );
 
-
-  // F[filter_59]: 27:27
+  //   F[filter_59]: 27:27
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3900,8 +4383,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_59_qs)
   );
 
-
-  // F[filter_60]: 28:28
+  //   F[filter_60]: 28:28
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3926,8 +4408,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_60_qs)
   );
 
-
-  // F[filter_61]: 29:29
+  //   F[filter_61]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3952,8 +4433,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_61_qs)
   );
 
-
-  // F[filter_62]: 30:30
+  //   F[filter_62]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -3978,8 +4458,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_1_filter_62_qs)
   );
 
-
-  // F[filter_63]: 31:31
+  //   F[filter_63]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4005,10 +4484,9 @@ module spi_device_reg_top (
   );
 
 
-  // Subregister 64 of Multireg cmd_filter
+  // Subregister 2 of Multireg cmd_filter
   // R[cmd_filter_2]: V(False)
-
-  // F[filter_64]: 0:0
+  //   F[filter_64]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4033,8 +4511,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_64_qs)
   );
 
-
-  // F[filter_65]: 1:1
+  //   F[filter_65]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4059,8 +4536,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_65_qs)
   );
 
-
-  // F[filter_66]: 2:2
+  //   F[filter_66]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4085,8 +4561,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_66_qs)
   );
 
-
-  // F[filter_67]: 3:3
+  //   F[filter_67]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4111,8 +4586,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_67_qs)
   );
 
-
-  // F[filter_68]: 4:4
+  //   F[filter_68]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4137,8 +4611,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_68_qs)
   );
 
-
-  // F[filter_69]: 5:5
+  //   F[filter_69]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4163,8 +4636,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_69_qs)
   );
 
-
-  // F[filter_70]: 6:6
+  //   F[filter_70]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4189,8 +4661,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_70_qs)
   );
 
-
-  // F[filter_71]: 7:7
+  //   F[filter_71]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4215,8 +4686,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_71_qs)
   );
 
-
-  // F[filter_72]: 8:8
+  //   F[filter_72]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4241,8 +4711,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_72_qs)
   );
 
-
-  // F[filter_73]: 9:9
+  //   F[filter_73]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4267,8 +4736,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_73_qs)
   );
 
-
-  // F[filter_74]: 10:10
+  //   F[filter_74]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4293,8 +4761,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_74_qs)
   );
 
-
-  // F[filter_75]: 11:11
+  //   F[filter_75]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4319,8 +4786,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_75_qs)
   );
 
-
-  // F[filter_76]: 12:12
+  //   F[filter_76]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4345,8 +4811,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_76_qs)
   );
 
-
-  // F[filter_77]: 13:13
+  //   F[filter_77]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4371,8 +4836,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_77_qs)
   );
 
-
-  // F[filter_78]: 14:14
+  //   F[filter_78]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4397,8 +4861,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_78_qs)
   );
 
-
-  // F[filter_79]: 15:15
+  //   F[filter_79]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4423,8 +4886,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_79_qs)
   );
 
-
-  // F[filter_80]: 16:16
+  //   F[filter_80]: 16:16
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4449,8 +4911,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_80_qs)
   );
 
-
-  // F[filter_81]: 17:17
+  //   F[filter_81]: 17:17
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4475,8 +4936,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_81_qs)
   );
 
-
-  // F[filter_82]: 18:18
+  //   F[filter_82]: 18:18
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4501,8 +4961,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_82_qs)
   );
 
-
-  // F[filter_83]: 19:19
+  //   F[filter_83]: 19:19
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4527,8 +4986,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_83_qs)
   );
 
-
-  // F[filter_84]: 20:20
+  //   F[filter_84]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4553,8 +5011,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_84_qs)
   );
 
-
-  // F[filter_85]: 21:21
+  //   F[filter_85]: 21:21
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4579,8 +5036,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_85_qs)
   );
 
-
-  // F[filter_86]: 22:22
+  //   F[filter_86]: 22:22
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4605,8 +5061,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_86_qs)
   );
 
-
-  // F[filter_87]: 23:23
+  //   F[filter_87]: 23:23
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4631,8 +5086,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_87_qs)
   );
 
-
-  // F[filter_88]: 24:24
+  //   F[filter_88]: 24:24
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4657,8 +5111,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_88_qs)
   );
 
-
-  // F[filter_89]: 25:25
+  //   F[filter_89]: 25:25
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4683,8 +5136,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_89_qs)
   );
 
-
-  // F[filter_90]: 26:26
+  //   F[filter_90]: 26:26
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4709,8 +5161,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_90_qs)
   );
 
-
-  // F[filter_91]: 27:27
+  //   F[filter_91]: 27:27
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4735,8 +5186,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_91_qs)
   );
 
-
-  // F[filter_92]: 28:28
+  //   F[filter_92]: 28:28
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4761,8 +5211,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_92_qs)
   );
 
-
-  // F[filter_93]: 29:29
+  //   F[filter_93]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4787,8 +5236,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_93_qs)
   );
 
-
-  // F[filter_94]: 30:30
+  //   F[filter_94]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4813,8 +5261,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_2_filter_94_qs)
   );
 
-
-  // F[filter_95]: 31:31
+  //   F[filter_95]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4840,10 +5287,9 @@ module spi_device_reg_top (
   );
 
 
-  // Subregister 96 of Multireg cmd_filter
+  // Subregister 3 of Multireg cmd_filter
   // R[cmd_filter_3]: V(False)
-
-  // F[filter_96]: 0:0
+  //   F[filter_96]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4868,8 +5314,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_96_qs)
   );
 
-
-  // F[filter_97]: 1:1
+  //   F[filter_97]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4894,8 +5339,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_97_qs)
   );
 
-
-  // F[filter_98]: 2:2
+  //   F[filter_98]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4920,8 +5364,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_98_qs)
   );
 
-
-  // F[filter_99]: 3:3
+  //   F[filter_99]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4946,8 +5389,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_99_qs)
   );
 
-
-  // F[filter_100]: 4:4
+  //   F[filter_100]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4972,8 +5414,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_100_qs)
   );
 
-
-  // F[filter_101]: 5:5
+  //   F[filter_101]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -4998,8 +5439,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_101_qs)
   );
 
-
-  // F[filter_102]: 6:6
+  //   F[filter_102]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5024,8 +5464,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_102_qs)
   );
 
-
-  // F[filter_103]: 7:7
+  //   F[filter_103]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5050,8 +5489,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_103_qs)
   );
 
-
-  // F[filter_104]: 8:8
+  //   F[filter_104]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5076,8 +5514,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_104_qs)
   );
 
-
-  // F[filter_105]: 9:9
+  //   F[filter_105]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5102,8 +5539,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_105_qs)
   );
 
-
-  // F[filter_106]: 10:10
+  //   F[filter_106]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5128,8 +5564,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_106_qs)
   );
 
-
-  // F[filter_107]: 11:11
+  //   F[filter_107]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5154,8 +5589,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_107_qs)
   );
 
-
-  // F[filter_108]: 12:12
+  //   F[filter_108]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5180,8 +5614,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_108_qs)
   );
 
-
-  // F[filter_109]: 13:13
+  //   F[filter_109]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5206,8 +5639,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_109_qs)
   );
 
-
-  // F[filter_110]: 14:14
+  //   F[filter_110]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5232,8 +5664,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_110_qs)
   );
 
-
-  // F[filter_111]: 15:15
+  //   F[filter_111]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5258,8 +5689,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_111_qs)
   );
 
-
-  // F[filter_112]: 16:16
+  //   F[filter_112]: 16:16
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5284,8 +5714,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_112_qs)
   );
 
-
-  // F[filter_113]: 17:17
+  //   F[filter_113]: 17:17
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5310,8 +5739,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_113_qs)
   );
 
-
-  // F[filter_114]: 18:18
+  //   F[filter_114]: 18:18
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5336,8 +5764,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_114_qs)
   );
 
-
-  // F[filter_115]: 19:19
+  //   F[filter_115]: 19:19
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5362,8 +5789,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_115_qs)
   );
 
-
-  // F[filter_116]: 20:20
+  //   F[filter_116]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5388,8 +5814,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_116_qs)
   );
 
-
-  // F[filter_117]: 21:21
+  //   F[filter_117]: 21:21
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5414,8 +5839,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_117_qs)
   );
 
-
-  // F[filter_118]: 22:22
+  //   F[filter_118]: 22:22
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5440,8 +5864,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_118_qs)
   );
 
-
-  // F[filter_119]: 23:23
+  //   F[filter_119]: 23:23
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5466,8 +5889,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_119_qs)
   );
 
-
-  // F[filter_120]: 24:24
+  //   F[filter_120]: 24:24
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5492,8 +5914,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_120_qs)
   );
 
-
-  // F[filter_121]: 25:25
+  //   F[filter_121]: 25:25
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5518,8 +5939,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_121_qs)
   );
 
-
-  // F[filter_122]: 26:26
+  //   F[filter_122]: 26:26
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5544,8 +5964,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_122_qs)
   );
 
-
-  // F[filter_123]: 27:27
+  //   F[filter_123]: 27:27
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5570,8 +5989,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_123_qs)
   );
 
-
-  // F[filter_124]: 28:28
+  //   F[filter_124]: 28:28
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5596,8 +6014,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_124_qs)
   );
 
-
-  // F[filter_125]: 29:29
+  //   F[filter_125]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5622,8 +6039,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_125_qs)
   );
 
-
-  // F[filter_126]: 30:30
+  //   F[filter_126]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5648,8 +6064,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_3_filter_126_qs)
   );
 
-
-  // F[filter_127]: 31:31
+  //   F[filter_127]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5675,10 +6090,9 @@ module spi_device_reg_top (
   );
 
 
-  // Subregister 128 of Multireg cmd_filter
+  // Subregister 4 of Multireg cmd_filter
   // R[cmd_filter_4]: V(False)
-
-  // F[filter_128]: 0:0
+  //   F[filter_128]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5703,8 +6117,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_128_qs)
   );
 
-
-  // F[filter_129]: 1:1
+  //   F[filter_129]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5729,8 +6142,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_129_qs)
   );
 
-
-  // F[filter_130]: 2:2
+  //   F[filter_130]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5755,8 +6167,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_130_qs)
   );
 
-
-  // F[filter_131]: 3:3
+  //   F[filter_131]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5781,8 +6192,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_131_qs)
   );
 
-
-  // F[filter_132]: 4:4
+  //   F[filter_132]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5807,8 +6217,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_132_qs)
   );
 
-
-  // F[filter_133]: 5:5
+  //   F[filter_133]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5833,8 +6242,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_133_qs)
   );
 
-
-  // F[filter_134]: 6:6
+  //   F[filter_134]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5859,8 +6267,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_134_qs)
   );
 
-
-  // F[filter_135]: 7:7
+  //   F[filter_135]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5885,8 +6292,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_135_qs)
   );
 
-
-  // F[filter_136]: 8:8
+  //   F[filter_136]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5911,8 +6317,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_136_qs)
   );
 
-
-  // F[filter_137]: 9:9
+  //   F[filter_137]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5937,8 +6342,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_137_qs)
   );
 
-
-  // F[filter_138]: 10:10
+  //   F[filter_138]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5963,8 +6367,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_138_qs)
   );
 
-
-  // F[filter_139]: 11:11
+  //   F[filter_139]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -5989,8 +6392,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_139_qs)
   );
 
-
-  // F[filter_140]: 12:12
+  //   F[filter_140]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6015,8 +6417,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_140_qs)
   );
 
-
-  // F[filter_141]: 13:13
+  //   F[filter_141]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6041,8 +6442,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_141_qs)
   );
 
-
-  // F[filter_142]: 14:14
+  //   F[filter_142]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6067,8 +6467,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_142_qs)
   );
 
-
-  // F[filter_143]: 15:15
+  //   F[filter_143]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6093,8 +6492,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_143_qs)
   );
 
-
-  // F[filter_144]: 16:16
+  //   F[filter_144]: 16:16
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6119,8 +6517,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_144_qs)
   );
 
-
-  // F[filter_145]: 17:17
+  //   F[filter_145]: 17:17
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6145,8 +6542,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_145_qs)
   );
 
-
-  // F[filter_146]: 18:18
+  //   F[filter_146]: 18:18
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6171,8 +6567,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_146_qs)
   );
 
-
-  // F[filter_147]: 19:19
+  //   F[filter_147]: 19:19
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6197,8 +6592,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_147_qs)
   );
 
-
-  // F[filter_148]: 20:20
+  //   F[filter_148]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6223,8 +6617,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_148_qs)
   );
 
-
-  // F[filter_149]: 21:21
+  //   F[filter_149]: 21:21
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6249,8 +6642,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_149_qs)
   );
 
-
-  // F[filter_150]: 22:22
+  //   F[filter_150]: 22:22
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6275,8 +6667,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_150_qs)
   );
 
-
-  // F[filter_151]: 23:23
+  //   F[filter_151]: 23:23
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6301,8 +6692,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_151_qs)
   );
 
-
-  // F[filter_152]: 24:24
+  //   F[filter_152]: 24:24
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6327,8 +6717,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_152_qs)
   );
 
-
-  // F[filter_153]: 25:25
+  //   F[filter_153]: 25:25
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6353,8 +6742,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_153_qs)
   );
 
-
-  // F[filter_154]: 26:26
+  //   F[filter_154]: 26:26
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6379,8 +6767,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_154_qs)
   );
 
-
-  // F[filter_155]: 27:27
+  //   F[filter_155]: 27:27
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6405,8 +6792,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_155_qs)
   );
 
-
-  // F[filter_156]: 28:28
+  //   F[filter_156]: 28:28
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6431,8 +6817,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_156_qs)
   );
 
-
-  // F[filter_157]: 29:29
+  //   F[filter_157]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6457,8 +6842,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_157_qs)
   );
 
-
-  // F[filter_158]: 30:30
+  //   F[filter_158]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6483,8 +6867,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_4_filter_158_qs)
   );
 
-
-  // F[filter_159]: 31:31
+  //   F[filter_159]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6510,10 +6893,9 @@ module spi_device_reg_top (
   );
 
 
-  // Subregister 160 of Multireg cmd_filter
+  // Subregister 5 of Multireg cmd_filter
   // R[cmd_filter_5]: V(False)
-
-  // F[filter_160]: 0:0
+  //   F[filter_160]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6538,8 +6920,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_160_qs)
   );
 
-
-  // F[filter_161]: 1:1
+  //   F[filter_161]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6564,8 +6945,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_161_qs)
   );
 
-
-  // F[filter_162]: 2:2
+  //   F[filter_162]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6590,8 +6970,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_162_qs)
   );
 
-
-  // F[filter_163]: 3:3
+  //   F[filter_163]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6616,8 +6995,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_163_qs)
   );
 
-
-  // F[filter_164]: 4:4
+  //   F[filter_164]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6642,8 +7020,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_164_qs)
   );
 
-
-  // F[filter_165]: 5:5
+  //   F[filter_165]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6668,8 +7045,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_165_qs)
   );
 
-
-  // F[filter_166]: 6:6
+  //   F[filter_166]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6694,8 +7070,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_166_qs)
   );
 
-
-  // F[filter_167]: 7:7
+  //   F[filter_167]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6720,8 +7095,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_167_qs)
   );
 
-
-  // F[filter_168]: 8:8
+  //   F[filter_168]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6746,8 +7120,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_168_qs)
   );
 
-
-  // F[filter_169]: 9:9
+  //   F[filter_169]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6772,8 +7145,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_169_qs)
   );
 
-
-  // F[filter_170]: 10:10
+  //   F[filter_170]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6798,8 +7170,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_170_qs)
   );
 
-
-  // F[filter_171]: 11:11
+  //   F[filter_171]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6824,8 +7195,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_171_qs)
   );
 
-
-  // F[filter_172]: 12:12
+  //   F[filter_172]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6850,8 +7220,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_172_qs)
   );
 
-
-  // F[filter_173]: 13:13
+  //   F[filter_173]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6876,8 +7245,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_173_qs)
   );
 
-
-  // F[filter_174]: 14:14
+  //   F[filter_174]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6902,8 +7270,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_174_qs)
   );
 
-
-  // F[filter_175]: 15:15
+  //   F[filter_175]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6928,8 +7295,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_175_qs)
   );
 
-
-  // F[filter_176]: 16:16
+  //   F[filter_176]: 16:16
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6954,8 +7320,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_176_qs)
   );
 
-
-  // F[filter_177]: 17:17
+  //   F[filter_177]: 17:17
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -6980,8 +7345,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_177_qs)
   );
 
-
-  // F[filter_178]: 18:18
+  //   F[filter_178]: 18:18
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7006,8 +7370,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_178_qs)
   );
 
-
-  // F[filter_179]: 19:19
+  //   F[filter_179]: 19:19
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7032,8 +7395,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_179_qs)
   );
 
-
-  // F[filter_180]: 20:20
+  //   F[filter_180]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7058,8 +7420,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_180_qs)
   );
 
-
-  // F[filter_181]: 21:21
+  //   F[filter_181]: 21:21
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7084,8 +7445,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_181_qs)
   );
 
-
-  // F[filter_182]: 22:22
+  //   F[filter_182]: 22:22
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7110,8 +7470,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_182_qs)
   );
 
-
-  // F[filter_183]: 23:23
+  //   F[filter_183]: 23:23
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7136,8 +7495,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_183_qs)
   );
 
-
-  // F[filter_184]: 24:24
+  //   F[filter_184]: 24:24
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7162,8 +7520,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_184_qs)
   );
 
-
-  // F[filter_185]: 25:25
+  //   F[filter_185]: 25:25
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7188,8 +7545,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_185_qs)
   );
 
-
-  // F[filter_186]: 26:26
+  //   F[filter_186]: 26:26
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7214,8 +7570,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_186_qs)
   );
 
-
-  // F[filter_187]: 27:27
+  //   F[filter_187]: 27:27
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7240,8 +7595,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_187_qs)
   );
 
-
-  // F[filter_188]: 28:28
+  //   F[filter_188]: 28:28
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7266,8 +7620,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_188_qs)
   );
 
-
-  // F[filter_189]: 29:29
+  //   F[filter_189]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7292,8 +7645,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_189_qs)
   );
 
-
-  // F[filter_190]: 30:30
+  //   F[filter_190]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7318,8 +7670,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_5_filter_190_qs)
   );
 
-
-  // F[filter_191]: 31:31
+  //   F[filter_191]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7345,10 +7696,9 @@ module spi_device_reg_top (
   );
 
 
-  // Subregister 192 of Multireg cmd_filter
+  // Subregister 6 of Multireg cmd_filter
   // R[cmd_filter_6]: V(False)
-
-  // F[filter_192]: 0:0
+  //   F[filter_192]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7373,8 +7723,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_192_qs)
   );
 
-
-  // F[filter_193]: 1:1
+  //   F[filter_193]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7399,8 +7748,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_193_qs)
   );
 
-
-  // F[filter_194]: 2:2
+  //   F[filter_194]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7425,8 +7773,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_194_qs)
   );
 
-
-  // F[filter_195]: 3:3
+  //   F[filter_195]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7451,8 +7798,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_195_qs)
   );
 
-
-  // F[filter_196]: 4:4
+  //   F[filter_196]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7477,8 +7823,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_196_qs)
   );
 
-
-  // F[filter_197]: 5:5
+  //   F[filter_197]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7503,8 +7848,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_197_qs)
   );
 
-
-  // F[filter_198]: 6:6
+  //   F[filter_198]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7529,8 +7873,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_198_qs)
   );
 
-
-  // F[filter_199]: 7:7
+  //   F[filter_199]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7555,8 +7898,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_199_qs)
   );
 
-
-  // F[filter_200]: 8:8
+  //   F[filter_200]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7581,8 +7923,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_200_qs)
   );
 
-
-  // F[filter_201]: 9:9
+  //   F[filter_201]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7607,8 +7948,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_201_qs)
   );
 
-
-  // F[filter_202]: 10:10
+  //   F[filter_202]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7633,8 +7973,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_202_qs)
   );
 
-
-  // F[filter_203]: 11:11
+  //   F[filter_203]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7659,8 +7998,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_203_qs)
   );
 
-
-  // F[filter_204]: 12:12
+  //   F[filter_204]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7685,8 +8023,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_204_qs)
   );
 
-
-  // F[filter_205]: 13:13
+  //   F[filter_205]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7711,8 +8048,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_205_qs)
   );
 
-
-  // F[filter_206]: 14:14
+  //   F[filter_206]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7737,8 +8073,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_206_qs)
   );
 
-
-  // F[filter_207]: 15:15
+  //   F[filter_207]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7763,8 +8098,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_207_qs)
   );
 
-
-  // F[filter_208]: 16:16
+  //   F[filter_208]: 16:16
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7789,8 +8123,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_208_qs)
   );
 
-
-  // F[filter_209]: 17:17
+  //   F[filter_209]: 17:17
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7815,8 +8148,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_209_qs)
   );
 
-
-  // F[filter_210]: 18:18
+  //   F[filter_210]: 18:18
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7841,8 +8173,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_210_qs)
   );
 
-
-  // F[filter_211]: 19:19
+  //   F[filter_211]: 19:19
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7867,8 +8198,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_211_qs)
   );
 
-
-  // F[filter_212]: 20:20
+  //   F[filter_212]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7893,8 +8223,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_212_qs)
   );
 
-
-  // F[filter_213]: 21:21
+  //   F[filter_213]: 21:21
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7919,8 +8248,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_213_qs)
   );
 
-
-  // F[filter_214]: 22:22
+  //   F[filter_214]: 22:22
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7945,8 +8273,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_214_qs)
   );
 
-
-  // F[filter_215]: 23:23
+  //   F[filter_215]: 23:23
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7971,8 +8298,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_215_qs)
   );
 
-
-  // F[filter_216]: 24:24
+  //   F[filter_216]: 24:24
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -7997,8 +8323,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_216_qs)
   );
 
-
-  // F[filter_217]: 25:25
+  //   F[filter_217]: 25:25
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8023,8 +8348,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_217_qs)
   );
 
-
-  // F[filter_218]: 26:26
+  //   F[filter_218]: 26:26
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8049,8 +8373,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_218_qs)
   );
 
-
-  // F[filter_219]: 27:27
+  //   F[filter_219]: 27:27
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8075,8 +8398,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_219_qs)
   );
 
-
-  // F[filter_220]: 28:28
+  //   F[filter_220]: 28:28
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8101,8 +8423,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_220_qs)
   );
 
-
-  // F[filter_221]: 29:29
+  //   F[filter_221]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8127,8 +8448,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_221_qs)
   );
 
-
-  // F[filter_222]: 30:30
+  //   F[filter_222]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8153,8 +8473,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_6_filter_222_qs)
   );
 
-
-  // F[filter_223]: 31:31
+  //   F[filter_223]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8180,10 +8499,9 @@ module spi_device_reg_top (
   );
 
 
-  // Subregister 224 of Multireg cmd_filter
+  // Subregister 7 of Multireg cmd_filter
   // R[cmd_filter_7]: V(False)
-
-  // F[filter_224]: 0:0
+  //   F[filter_224]: 0:0
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8208,8 +8526,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_224_qs)
   );
 
-
-  // F[filter_225]: 1:1
+  //   F[filter_225]: 1:1
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8234,8 +8551,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_225_qs)
   );
 
-
-  // F[filter_226]: 2:2
+  //   F[filter_226]: 2:2
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8260,8 +8576,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_226_qs)
   );
 
-
-  // F[filter_227]: 3:3
+  //   F[filter_227]: 3:3
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8286,8 +8601,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_227_qs)
   );
 
-
-  // F[filter_228]: 4:4
+  //   F[filter_228]: 4:4
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8312,8 +8626,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_228_qs)
   );
 
-
-  // F[filter_229]: 5:5
+  //   F[filter_229]: 5:5
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8338,8 +8651,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_229_qs)
   );
 
-
-  // F[filter_230]: 6:6
+  //   F[filter_230]: 6:6
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8364,8 +8676,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_230_qs)
   );
 
-
-  // F[filter_231]: 7:7
+  //   F[filter_231]: 7:7
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8390,8 +8701,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_231_qs)
   );
 
-
-  // F[filter_232]: 8:8
+  //   F[filter_232]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8416,8 +8726,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_232_qs)
   );
 
-
-  // F[filter_233]: 9:9
+  //   F[filter_233]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8442,8 +8751,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_233_qs)
   );
 
-
-  // F[filter_234]: 10:10
+  //   F[filter_234]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8468,8 +8776,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_234_qs)
   );
 
-
-  // F[filter_235]: 11:11
+  //   F[filter_235]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8494,8 +8801,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_235_qs)
   );
 
-
-  // F[filter_236]: 12:12
+  //   F[filter_236]: 12:12
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8520,8 +8826,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_236_qs)
   );
 
-
-  // F[filter_237]: 13:13
+  //   F[filter_237]: 13:13
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8546,8 +8851,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_237_qs)
   );
 
-
-  // F[filter_238]: 14:14
+  //   F[filter_238]: 14:14
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8572,8 +8876,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_238_qs)
   );
 
-
-  // F[filter_239]: 15:15
+  //   F[filter_239]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8598,8 +8901,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_239_qs)
   );
 
-
-  // F[filter_240]: 16:16
+  //   F[filter_240]: 16:16
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8624,8 +8926,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_240_qs)
   );
 
-
-  // F[filter_241]: 17:17
+  //   F[filter_241]: 17:17
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8650,8 +8951,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_241_qs)
   );
 
-
-  // F[filter_242]: 18:18
+  //   F[filter_242]: 18:18
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8676,8 +8976,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_242_qs)
   );
 
-
-  // F[filter_243]: 19:19
+  //   F[filter_243]: 19:19
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8702,8 +9001,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_243_qs)
   );
 
-
-  // F[filter_244]: 20:20
+  //   F[filter_244]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8728,8 +9026,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_244_qs)
   );
 
-
-  // F[filter_245]: 21:21
+  //   F[filter_245]: 21:21
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8754,8 +9051,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_245_qs)
   );
 
-
-  // F[filter_246]: 22:22
+  //   F[filter_246]: 22:22
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8780,8 +9076,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_246_qs)
   );
 
-
-  // F[filter_247]: 23:23
+  //   F[filter_247]: 23:23
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8806,8 +9101,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_247_qs)
   );
 
-
-  // F[filter_248]: 24:24
+  //   F[filter_248]: 24:24
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8832,8 +9126,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_248_qs)
   );
 
-
-  // F[filter_249]: 25:25
+  //   F[filter_249]: 25:25
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8858,8 +9151,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_249_qs)
   );
 
-
-  // F[filter_250]: 26:26
+  //   F[filter_250]: 26:26
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8884,8 +9176,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_250_qs)
   );
 
-
-  // F[filter_251]: 27:27
+  //   F[filter_251]: 27:27
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8910,8 +9201,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_251_qs)
   );
 
-
-  // F[filter_252]: 28:28
+  //   F[filter_252]: 28:28
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8936,8 +9226,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_252_qs)
   );
 
-
-  // F[filter_253]: 29:29
+  //   F[filter_253]: 29:29
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8962,8 +9251,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_253_qs)
   );
 
-
-  // F[filter_254]: 30:30
+  //   F[filter_254]: 30:30
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -8988,8 +9276,7 @@ module spi_device_reg_top (
     .qs     (cmd_filter_7_filter_254_qs)
   );
 
-
-  // F[filter_255]: 31:31
+  //   F[filter_255]: 31:31
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9015,9 +9302,7 @@ module spi_device_reg_top (
   );
 
 
-
   // R[addr_swap_mask]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9044,7 +9329,6 @@ module spi_device_reg_top (
 
 
   // R[addr_swap_data]: V(False)
-
   prim_subreg #(
     .DW      (32),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9070,11 +9354,9 @@ module spi_device_reg_top (
   );
 
 
-
   // Subregister 0 of Multireg cmd_info
   // R[cmd_info_0]: V(False)
-
-  // F[opcode_0]: 7:0
+  //   F[opcode_0]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9099,8 +9381,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_0_opcode_0_qs)
   );
 
-
-  // F[addr_en_0]: 8:8
+  //   F[addr_en_0]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9125,8 +9406,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_0_addr_en_0_qs)
   );
 
-
-  // F[addr_swap_en_0]: 9:9
+  //   F[addr_swap_en_0]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9151,8 +9431,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_0_addr_swap_en_0_qs)
   );
 
-
-  // F[addr_4b_affected_0]: 10:10
+  //   F[addr_4b_affected_0]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9177,8 +9456,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_0_addr_4b_affected_0_qs)
   );
 
-
-  // F[mbyte_en_0]: 11:11
+  //   F[mbyte_en_0]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9203,8 +9481,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_0_mbyte_en_0_qs)
   );
 
-
-  // F[dummy_size_0]: 14:12
+  //   F[dummy_size_0]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9229,8 +9506,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_0_dummy_size_0_qs)
   );
 
-
-  // F[dummy_en_0]: 15:15
+  //   F[dummy_en_0]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9255,8 +9531,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_0_dummy_en_0_qs)
   );
 
-
-  // F[payload_en_0]: 19:16
+  //   F[payload_en_0]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9281,8 +9556,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_0_payload_en_0_qs)
   );
 
-
-  // F[payload_dir_0]: 20:20
+  //   F[payload_dir_0]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9307,11 +9581,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_0_payload_dir_0_qs)
   );
 
+  //   F[upload_0]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_0_upload_0 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_0_we),
+    .wd     (cmd_info_0_upload_0_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[0].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_0_upload_0_qs)
+  );
+
+  //   F[busy_0]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_0_busy_0 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_0_we),
+    .wd     (cmd_info_0_busy_0_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[0].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_0_busy_0_qs)
+  );
+
 
   // Subregister 1 of Multireg cmd_info
   // R[cmd_info_1]: V(False)
-
-  // F[opcode_1]: 7:0
+  //   F[opcode_1]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9336,8 +9659,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_1_opcode_1_qs)
   );
 
-
-  // F[addr_en_1]: 8:8
+  //   F[addr_en_1]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9362,8 +9684,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_1_addr_en_1_qs)
   );
 
-
-  // F[addr_swap_en_1]: 9:9
+  //   F[addr_swap_en_1]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9388,8 +9709,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_1_addr_swap_en_1_qs)
   );
 
-
-  // F[addr_4b_affected_1]: 10:10
+  //   F[addr_4b_affected_1]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9414,8 +9734,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_1_addr_4b_affected_1_qs)
   );
 
-
-  // F[mbyte_en_1]: 11:11
+  //   F[mbyte_en_1]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9440,8 +9759,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_1_mbyte_en_1_qs)
   );
 
-
-  // F[dummy_size_1]: 14:12
+  //   F[dummy_size_1]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9466,8 +9784,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_1_dummy_size_1_qs)
   );
 
-
-  // F[dummy_en_1]: 15:15
+  //   F[dummy_en_1]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9492,8 +9809,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_1_dummy_en_1_qs)
   );
 
-
-  // F[payload_en_1]: 19:16
+  //   F[payload_en_1]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9518,8 +9834,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_1_payload_en_1_qs)
   );
 
-
-  // F[payload_dir_1]: 20:20
+  //   F[payload_dir_1]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9544,11 +9859,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_1_payload_dir_1_qs)
   );
 
+  //   F[upload_1]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_1_upload_1 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_1_we),
+    .wd     (cmd_info_1_upload_1_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[1].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_1_upload_1_qs)
+  );
+
+  //   F[busy_1]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_1_busy_1 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_1_we),
+    .wd     (cmd_info_1_busy_1_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[1].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_1_busy_1_qs)
+  );
+
 
   // Subregister 2 of Multireg cmd_info
   // R[cmd_info_2]: V(False)
-
-  // F[opcode_2]: 7:0
+  //   F[opcode_2]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9573,8 +9937,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_2_opcode_2_qs)
   );
 
-
-  // F[addr_en_2]: 8:8
+  //   F[addr_en_2]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9599,8 +9962,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_2_addr_en_2_qs)
   );
 
-
-  // F[addr_swap_en_2]: 9:9
+  //   F[addr_swap_en_2]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9625,8 +9987,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_2_addr_swap_en_2_qs)
   );
 
-
-  // F[addr_4b_affected_2]: 10:10
+  //   F[addr_4b_affected_2]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9651,8 +10012,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_2_addr_4b_affected_2_qs)
   );
 
-
-  // F[mbyte_en_2]: 11:11
+  //   F[mbyte_en_2]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9677,8 +10037,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_2_mbyte_en_2_qs)
   );
 
-
-  // F[dummy_size_2]: 14:12
+  //   F[dummy_size_2]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9703,8 +10062,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_2_dummy_size_2_qs)
   );
 
-
-  // F[dummy_en_2]: 15:15
+  //   F[dummy_en_2]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9729,8 +10087,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_2_dummy_en_2_qs)
   );
 
-
-  // F[payload_en_2]: 19:16
+  //   F[payload_en_2]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9755,8 +10112,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_2_payload_en_2_qs)
   );
 
-
-  // F[payload_dir_2]: 20:20
+  //   F[payload_dir_2]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9781,11 +10137,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_2_payload_dir_2_qs)
   );
 
+  //   F[upload_2]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_2_upload_2 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_2_we),
+    .wd     (cmd_info_2_upload_2_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[2].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_2_upload_2_qs)
+  );
+
+  //   F[busy_2]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_2_busy_2 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_2_we),
+    .wd     (cmd_info_2_busy_2_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[2].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_2_busy_2_qs)
+  );
+
 
   // Subregister 3 of Multireg cmd_info
   // R[cmd_info_3]: V(False)
-
-  // F[opcode_3]: 7:0
+  //   F[opcode_3]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9810,8 +10215,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_3_opcode_3_qs)
   );
 
-
-  // F[addr_en_3]: 8:8
+  //   F[addr_en_3]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9836,8 +10240,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_3_addr_en_3_qs)
   );
 
-
-  // F[addr_swap_en_3]: 9:9
+  //   F[addr_swap_en_3]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9862,8 +10265,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_3_addr_swap_en_3_qs)
   );
 
-
-  // F[addr_4b_affected_3]: 10:10
+  //   F[addr_4b_affected_3]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9888,8 +10290,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_3_addr_4b_affected_3_qs)
   );
 
-
-  // F[mbyte_en_3]: 11:11
+  //   F[mbyte_en_3]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9914,8 +10315,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_3_mbyte_en_3_qs)
   );
 
-
-  // F[dummy_size_3]: 14:12
+  //   F[dummy_size_3]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9940,8 +10340,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_3_dummy_size_3_qs)
   );
 
-
-  // F[dummy_en_3]: 15:15
+  //   F[dummy_en_3]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9966,8 +10365,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_3_dummy_en_3_qs)
   );
 
-
-  // F[payload_en_3]: 19:16
+  //   F[payload_en_3]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -9992,8 +10390,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_3_payload_en_3_qs)
   );
 
-
-  // F[payload_dir_3]: 20:20
+  //   F[payload_dir_3]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10018,11 +10415,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_3_payload_dir_3_qs)
   );
 
+  //   F[upload_3]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_3_upload_3 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_3_we),
+    .wd     (cmd_info_3_upload_3_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[3].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_3_upload_3_qs)
+  );
+
+  //   F[busy_3]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_3_busy_3 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_3_we),
+    .wd     (cmd_info_3_busy_3_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[3].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_3_busy_3_qs)
+  );
+
 
   // Subregister 4 of Multireg cmd_info
   // R[cmd_info_4]: V(False)
-
-  // F[opcode_4]: 7:0
+  //   F[opcode_4]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10047,8 +10493,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_4_opcode_4_qs)
   );
 
-
-  // F[addr_en_4]: 8:8
+  //   F[addr_en_4]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10073,8 +10518,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_4_addr_en_4_qs)
   );
 
-
-  // F[addr_swap_en_4]: 9:9
+  //   F[addr_swap_en_4]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10099,8 +10543,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_4_addr_swap_en_4_qs)
   );
 
-
-  // F[addr_4b_affected_4]: 10:10
+  //   F[addr_4b_affected_4]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10125,8 +10568,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_4_addr_4b_affected_4_qs)
   );
 
-
-  // F[mbyte_en_4]: 11:11
+  //   F[mbyte_en_4]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10151,8 +10593,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_4_mbyte_en_4_qs)
   );
 
-
-  // F[dummy_size_4]: 14:12
+  //   F[dummy_size_4]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10177,8 +10618,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_4_dummy_size_4_qs)
   );
 
-
-  // F[dummy_en_4]: 15:15
+  //   F[dummy_en_4]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10203,8 +10643,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_4_dummy_en_4_qs)
   );
 
-
-  // F[payload_en_4]: 19:16
+  //   F[payload_en_4]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10229,8 +10668,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_4_payload_en_4_qs)
   );
 
-
-  // F[payload_dir_4]: 20:20
+  //   F[payload_dir_4]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10255,11 +10693,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_4_payload_dir_4_qs)
   );
 
+  //   F[upload_4]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_4_upload_4 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_4_we),
+    .wd     (cmd_info_4_upload_4_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[4].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_4_upload_4_qs)
+  );
+
+  //   F[busy_4]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_4_busy_4 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_4_we),
+    .wd     (cmd_info_4_busy_4_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[4].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_4_busy_4_qs)
+  );
+
 
   // Subregister 5 of Multireg cmd_info
   // R[cmd_info_5]: V(False)
-
-  // F[opcode_5]: 7:0
+  //   F[opcode_5]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10284,8 +10771,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_5_opcode_5_qs)
   );
 
-
-  // F[addr_en_5]: 8:8
+  //   F[addr_en_5]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10310,8 +10796,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_5_addr_en_5_qs)
   );
 
-
-  // F[addr_swap_en_5]: 9:9
+  //   F[addr_swap_en_5]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10336,8 +10821,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_5_addr_swap_en_5_qs)
   );
 
-
-  // F[addr_4b_affected_5]: 10:10
+  //   F[addr_4b_affected_5]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10362,8 +10846,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_5_addr_4b_affected_5_qs)
   );
 
-
-  // F[mbyte_en_5]: 11:11
+  //   F[mbyte_en_5]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10388,8 +10871,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_5_mbyte_en_5_qs)
   );
 
-
-  // F[dummy_size_5]: 14:12
+  //   F[dummy_size_5]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10414,8 +10896,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_5_dummy_size_5_qs)
   );
 
-
-  // F[dummy_en_5]: 15:15
+  //   F[dummy_en_5]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10440,8 +10921,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_5_dummy_en_5_qs)
   );
 
-
-  // F[payload_en_5]: 19:16
+  //   F[payload_en_5]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10466,8 +10946,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_5_payload_en_5_qs)
   );
 
-
-  // F[payload_dir_5]: 20:20
+  //   F[payload_dir_5]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10492,11 +10971,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_5_payload_dir_5_qs)
   );
 
+  //   F[upload_5]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_5_upload_5 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_5_we),
+    .wd     (cmd_info_5_upload_5_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[5].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_5_upload_5_qs)
+  );
+
+  //   F[busy_5]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_5_busy_5 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_5_we),
+    .wd     (cmd_info_5_busy_5_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[5].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_5_busy_5_qs)
+  );
+
 
   // Subregister 6 of Multireg cmd_info
   // R[cmd_info_6]: V(False)
-
-  // F[opcode_6]: 7:0
+  //   F[opcode_6]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10521,8 +11049,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_6_opcode_6_qs)
   );
 
-
-  // F[addr_en_6]: 8:8
+  //   F[addr_en_6]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10547,8 +11074,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_6_addr_en_6_qs)
   );
 
-
-  // F[addr_swap_en_6]: 9:9
+  //   F[addr_swap_en_6]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10573,8 +11099,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_6_addr_swap_en_6_qs)
   );
 
-
-  // F[addr_4b_affected_6]: 10:10
+  //   F[addr_4b_affected_6]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10599,8 +11124,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_6_addr_4b_affected_6_qs)
   );
 
-
-  // F[mbyte_en_6]: 11:11
+  //   F[mbyte_en_6]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10625,8 +11149,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_6_mbyte_en_6_qs)
   );
 
-
-  // F[dummy_size_6]: 14:12
+  //   F[dummy_size_6]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10651,8 +11174,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_6_dummy_size_6_qs)
   );
 
-
-  // F[dummy_en_6]: 15:15
+  //   F[dummy_en_6]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10677,8 +11199,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_6_dummy_en_6_qs)
   );
 
-
-  // F[payload_en_6]: 19:16
+  //   F[payload_en_6]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10703,8 +11224,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_6_payload_en_6_qs)
   );
 
-
-  // F[payload_dir_6]: 20:20
+  //   F[payload_dir_6]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10729,11 +11249,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_6_payload_dir_6_qs)
   );
 
+  //   F[upload_6]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_6_upload_6 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_6_we),
+    .wd     (cmd_info_6_upload_6_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[6].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_6_upload_6_qs)
+  );
+
+  //   F[busy_6]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_6_busy_6 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_6_we),
+    .wd     (cmd_info_6_busy_6_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[6].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_6_busy_6_qs)
+  );
+
 
   // Subregister 7 of Multireg cmd_info
   // R[cmd_info_7]: V(False)
-
-  // F[opcode_7]: 7:0
+  //   F[opcode_7]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10758,8 +11327,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_7_opcode_7_qs)
   );
 
-
-  // F[addr_en_7]: 8:8
+  //   F[addr_en_7]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10784,8 +11352,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_7_addr_en_7_qs)
   );
 
-
-  // F[addr_swap_en_7]: 9:9
+  //   F[addr_swap_en_7]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10810,8 +11377,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_7_addr_swap_en_7_qs)
   );
 
-
-  // F[addr_4b_affected_7]: 10:10
+  //   F[addr_4b_affected_7]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10836,8 +11402,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_7_addr_4b_affected_7_qs)
   );
 
-
-  // F[mbyte_en_7]: 11:11
+  //   F[mbyte_en_7]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10862,8 +11427,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_7_mbyte_en_7_qs)
   );
 
-
-  // F[dummy_size_7]: 14:12
+  //   F[dummy_size_7]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10888,8 +11452,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_7_dummy_size_7_qs)
   );
 
-
-  // F[dummy_en_7]: 15:15
+  //   F[dummy_en_7]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10914,8 +11477,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_7_dummy_en_7_qs)
   );
 
-
-  // F[payload_en_7]: 19:16
+  //   F[payload_en_7]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10940,8 +11502,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_7_payload_en_7_qs)
   );
 
-
-  // F[payload_dir_7]: 20:20
+  //   F[payload_dir_7]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10966,11 +11527,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_7_payload_dir_7_qs)
   );
 
+  //   F[upload_7]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_7_upload_7 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_7_we),
+    .wd     (cmd_info_7_upload_7_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[7].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_7_upload_7_qs)
+  );
+
+  //   F[busy_7]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_7_busy_7 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_7_we),
+    .wd     (cmd_info_7_busy_7_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[7].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_7_busy_7_qs)
+  );
+
 
   // Subregister 8 of Multireg cmd_info
   // R[cmd_info_8]: V(False)
-
-  // F[opcode_8]: 7:0
+  //   F[opcode_8]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -10995,8 +11605,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_8_opcode_8_qs)
   );
 
-
-  // F[addr_en_8]: 8:8
+  //   F[addr_en_8]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11021,8 +11630,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_8_addr_en_8_qs)
   );
 
-
-  // F[addr_swap_en_8]: 9:9
+  //   F[addr_swap_en_8]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11047,8 +11655,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_8_addr_swap_en_8_qs)
   );
 
-
-  // F[addr_4b_affected_8]: 10:10
+  //   F[addr_4b_affected_8]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11073,8 +11680,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_8_addr_4b_affected_8_qs)
   );
 
-
-  // F[mbyte_en_8]: 11:11
+  //   F[mbyte_en_8]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11099,8 +11705,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_8_mbyte_en_8_qs)
   );
 
-
-  // F[dummy_size_8]: 14:12
+  //   F[dummy_size_8]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11125,8 +11730,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_8_dummy_size_8_qs)
   );
 
-
-  // F[dummy_en_8]: 15:15
+  //   F[dummy_en_8]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11151,8 +11755,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_8_dummy_en_8_qs)
   );
 
-
-  // F[payload_en_8]: 19:16
+  //   F[payload_en_8]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11177,8 +11780,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_8_payload_en_8_qs)
   );
 
-
-  // F[payload_dir_8]: 20:20
+  //   F[payload_dir_8]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11203,11 +11805,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_8_payload_dir_8_qs)
   );
 
+  //   F[upload_8]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_8_upload_8 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_8_we),
+    .wd     (cmd_info_8_upload_8_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[8].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_8_upload_8_qs)
+  );
+
+  //   F[busy_8]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_8_busy_8 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_8_we),
+    .wd     (cmd_info_8_busy_8_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[8].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_8_busy_8_qs)
+  );
+
 
   // Subregister 9 of Multireg cmd_info
   // R[cmd_info_9]: V(False)
-
-  // F[opcode_9]: 7:0
+  //   F[opcode_9]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11232,8 +11883,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_9_opcode_9_qs)
   );
 
-
-  // F[addr_en_9]: 8:8
+  //   F[addr_en_9]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11258,8 +11908,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_9_addr_en_9_qs)
   );
 
-
-  // F[addr_swap_en_9]: 9:9
+  //   F[addr_swap_en_9]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11284,8 +11933,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_9_addr_swap_en_9_qs)
   );
 
-
-  // F[addr_4b_affected_9]: 10:10
+  //   F[addr_4b_affected_9]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11310,8 +11958,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_9_addr_4b_affected_9_qs)
   );
 
-
-  // F[mbyte_en_9]: 11:11
+  //   F[mbyte_en_9]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11336,8 +11983,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_9_mbyte_en_9_qs)
   );
 
-
-  // F[dummy_size_9]: 14:12
+  //   F[dummy_size_9]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11362,8 +12008,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_9_dummy_size_9_qs)
   );
 
-
-  // F[dummy_en_9]: 15:15
+  //   F[dummy_en_9]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11388,8 +12033,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_9_dummy_en_9_qs)
   );
 
-
-  // F[payload_en_9]: 19:16
+  //   F[payload_en_9]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11414,8 +12058,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_9_payload_en_9_qs)
   );
 
-
-  // F[payload_dir_9]: 20:20
+  //   F[payload_dir_9]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11440,11 +12083,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_9_payload_dir_9_qs)
   );
 
+  //   F[upload_9]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_9_upload_9 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_9_we),
+    .wd     (cmd_info_9_upload_9_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[9].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_9_upload_9_qs)
+  );
+
+  //   F[busy_9]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_9_busy_9 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_9_we),
+    .wd     (cmd_info_9_busy_9_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[9].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_9_busy_9_qs)
+  );
+
 
   // Subregister 10 of Multireg cmd_info
   // R[cmd_info_10]: V(False)
-
-  // F[opcode_10]: 7:0
+  //   F[opcode_10]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11469,8 +12161,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_10_opcode_10_qs)
   );
 
-
-  // F[addr_en_10]: 8:8
+  //   F[addr_en_10]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11495,8 +12186,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_10_addr_en_10_qs)
   );
 
-
-  // F[addr_swap_en_10]: 9:9
+  //   F[addr_swap_en_10]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11521,8 +12211,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_10_addr_swap_en_10_qs)
   );
 
-
-  // F[addr_4b_affected_10]: 10:10
+  //   F[addr_4b_affected_10]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11547,8 +12236,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_10_addr_4b_affected_10_qs)
   );
 
-
-  // F[mbyte_en_10]: 11:11
+  //   F[mbyte_en_10]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11573,8 +12261,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_10_mbyte_en_10_qs)
   );
 
-
-  // F[dummy_size_10]: 14:12
+  //   F[dummy_size_10]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11599,8 +12286,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_10_dummy_size_10_qs)
   );
 
-
-  // F[dummy_en_10]: 15:15
+  //   F[dummy_en_10]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11625,8 +12311,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_10_dummy_en_10_qs)
   );
 
-
-  // F[payload_en_10]: 19:16
+  //   F[payload_en_10]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11651,8 +12336,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_10_payload_en_10_qs)
   );
 
-
-  // F[payload_dir_10]: 20:20
+  //   F[payload_dir_10]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11677,11 +12361,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_10_payload_dir_10_qs)
   );
 
+  //   F[upload_10]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_10_upload_10 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_10_we),
+    .wd     (cmd_info_10_upload_10_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[10].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_10_upload_10_qs)
+  );
+
+  //   F[busy_10]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_10_busy_10 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_10_we),
+    .wd     (cmd_info_10_busy_10_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[10].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_10_busy_10_qs)
+  );
+
 
   // Subregister 11 of Multireg cmd_info
   // R[cmd_info_11]: V(False)
-
-  // F[opcode_11]: 7:0
+  //   F[opcode_11]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11706,8 +12439,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_11_opcode_11_qs)
   );
 
-
-  // F[addr_en_11]: 8:8
+  //   F[addr_en_11]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11732,8 +12464,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_11_addr_en_11_qs)
   );
 
-
-  // F[addr_swap_en_11]: 9:9
+  //   F[addr_swap_en_11]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11758,8 +12489,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_11_addr_swap_en_11_qs)
   );
 
-
-  // F[addr_4b_affected_11]: 10:10
+  //   F[addr_4b_affected_11]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11784,8 +12514,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_11_addr_4b_affected_11_qs)
   );
 
-
-  // F[mbyte_en_11]: 11:11
+  //   F[mbyte_en_11]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11810,8 +12539,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_11_mbyte_en_11_qs)
   );
 
-
-  // F[dummy_size_11]: 14:12
+  //   F[dummy_size_11]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11836,8 +12564,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_11_dummy_size_11_qs)
   );
 
-
-  // F[dummy_en_11]: 15:15
+  //   F[dummy_en_11]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11862,8 +12589,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_11_dummy_en_11_qs)
   );
 
-
-  // F[payload_en_11]: 19:16
+  //   F[payload_en_11]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11888,8 +12614,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_11_payload_en_11_qs)
   );
 
-
-  // F[payload_dir_11]: 20:20
+  //   F[payload_dir_11]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11914,11 +12639,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_11_payload_dir_11_qs)
   );
 
+  //   F[upload_11]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_11_upload_11 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_11_we),
+    .wd     (cmd_info_11_upload_11_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[11].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_11_upload_11_qs)
+  );
+
+  //   F[busy_11]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_11_busy_11 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_11_we),
+    .wd     (cmd_info_11_busy_11_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[11].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_11_busy_11_qs)
+  );
+
 
   // Subregister 12 of Multireg cmd_info
   // R[cmd_info_12]: V(False)
-
-  // F[opcode_12]: 7:0
+  //   F[opcode_12]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11943,8 +12717,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_12_opcode_12_qs)
   );
 
-
-  // F[addr_en_12]: 8:8
+  //   F[addr_en_12]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11969,8 +12742,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_12_addr_en_12_qs)
   );
 
-
-  // F[addr_swap_en_12]: 9:9
+  //   F[addr_swap_en_12]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -11995,8 +12767,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_12_addr_swap_en_12_qs)
   );
 
-
-  // F[addr_4b_affected_12]: 10:10
+  //   F[addr_4b_affected_12]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12021,8 +12792,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_12_addr_4b_affected_12_qs)
   );
 
-
-  // F[mbyte_en_12]: 11:11
+  //   F[mbyte_en_12]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12047,8 +12817,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_12_mbyte_en_12_qs)
   );
 
-
-  // F[dummy_size_12]: 14:12
+  //   F[dummy_size_12]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12073,8 +12842,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_12_dummy_size_12_qs)
   );
 
-
-  // F[dummy_en_12]: 15:15
+  //   F[dummy_en_12]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12099,8 +12867,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_12_dummy_en_12_qs)
   );
 
-
-  // F[payload_en_12]: 19:16
+  //   F[payload_en_12]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12125,8 +12892,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_12_payload_en_12_qs)
   );
 
-
-  // F[payload_dir_12]: 20:20
+  //   F[payload_dir_12]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12151,11 +12917,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_12_payload_dir_12_qs)
   );
 
+  //   F[upload_12]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_12_upload_12 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_12_we),
+    .wd     (cmd_info_12_upload_12_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[12].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_12_upload_12_qs)
+  );
+
+  //   F[busy_12]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_12_busy_12 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_12_we),
+    .wd     (cmd_info_12_busy_12_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[12].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_12_busy_12_qs)
+  );
+
 
   // Subregister 13 of Multireg cmd_info
   // R[cmd_info_13]: V(False)
-
-  // F[opcode_13]: 7:0
+  //   F[opcode_13]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12180,8 +12995,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_13_opcode_13_qs)
   );
 
-
-  // F[addr_en_13]: 8:8
+  //   F[addr_en_13]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12206,8 +13020,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_13_addr_en_13_qs)
   );
 
-
-  // F[addr_swap_en_13]: 9:9
+  //   F[addr_swap_en_13]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12232,8 +13045,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_13_addr_swap_en_13_qs)
   );
 
-
-  // F[addr_4b_affected_13]: 10:10
+  //   F[addr_4b_affected_13]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12258,8 +13070,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_13_addr_4b_affected_13_qs)
   );
 
-
-  // F[mbyte_en_13]: 11:11
+  //   F[mbyte_en_13]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12284,8 +13095,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_13_mbyte_en_13_qs)
   );
 
-
-  // F[dummy_size_13]: 14:12
+  //   F[dummy_size_13]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12310,8 +13120,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_13_dummy_size_13_qs)
   );
 
-
-  // F[dummy_en_13]: 15:15
+  //   F[dummy_en_13]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12336,8 +13145,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_13_dummy_en_13_qs)
   );
 
-
-  // F[payload_en_13]: 19:16
+  //   F[payload_en_13]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12362,8 +13170,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_13_payload_en_13_qs)
   );
 
-
-  // F[payload_dir_13]: 20:20
+  //   F[payload_dir_13]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12388,11 +13195,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_13_payload_dir_13_qs)
   );
 
+  //   F[upload_13]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_13_upload_13 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_13_we),
+    .wd     (cmd_info_13_upload_13_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[13].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_13_upload_13_qs)
+  );
+
+  //   F[busy_13]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_13_busy_13 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_13_we),
+    .wd     (cmd_info_13_busy_13_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[13].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_13_busy_13_qs)
+  );
+
 
   // Subregister 14 of Multireg cmd_info
   // R[cmd_info_14]: V(False)
-
-  // F[opcode_14]: 7:0
+  //   F[opcode_14]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12417,8 +13273,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_14_opcode_14_qs)
   );
 
-
-  // F[addr_en_14]: 8:8
+  //   F[addr_en_14]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12443,8 +13298,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_14_addr_en_14_qs)
   );
 
-
-  // F[addr_swap_en_14]: 9:9
+  //   F[addr_swap_en_14]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12469,8 +13323,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_14_addr_swap_en_14_qs)
   );
 
-
-  // F[addr_4b_affected_14]: 10:10
+  //   F[addr_4b_affected_14]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12495,8 +13348,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_14_addr_4b_affected_14_qs)
   );
 
-
-  // F[mbyte_en_14]: 11:11
+  //   F[mbyte_en_14]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12521,8 +13373,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_14_mbyte_en_14_qs)
   );
 
-
-  // F[dummy_size_14]: 14:12
+  //   F[dummy_size_14]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12547,8 +13398,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_14_dummy_size_14_qs)
   );
 
-
-  // F[dummy_en_14]: 15:15
+  //   F[dummy_en_14]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12573,8 +13423,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_14_dummy_en_14_qs)
   );
 
-
-  // F[payload_en_14]: 19:16
+  //   F[payload_en_14]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12599,8 +13448,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_14_payload_en_14_qs)
   );
 
-
-  // F[payload_dir_14]: 20:20
+  //   F[payload_dir_14]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12625,11 +13473,60 @@ module spi_device_reg_top (
     .qs     (cmd_info_14_payload_dir_14_qs)
   );
 
+  //   F[upload_14]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_14_upload_14 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_14_we),
+    .wd     (cmd_info_14_upload_14_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[14].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_14_upload_14_qs)
+  );
+
+  //   F[busy_14]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_14_busy_14 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_14_we),
+    .wd     (cmd_info_14_busy_14_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[14].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_14_busy_14_qs)
+  );
+
 
   // Subregister 15 of Multireg cmd_info
   // R[cmd_info_15]: V(False)
-
-  // F[opcode_15]: 7:0
+  //   F[opcode_15]: 7:0
   prim_subreg #(
     .DW      (8),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12654,8 +13551,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_15_opcode_15_qs)
   );
 
-
-  // F[addr_en_15]: 8:8
+  //   F[addr_en_15]: 8:8
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12680,8 +13576,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_15_addr_en_15_qs)
   );
 
-
-  // F[addr_swap_en_15]: 9:9
+  //   F[addr_swap_en_15]: 9:9
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12706,8 +13601,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_15_addr_swap_en_15_qs)
   );
 
-
-  // F[addr_4b_affected_15]: 10:10
+  //   F[addr_4b_affected_15]: 10:10
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12732,8 +13626,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_15_addr_4b_affected_15_qs)
   );
 
-
-  // F[mbyte_en_15]: 11:11
+  //   F[mbyte_en_15]: 11:11
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12758,8 +13651,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_15_mbyte_en_15_qs)
   );
 
-
-  // F[dummy_size_15]: 14:12
+  //   F[dummy_size_15]: 14:12
   prim_subreg #(
     .DW      (3),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12784,8 +13676,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_15_dummy_size_15_qs)
   );
 
-
-  // F[dummy_en_15]: 15:15
+  //   F[dummy_en_15]: 15:15
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12810,8 +13701,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_15_dummy_en_15_qs)
   );
 
-
-  // F[payload_en_15]: 19:16
+  //   F[payload_en_15]: 19:16
   prim_subreg #(
     .DW      (4),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12836,8 +13726,7 @@ module spi_device_reg_top (
     .qs     (cmd_info_15_payload_en_15_qs)
   );
 
-
-  // F[payload_dir_15]: 20:20
+  //   F[payload_dir_15]: 20:20
   prim_subreg #(
     .DW      (1),
     .SwAccess(prim_subreg_pkg::SwAccessRW),
@@ -12862,11 +13751,2987 @@ module spi_device_reg_top (
     .qs     (cmd_info_15_payload_dir_15_qs)
   );
 
+  //   F[upload_15]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_15_upload_15 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_15_we),
+    .wd     (cmd_info_15_upload_15_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[15].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_15_upload_15_qs)
+  );
+
+  //   F[busy_15]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_15_busy_15 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_15_we),
+    .wd     (cmd_info_15_busy_15_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[15].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_15_busy_15_qs)
+  );
+
+
+  // Subregister 16 of Multireg cmd_info
+  // R[cmd_info_16]: V(False)
+  //   F[opcode_16]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_cmd_info_16_opcode_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_opcode_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].opcode.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_opcode_16_qs)
+  );
+
+  //   F[addr_en_16]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_16_addr_en_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_addr_en_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].addr_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_addr_en_16_qs)
+  );
+
+  //   F[addr_swap_en_16]: 9:9
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_16_addr_swap_en_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_addr_swap_en_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].addr_swap_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_addr_swap_en_16_qs)
+  );
+
+  //   F[addr_4b_affected_16]: 10:10
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_16_addr_4b_affected_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_addr_4b_affected_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].addr_4b_affected.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_addr_4b_affected_16_qs)
+  );
+
+  //   F[mbyte_en_16]: 11:11
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_16_mbyte_en_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_mbyte_en_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].mbyte_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_mbyte_en_16_qs)
+  );
+
+  //   F[dummy_size_16]: 14:12
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (3'h7)
+  ) u_cmd_info_16_dummy_size_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_dummy_size_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].dummy_size.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_dummy_size_16_qs)
+  );
+
+  //   F[dummy_en_16]: 15:15
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_16_dummy_en_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_dummy_en_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].dummy_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_dummy_en_16_qs)
+  );
+
+  //   F[payload_en_16]: 19:16
+  prim_subreg #(
+    .DW      (4),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (4'h0)
+  ) u_cmd_info_16_payload_en_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_payload_en_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].payload_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_payload_en_16_qs)
+  );
+
+  //   F[payload_dir_16]: 20:20
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_16_payload_dir_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_payload_dir_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].payload_dir.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_payload_dir_16_qs)
+  );
+
+  //   F[upload_16]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_16_upload_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_upload_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_upload_16_qs)
+  );
+
+  //   F[busy_16]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_16_busy_16 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_16_we),
+    .wd     (cmd_info_16_busy_16_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[16].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_16_busy_16_qs)
+  );
+
+
+  // Subregister 17 of Multireg cmd_info
+  // R[cmd_info_17]: V(False)
+  //   F[opcode_17]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_cmd_info_17_opcode_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_opcode_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].opcode.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_opcode_17_qs)
+  );
+
+  //   F[addr_en_17]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_17_addr_en_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_addr_en_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].addr_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_addr_en_17_qs)
+  );
+
+  //   F[addr_swap_en_17]: 9:9
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_17_addr_swap_en_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_addr_swap_en_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].addr_swap_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_addr_swap_en_17_qs)
+  );
+
+  //   F[addr_4b_affected_17]: 10:10
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_17_addr_4b_affected_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_addr_4b_affected_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].addr_4b_affected.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_addr_4b_affected_17_qs)
+  );
+
+  //   F[mbyte_en_17]: 11:11
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_17_mbyte_en_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_mbyte_en_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].mbyte_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_mbyte_en_17_qs)
+  );
+
+  //   F[dummy_size_17]: 14:12
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (3'h7)
+  ) u_cmd_info_17_dummy_size_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_dummy_size_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].dummy_size.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_dummy_size_17_qs)
+  );
+
+  //   F[dummy_en_17]: 15:15
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_17_dummy_en_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_dummy_en_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].dummy_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_dummy_en_17_qs)
+  );
+
+  //   F[payload_en_17]: 19:16
+  prim_subreg #(
+    .DW      (4),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (4'h0)
+  ) u_cmd_info_17_payload_en_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_payload_en_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].payload_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_payload_en_17_qs)
+  );
+
+  //   F[payload_dir_17]: 20:20
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_17_payload_dir_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_payload_dir_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].payload_dir.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_payload_dir_17_qs)
+  );
+
+  //   F[upload_17]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_17_upload_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_upload_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_upload_17_qs)
+  );
+
+  //   F[busy_17]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_17_busy_17 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_17_we),
+    .wd     (cmd_info_17_busy_17_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[17].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_17_busy_17_qs)
+  );
+
+
+  // Subregister 18 of Multireg cmd_info
+  // R[cmd_info_18]: V(False)
+  //   F[opcode_18]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_cmd_info_18_opcode_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_opcode_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].opcode.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_opcode_18_qs)
+  );
+
+  //   F[addr_en_18]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_18_addr_en_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_addr_en_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].addr_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_addr_en_18_qs)
+  );
+
+  //   F[addr_swap_en_18]: 9:9
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_18_addr_swap_en_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_addr_swap_en_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].addr_swap_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_addr_swap_en_18_qs)
+  );
+
+  //   F[addr_4b_affected_18]: 10:10
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_18_addr_4b_affected_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_addr_4b_affected_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].addr_4b_affected.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_addr_4b_affected_18_qs)
+  );
+
+  //   F[mbyte_en_18]: 11:11
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_18_mbyte_en_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_mbyte_en_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].mbyte_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_mbyte_en_18_qs)
+  );
+
+  //   F[dummy_size_18]: 14:12
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (3'h7)
+  ) u_cmd_info_18_dummy_size_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_dummy_size_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].dummy_size.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_dummy_size_18_qs)
+  );
+
+  //   F[dummy_en_18]: 15:15
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_18_dummy_en_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_dummy_en_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].dummy_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_dummy_en_18_qs)
+  );
+
+  //   F[payload_en_18]: 19:16
+  prim_subreg #(
+    .DW      (4),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (4'h0)
+  ) u_cmd_info_18_payload_en_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_payload_en_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].payload_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_payload_en_18_qs)
+  );
+
+  //   F[payload_dir_18]: 20:20
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_18_payload_dir_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_payload_dir_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].payload_dir.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_payload_dir_18_qs)
+  );
+
+  //   F[upload_18]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_18_upload_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_upload_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_upload_18_qs)
+  );
+
+  //   F[busy_18]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_18_busy_18 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_18_we),
+    .wd     (cmd_info_18_busy_18_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[18].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_18_busy_18_qs)
+  );
+
+
+  // Subregister 19 of Multireg cmd_info
+  // R[cmd_info_19]: V(False)
+  //   F[opcode_19]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_cmd_info_19_opcode_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_opcode_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].opcode.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_opcode_19_qs)
+  );
+
+  //   F[addr_en_19]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_19_addr_en_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_addr_en_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].addr_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_addr_en_19_qs)
+  );
+
+  //   F[addr_swap_en_19]: 9:9
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_19_addr_swap_en_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_addr_swap_en_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].addr_swap_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_addr_swap_en_19_qs)
+  );
+
+  //   F[addr_4b_affected_19]: 10:10
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_19_addr_4b_affected_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_addr_4b_affected_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].addr_4b_affected.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_addr_4b_affected_19_qs)
+  );
+
+  //   F[mbyte_en_19]: 11:11
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_19_mbyte_en_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_mbyte_en_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].mbyte_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_mbyte_en_19_qs)
+  );
+
+  //   F[dummy_size_19]: 14:12
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (3'h7)
+  ) u_cmd_info_19_dummy_size_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_dummy_size_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].dummy_size.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_dummy_size_19_qs)
+  );
+
+  //   F[dummy_en_19]: 15:15
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_19_dummy_en_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_dummy_en_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].dummy_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_dummy_en_19_qs)
+  );
+
+  //   F[payload_en_19]: 19:16
+  prim_subreg #(
+    .DW      (4),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (4'h0)
+  ) u_cmd_info_19_payload_en_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_payload_en_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].payload_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_payload_en_19_qs)
+  );
+
+  //   F[payload_dir_19]: 20:20
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_19_payload_dir_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_payload_dir_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].payload_dir.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_payload_dir_19_qs)
+  );
+
+  //   F[upload_19]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_19_upload_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_upload_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_upload_19_qs)
+  );
+
+  //   F[busy_19]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_19_busy_19 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_19_we),
+    .wd     (cmd_info_19_busy_19_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[19].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_19_busy_19_qs)
+  );
+
+
+  // Subregister 20 of Multireg cmd_info
+  // R[cmd_info_20]: V(False)
+  //   F[opcode_20]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_cmd_info_20_opcode_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_opcode_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].opcode.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_opcode_20_qs)
+  );
+
+  //   F[addr_en_20]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_20_addr_en_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_addr_en_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].addr_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_addr_en_20_qs)
+  );
+
+  //   F[addr_swap_en_20]: 9:9
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_20_addr_swap_en_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_addr_swap_en_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].addr_swap_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_addr_swap_en_20_qs)
+  );
+
+  //   F[addr_4b_affected_20]: 10:10
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_20_addr_4b_affected_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_addr_4b_affected_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].addr_4b_affected.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_addr_4b_affected_20_qs)
+  );
+
+  //   F[mbyte_en_20]: 11:11
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_20_mbyte_en_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_mbyte_en_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].mbyte_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_mbyte_en_20_qs)
+  );
+
+  //   F[dummy_size_20]: 14:12
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (3'h7)
+  ) u_cmd_info_20_dummy_size_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_dummy_size_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].dummy_size.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_dummy_size_20_qs)
+  );
+
+  //   F[dummy_en_20]: 15:15
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_20_dummy_en_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_dummy_en_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].dummy_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_dummy_en_20_qs)
+  );
+
+  //   F[payload_en_20]: 19:16
+  prim_subreg #(
+    .DW      (4),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (4'h0)
+  ) u_cmd_info_20_payload_en_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_payload_en_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].payload_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_payload_en_20_qs)
+  );
+
+  //   F[payload_dir_20]: 20:20
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_20_payload_dir_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_payload_dir_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].payload_dir.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_payload_dir_20_qs)
+  );
+
+  //   F[upload_20]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_20_upload_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_upload_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_upload_20_qs)
+  );
+
+  //   F[busy_20]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_20_busy_20 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_20_we),
+    .wd     (cmd_info_20_busy_20_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[20].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_20_busy_20_qs)
+  );
+
+
+  // Subregister 21 of Multireg cmd_info
+  // R[cmd_info_21]: V(False)
+  //   F[opcode_21]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_cmd_info_21_opcode_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_opcode_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].opcode.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_opcode_21_qs)
+  );
+
+  //   F[addr_en_21]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_21_addr_en_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_addr_en_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].addr_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_addr_en_21_qs)
+  );
+
+  //   F[addr_swap_en_21]: 9:9
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_21_addr_swap_en_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_addr_swap_en_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].addr_swap_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_addr_swap_en_21_qs)
+  );
+
+  //   F[addr_4b_affected_21]: 10:10
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_21_addr_4b_affected_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_addr_4b_affected_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].addr_4b_affected.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_addr_4b_affected_21_qs)
+  );
+
+  //   F[mbyte_en_21]: 11:11
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_21_mbyte_en_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_mbyte_en_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].mbyte_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_mbyte_en_21_qs)
+  );
+
+  //   F[dummy_size_21]: 14:12
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (3'h7)
+  ) u_cmd_info_21_dummy_size_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_dummy_size_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].dummy_size.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_dummy_size_21_qs)
+  );
+
+  //   F[dummy_en_21]: 15:15
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_21_dummy_en_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_dummy_en_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].dummy_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_dummy_en_21_qs)
+  );
+
+  //   F[payload_en_21]: 19:16
+  prim_subreg #(
+    .DW      (4),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (4'h0)
+  ) u_cmd_info_21_payload_en_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_payload_en_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].payload_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_payload_en_21_qs)
+  );
+
+  //   F[payload_dir_21]: 20:20
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_21_payload_dir_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_payload_dir_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].payload_dir.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_payload_dir_21_qs)
+  );
+
+  //   F[upload_21]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_21_upload_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_upload_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_upload_21_qs)
+  );
+
+  //   F[busy_21]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_21_busy_21 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_21_we),
+    .wd     (cmd_info_21_busy_21_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[21].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_21_busy_21_qs)
+  );
+
+
+  // Subregister 22 of Multireg cmd_info
+  // R[cmd_info_22]: V(False)
+  //   F[opcode_22]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_cmd_info_22_opcode_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_opcode_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].opcode.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_opcode_22_qs)
+  );
+
+  //   F[addr_en_22]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_22_addr_en_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_addr_en_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].addr_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_addr_en_22_qs)
+  );
+
+  //   F[addr_swap_en_22]: 9:9
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_22_addr_swap_en_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_addr_swap_en_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].addr_swap_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_addr_swap_en_22_qs)
+  );
+
+  //   F[addr_4b_affected_22]: 10:10
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_22_addr_4b_affected_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_addr_4b_affected_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].addr_4b_affected.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_addr_4b_affected_22_qs)
+  );
+
+  //   F[mbyte_en_22]: 11:11
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_22_mbyte_en_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_mbyte_en_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].mbyte_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_mbyte_en_22_qs)
+  );
+
+  //   F[dummy_size_22]: 14:12
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (3'h7)
+  ) u_cmd_info_22_dummy_size_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_dummy_size_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].dummy_size.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_dummy_size_22_qs)
+  );
+
+  //   F[dummy_en_22]: 15:15
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_22_dummy_en_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_dummy_en_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].dummy_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_dummy_en_22_qs)
+  );
+
+  //   F[payload_en_22]: 19:16
+  prim_subreg #(
+    .DW      (4),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (4'h0)
+  ) u_cmd_info_22_payload_en_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_payload_en_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].payload_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_payload_en_22_qs)
+  );
+
+  //   F[payload_dir_22]: 20:20
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_22_payload_dir_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_payload_dir_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].payload_dir.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_payload_dir_22_qs)
+  );
+
+  //   F[upload_22]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_22_upload_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_upload_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_upload_22_qs)
+  );
+
+  //   F[busy_22]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_22_busy_22 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_22_we),
+    .wd     (cmd_info_22_busy_22_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[22].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_22_busy_22_qs)
+  );
+
+
+  // Subregister 23 of Multireg cmd_info
+  // R[cmd_info_23]: V(False)
+  //   F[opcode_23]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_cmd_info_23_opcode_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_opcode_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].opcode.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_opcode_23_qs)
+  );
+
+  //   F[addr_en_23]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_23_addr_en_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_addr_en_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].addr_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_addr_en_23_qs)
+  );
+
+  //   F[addr_swap_en_23]: 9:9
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_23_addr_swap_en_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_addr_swap_en_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].addr_swap_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_addr_swap_en_23_qs)
+  );
+
+  //   F[addr_4b_affected_23]: 10:10
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_23_addr_4b_affected_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_addr_4b_affected_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].addr_4b_affected.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_addr_4b_affected_23_qs)
+  );
+
+  //   F[mbyte_en_23]: 11:11
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_23_mbyte_en_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_mbyte_en_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].mbyte_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_mbyte_en_23_qs)
+  );
+
+  //   F[dummy_size_23]: 14:12
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (3'h7)
+  ) u_cmd_info_23_dummy_size_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_dummy_size_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].dummy_size.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_dummy_size_23_qs)
+  );
+
+  //   F[dummy_en_23]: 15:15
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_23_dummy_en_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_dummy_en_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].dummy_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_dummy_en_23_qs)
+  );
+
+  //   F[payload_en_23]: 19:16
+  prim_subreg #(
+    .DW      (4),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (4'h0)
+  ) u_cmd_info_23_payload_en_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_payload_en_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].payload_en.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_payload_en_23_qs)
+  );
+
+  //   F[payload_dir_23]: 20:20
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_23_payload_dir_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_payload_dir_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].payload_dir.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_payload_dir_23_qs)
+  );
+
+  //   F[upload_23]: 24:24
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_23_upload_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_upload_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].upload.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_upload_23_qs)
+  );
+
+  //   F[busy_23]: 25:25
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_cmd_info_23_busy_23 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (cmd_info_23_we),
+    .wd     (cmd_info_23_busy_23_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.cmd_info[23].busy.q),
+
+    // to register interface (read)
+    .qs     (cmd_info_23_busy_23_qs)
+  );
+
+
+  // R[tpm_cap]: V(False)
+  //   F[rev]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (8'h0)
+  ) u_tpm_cap_rev (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.tpm_cap.rev.de),
+    .d      (hw2reg.tpm_cap.rev.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (tpm_cap_rev_qs)
+  );
+
+  //   F[locality]: 8:8
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (1'h0)
+  ) u_tpm_cap_locality (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.tpm_cap.locality.de),
+    .d      (hw2reg.tpm_cap.locality.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (tpm_cap_locality_qs)
+  );
+
+  //   F[max_xfer_size]: 18:16
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (3'h0)
+  ) u_tpm_cap_max_xfer_size (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.tpm_cap.max_xfer_size.de),
+    .d      (hw2reg.tpm_cap.max_xfer_size.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (tpm_cap_max_xfer_size_qs)
+  );
+
+
+  // R[tpm_cfg]: V(False)
+  //   F[en]: 0:0
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_tpm_cfg_en (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_cfg_we),
+    .wd     (tpm_cfg_en_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_cfg.en.q),
+
+    // to register interface (read)
+    .qs     (tpm_cfg_en_qs)
+  );
+
+  //   F[tpm_mode]: 1:1
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_tpm_cfg_tpm_mode (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_cfg_we),
+    .wd     (tpm_cfg_tpm_mode_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_cfg.tpm_mode.q),
+
+    // to register interface (read)
+    .qs     (tpm_cfg_tpm_mode_qs)
+  );
+
+  //   F[hw_reg_dis]: 2:2
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_tpm_cfg_hw_reg_dis (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_cfg_we),
+    .wd     (tpm_cfg_hw_reg_dis_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_cfg.hw_reg_dis.q),
+
+    // to register interface (read)
+    .qs     (tpm_cfg_hw_reg_dis_qs)
+  );
+
+  //   F[tpm_reg_chk_dis]: 3:3
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_tpm_cfg_tpm_reg_chk_dis (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_cfg_we),
+    .wd     (tpm_cfg_tpm_reg_chk_dis_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_cfg.tpm_reg_chk_dis.q),
+
+    // to register interface (read)
+    .qs     (tpm_cfg_tpm_reg_chk_dis_qs)
+  );
+
+  //   F[invalid_locality]: 4:4
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (1'h0)
+  ) u_tpm_cfg_invalid_locality (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_cfg_we),
+    .wd     (tpm_cfg_invalid_locality_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_cfg.invalid_locality.q),
+
+    // to register interface (read)
+    .qs     (tpm_cfg_invalid_locality_qs)
+  );
+
+
+  // R[tpm_status]: V(False)
+  //   F[cmdaddr_notempty]: 0:0
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (1'h0)
+  ) u_tpm_status_cmdaddr_notempty (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.tpm_status.cmdaddr_notempty.de),
+    .d      (hw2reg.tpm_status.cmdaddr_notempty.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (tpm_status_cmdaddr_notempty_qs)
+  );
+
+  //   F[rdfifo_notempty]: 1:1
+  prim_subreg #(
+    .DW      (1),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (1'h0)
+  ) u_tpm_status_rdfifo_notempty (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.tpm_status.rdfifo_notempty.de),
+    .d      (hw2reg.tpm_status.rdfifo_notempty.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (tpm_status_rdfifo_notempty_qs)
+  );
+
+  //   F[rdfifo_depth]: 6:4
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (3'h0)
+  ) u_tpm_status_rdfifo_depth (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.tpm_status.rdfifo_depth.de),
+    .d      (hw2reg.tpm_status.rdfifo_depth.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (tpm_status_rdfifo_depth_qs)
+  );
+
+  //   F[wrfifo_depth]: 10:8
+  prim_subreg #(
+    .DW      (3),
+    .SwAccess(prim_subreg_pkg::SwAccessRO),
+    .RESVAL  (3'h0)
+  ) u_tpm_status_wrfifo_depth (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (1'b0),
+    .wd     ('0),
+
+    // from internal hardware
+    .de     (hw2reg.tpm_status.wrfifo_depth.de),
+    .d      (hw2reg.tpm_status.wrfifo_depth.d),
+
+    // to internal hardware
+    .qe     (),
+    .q      (),
+
+    // to register interface (read)
+    .qs     (tpm_status_wrfifo_depth_qs)
+  );
+
+
+  // Subregister 0 of Multireg tpm_access
+  // R[tpm_access_0]: V(False)
+  //   F[access_0]: 7:0
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_tpm_access_0_access_0 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_access_0_we),
+    .wd     (tpm_access_0_access_0_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_access[0].q),
+
+    // to register interface (read)
+    .qs     (tpm_access_0_access_0_qs)
+  );
+
+  //   F[access_1]: 15:8
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_tpm_access_0_access_1 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_access_0_we),
+    .wd     (tpm_access_0_access_1_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_access[1].q),
+
+    // to register interface (read)
+    .qs     (tpm_access_0_access_1_qs)
+  );
+
+  //   F[access_2]: 23:16
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_tpm_access_0_access_2 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_access_0_we),
+    .wd     (tpm_access_0_access_2_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_access[2].q),
+
+    // to register interface (read)
+    .qs     (tpm_access_0_access_2_qs)
+  );
+
+  //   F[access_3]: 31:24
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_tpm_access_0_access_3 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_access_0_we),
+    .wd     (tpm_access_0_access_3_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_access[3].q),
+
+    // to register interface (read)
+    .qs     (tpm_access_0_access_3_qs)
+  );
+
+
+  // Subregister 1 of Multireg tpm_access
+  // R[tpm_access_1]: V(False)
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_tpm_access_1 (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_access_1_we),
+    .wd     (tpm_access_1_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_access[4].q),
+
+    // to register interface (read)
+    .qs     (tpm_access_1_qs)
+  );
+
+
+  // R[tpm_sts]: V(False)
+  prim_subreg #(
+    .DW      (32),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (32'h0)
+  ) u_tpm_sts (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_sts_we),
+    .wd     (tpm_sts_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_sts.q),
+
+    // to register interface (read)
+    .qs     (tpm_sts_qs)
+  );
+
+
+  // R[tpm_intf_capability]: V(False)
+  prim_subreg #(
+    .DW      (32),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (32'h0)
+  ) u_tpm_intf_capability (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_intf_capability_we),
+    .wd     (tpm_intf_capability_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_intf_capability.q),
+
+    // to register interface (read)
+    .qs     (tpm_intf_capability_qs)
+  );
+
+
+  // R[tpm_int_enable]: V(False)
+  prim_subreg #(
+    .DW      (32),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (32'h0)
+  ) u_tpm_int_enable (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_int_enable_we),
+    .wd     (tpm_int_enable_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_int_enable.q),
+
+    // to register interface (read)
+    .qs     (tpm_int_enable_qs)
+  );
+
+
+  // R[tpm_int_vector]: V(False)
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_tpm_int_vector (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_int_vector_we),
+    .wd     (tpm_int_vector_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_int_vector.q),
+
+    // to register interface (read)
+    .qs     (tpm_int_vector_qs)
+  );
+
+
+  // R[tpm_int_status]: V(False)
+  prim_subreg #(
+    .DW      (32),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (32'h0)
+  ) u_tpm_int_status (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_int_status_we),
+    .wd     (tpm_int_status_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_int_status.q),
+
+    // to register interface (read)
+    .qs     (tpm_int_status_qs)
+  );
+
+
+  // R[tpm_did_vid]: V(False)
+  //   F[vid]: 15:0
+  prim_subreg #(
+    .DW      (16),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (16'h0)
+  ) u_tpm_did_vid_vid (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_did_vid_we),
+    .wd     (tpm_did_vid_vid_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_did_vid.vid.q),
+
+    // to register interface (read)
+    .qs     (tpm_did_vid_vid_qs)
+  );
+
+  //   F[did]: 31:16
+  prim_subreg #(
+    .DW      (16),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (16'h0)
+  ) u_tpm_did_vid_did (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_did_vid_we),
+    .wd     (tpm_did_vid_did_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_did_vid.did.q),
+
+    // to register interface (read)
+    .qs     (tpm_did_vid_did_qs)
+  );
+
+
+  // R[tpm_rid]: V(False)
+  prim_subreg #(
+    .DW      (8),
+    .SwAccess(prim_subreg_pkg::SwAccessRW),
+    .RESVAL  (8'h0)
+  ) u_tpm_rid (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    // from register interface
+    .we     (tpm_rid_we),
+    .wd     (tpm_rid_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.tpm_rid.q),
+
+    // to register interface (read)
+    .qs     (tpm_rid_qs)
+  );
+
+
+  // R[tpm_cmd_addr]: V(True)
+  //   F[addr]: 23:0
+  prim_subreg_ext #(
+    .DW    (24)
+  ) u_tpm_cmd_addr_addr (
+    .re     (tpm_cmd_addr_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      (hw2reg.tpm_cmd_addr.addr.d),
+    .qre    (reg2hw.tpm_cmd_addr.addr.re),
+    .qe     (reg2hw.tpm_cmd_addr.addr.qe),
+    .q      (reg2hw.tpm_cmd_addr.addr.q),
+    .qs     (tpm_cmd_addr_addr_qs)
+  );
+
+  //   F[cmd]: 31:24
+  prim_subreg_ext #(
+    .DW    (8)
+  ) u_tpm_cmd_addr_cmd (
+    .re     (tpm_cmd_addr_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      (hw2reg.tpm_cmd_addr.cmd.d),
+    .qre    (reg2hw.tpm_cmd_addr.cmd.re),
+    .qe     (reg2hw.tpm_cmd_addr.cmd.qe),
+    .q      (reg2hw.tpm_cmd_addr.cmd.q),
+    .qs     (tpm_cmd_addr_cmd_qs)
+  );
+
+
+  // R[tpm_read_fifo]: V(True)
+  prim_subreg_ext #(
+    .DW    (8)
+  ) u_tpm_read_fifo (
+    .re     (1'b0),
+    .we     (tpm_read_fifo_we),
+    .wd     (tpm_read_fifo_wd),
+    .d      ('0),
+    .qre    (),
+    .qe     (reg2hw.tpm_read_fifo.qe),
+    .q      (reg2hw.tpm_read_fifo.q),
+    .qs     ()
+  );
+
+
+  // R[tpm_write_fifo]: V(True)
+  prim_subreg_ext #(
+    .DW    (8)
+  ) u_tpm_write_fifo (
+    .re     (tpm_write_fifo_re),
+    .we     (1'b0),
+    .wd     ('0),
+    .d      (hw2reg.tpm_write_fifo.d),
+    .qre    (reg2hw.tpm_write_fifo.re),
+    .qe     (reg2hw.tpm_write_fifo.qe),
+    .q      (reg2hw.tpm_write_fifo.q),
+    .qs     (tpm_write_fifo_qs)
+  );
 
 
 
-
-  logic [42:0] addr_hit;
+  logic [69:0] addr_hit;
   always_comb begin
     addr_hit = '0;
     addr_hit[ 0] = (reg_addr == SPI_DEVICE_INTR_STATE_OFFSET);
@@ -12886,32 +16751,59 @@ module spi_device_reg_top (
     addr_hit[14] = (reg_addr == SPI_DEVICE_FLASH_STATUS_OFFSET);
     addr_hit[15] = (reg_addr == SPI_DEVICE_JEDEC_ID_OFFSET);
     addr_hit[16] = (reg_addr == SPI_DEVICE_READ_THRESHOLD_OFFSET);
-    addr_hit[17] = (reg_addr == SPI_DEVICE_CMD_FILTER_0_OFFSET);
-    addr_hit[18] = (reg_addr == SPI_DEVICE_CMD_FILTER_1_OFFSET);
-    addr_hit[19] = (reg_addr == SPI_DEVICE_CMD_FILTER_2_OFFSET);
-    addr_hit[20] = (reg_addr == SPI_DEVICE_CMD_FILTER_3_OFFSET);
-    addr_hit[21] = (reg_addr == SPI_DEVICE_CMD_FILTER_4_OFFSET);
-    addr_hit[22] = (reg_addr == SPI_DEVICE_CMD_FILTER_5_OFFSET);
-    addr_hit[23] = (reg_addr == SPI_DEVICE_CMD_FILTER_6_OFFSET);
-    addr_hit[24] = (reg_addr == SPI_DEVICE_CMD_FILTER_7_OFFSET);
-    addr_hit[25] = (reg_addr == SPI_DEVICE_ADDR_SWAP_MASK_OFFSET);
-    addr_hit[26] = (reg_addr == SPI_DEVICE_ADDR_SWAP_DATA_OFFSET);
-    addr_hit[27] = (reg_addr == SPI_DEVICE_CMD_INFO_0_OFFSET);
-    addr_hit[28] = (reg_addr == SPI_DEVICE_CMD_INFO_1_OFFSET);
-    addr_hit[29] = (reg_addr == SPI_DEVICE_CMD_INFO_2_OFFSET);
-    addr_hit[30] = (reg_addr == SPI_DEVICE_CMD_INFO_3_OFFSET);
-    addr_hit[31] = (reg_addr == SPI_DEVICE_CMD_INFO_4_OFFSET);
-    addr_hit[32] = (reg_addr == SPI_DEVICE_CMD_INFO_5_OFFSET);
-    addr_hit[33] = (reg_addr == SPI_DEVICE_CMD_INFO_6_OFFSET);
-    addr_hit[34] = (reg_addr == SPI_DEVICE_CMD_INFO_7_OFFSET);
-    addr_hit[35] = (reg_addr == SPI_DEVICE_CMD_INFO_8_OFFSET);
-    addr_hit[36] = (reg_addr == SPI_DEVICE_CMD_INFO_9_OFFSET);
-    addr_hit[37] = (reg_addr == SPI_DEVICE_CMD_INFO_10_OFFSET);
-    addr_hit[38] = (reg_addr == SPI_DEVICE_CMD_INFO_11_OFFSET);
-    addr_hit[39] = (reg_addr == SPI_DEVICE_CMD_INFO_12_OFFSET);
-    addr_hit[40] = (reg_addr == SPI_DEVICE_CMD_INFO_13_OFFSET);
-    addr_hit[41] = (reg_addr == SPI_DEVICE_CMD_INFO_14_OFFSET);
-    addr_hit[42] = (reg_addr == SPI_DEVICE_CMD_INFO_15_OFFSET);
+    addr_hit[17] = (reg_addr == SPI_DEVICE_MAILBOX_ADDR_OFFSET);
+    addr_hit[18] = (reg_addr == SPI_DEVICE_UPLOAD_STATUS_OFFSET);
+    addr_hit[19] = (reg_addr == SPI_DEVICE_UPLOAD_CMDFIFO_OFFSET);
+    addr_hit[20] = (reg_addr == SPI_DEVICE_UPLOAD_ADDRFIFO_OFFSET);
+    addr_hit[21] = (reg_addr == SPI_DEVICE_CMD_FILTER_0_OFFSET);
+    addr_hit[22] = (reg_addr == SPI_DEVICE_CMD_FILTER_1_OFFSET);
+    addr_hit[23] = (reg_addr == SPI_DEVICE_CMD_FILTER_2_OFFSET);
+    addr_hit[24] = (reg_addr == SPI_DEVICE_CMD_FILTER_3_OFFSET);
+    addr_hit[25] = (reg_addr == SPI_DEVICE_CMD_FILTER_4_OFFSET);
+    addr_hit[26] = (reg_addr == SPI_DEVICE_CMD_FILTER_5_OFFSET);
+    addr_hit[27] = (reg_addr == SPI_DEVICE_CMD_FILTER_6_OFFSET);
+    addr_hit[28] = (reg_addr == SPI_DEVICE_CMD_FILTER_7_OFFSET);
+    addr_hit[29] = (reg_addr == SPI_DEVICE_ADDR_SWAP_MASK_OFFSET);
+    addr_hit[30] = (reg_addr == SPI_DEVICE_ADDR_SWAP_DATA_OFFSET);
+    addr_hit[31] = (reg_addr == SPI_DEVICE_CMD_INFO_0_OFFSET);
+    addr_hit[32] = (reg_addr == SPI_DEVICE_CMD_INFO_1_OFFSET);
+    addr_hit[33] = (reg_addr == SPI_DEVICE_CMD_INFO_2_OFFSET);
+    addr_hit[34] = (reg_addr == SPI_DEVICE_CMD_INFO_3_OFFSET);
+    addr_hit[35] = (reg_addr == SPI_DEVICE_CMD_INFO_4_OFFSET);
+    addr_hit[36] = (reg_addr == SPI_DEVICE_CMD_INFO_5_OFFSET);
+    addr_hit[37] = (reg_addr == SPI_DEVICE_CMD_INFO_6_OFFSET);
+    addr_hit[38] = (reg_addr == SPI_DEVICE_CMD_INFO_7_OFFSET);
+    addr_hit[39] = (reg_addr == SPI_DEVICE_CMD_INFO_8_OFFSET);
+    addr_hit[40] = (reg_addr == SPI_DEVICE_CMD_INFO_9_OFFSET);
+    addr_hit[41] = (reg_addr == SPI_DEVICE_CMD_INFO_10_OFFSET);
+    addr_hit[42] = (reg_addr == SPI_DEVICE_CMD_INFO_11_OFFSET);
+    addr_hit[43] = (reg_addr == SPI_DEVICE_CMD_INFO_12_OFFSET);
+    addr_hit[44] = (reg_addr == SPI_DEVICE_CMD_INFO_13_OFFSET);
+    addr_hit[45] = (reg_addr == SPI_DEVICE_CMD_INFO_14_OFFSET);
+    addr_hit[46] = (reg_addr == SPI_DEVICE_CMD_INFO_15_OFFSET);
+    addr_hit[47] = (reg_addr == SPI_DEVICE_CMD_INFO_16_OFFSET);
+    addr_hit[48] = (reg_addr == SPI_DEVICE_CMD_INFO_17_OFFSET);
+    addr_hit[49] = (reg_addr == SPI_DEVICE_CMD_INFO_18_OFFSET);
+    addr_hit[50] = (reg_addr == SPI_DEVICE_CMD_INFO_19_OFFSET);
+    addr_hit[51] = (reg_addr == SPI_DEVICE_CMD_INFO_20_OFFSET);
+    addr_hit[52] = (reg_addr == SPI_DEVICE_CMD_INFO_21_OFFSET);
+    addr_hit[53] = (reg_addr == SPI_DEVICE_CMD_INFO_22_OFFSET);
+    addr_hit[54] = (reg_addr == SPI_DEVICE_CMD_INFO_23_OFFSET);
+    addr_hit[55] = (reg_addr == SPI_DEVICE_TPM_CAP_OFFSET);
+    addr_hit[56] = (reg_addr == SPI_DEVICE_TPM_CFG_OFFSET);
+    addr_hit[57] = (reg_addr == SPI_DEVICE_TPM_STATUS_OFFSET);
+    addr_hit[58] = (reg_addr == SPI_DEVICE_TPM_ACCESS_0_OFFSET);
+    addr_hit[59] = (reg_addr == SPI_DEVICE_TPM_ACCESS_1_OFFSET);
+    addr_hit[60] = (reg_addr == SPI_DEVICE_TPM_STS_OFFSET);
+    addr_hit[61] = (reg_addr == SPI_DEVICE_TPM_INTF_CAPABILITY_OFFSET);
+    addr_hit[62] = (reg_addr == SPI_DEVICE_TPM_INT_ENABLE_OFFSET);
+    addr_hit[63] = (reg_addr == SPI_DEVICE_TPM_INT_VECTOR_OFFSET);
+    addr_hit[64] = (reg_addr == SPI_DEVICE_TPM_INT_STATUS_OFFSET);
+    addr_hit[65] = (reg_addr == SPI_DEVICE_TPM_DID_VID_OFFSET);
+    addr_hit[66] = (reg_addr == SPI_DEVICE_TPM_RID_OFFSET);
+    addr_hit[67] = (reg_addr == SPI_DEVICE_TPM_CMD_ADDR_OFFSET);
+    addr_hit[68] = (reg_addr == SPI_DEVICE_TPM_READ_FIFO_OFFSET);
+    addr_hit[69] = (reg_addr == SPI_DEVICE_TPM_WRITE_FIFO_OFFSET);
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -12961,47 +16853,80 @@ module spi_device_reg_top (
                (addr_hit[39] & (|(SPI_DEVICE_PERMIT[39] & ~reg_be))) |
                (addr_hit[40] & (|(SPI_DEVICE_PERMIT[40] & ~reg_be))) |
                (addr_hit[41] & (|(SPI_DEVICE_PERMIT[41] & ~reg_be))) |
-               (addr_hit[42] & (|(SPI_DEVICE_PERMIT[42] & ~reg_be)))));
+               (addr_hit[42] & (|(SPI_DEVICE_PERMIT[42] & ~reg_be))) |
+               (addr_hit[43] & (|(SPI_DEVICE_PERMIT[43] & ~reg_be))) |
+               (addr_hit[44] & (|(SPI_DEVICE_PERMIT[44] & ~reg_be))) |
+               (addr_hit[45] & (|(SPI_DEVICE_PERMIT[45] & ~reg_be))) |
+               (addr_hit[46] & (|(SPI_DEVICE_PERMIT[46] & ~reg_be))) |
+               (addr_hit[47] & (|(SPI_DEVICE_PERMIT[47] & ~reg_be))) |
+               (addr_hit[48] & (|(SPI_DEVICE_PERMIT[48] & ~reg_be))) |
+               (addr_hit[49] & (|(SPI_DEVICE_PERMIT[49] & ~reg_be))) |
+               (addr_hit[50] & (|(SPI_DEVICE_PERMIT[50] & ~reg_be))) |
+               (addr_hit[51] & (|(SPI_DEVICE_PERMIT[51] & ~reg_be))) |
+               (addr_hit[52] & (|(SPI_DEVICE_PERMIT[52] & ~reg_be))) |
+               (addr_hit[53] & (|(SPI_DEVICE_PERMIT[53] & ~reg_be))) |
+               (addr_hit[54] & (|(SPI_DEVICE_PERMIT[54] & ~reg_be))) |
+               (addr_hit[55] & (|(SPI_DEVICE_PERMIT[55] & ~reg_be))) |
+               (addr_hit[56] & (|(SPI_DEVICE_PERMIT[56] & ~reg_be))) |
+               (addr_hit[57] & (|(SPI_DEVICE_PERMIT[57] & ~reg_be))) |
+               (addr_hit[58] & (|(SPI_DEVICE_PERMIT[58] & ~reg_be))) |
+               (addr_hit[59] & (|(SPI_DEVICE_PERMIT[59] & ~reg_be))) |
+               (addr_hit[60] & (|(SPI_DEVICE_PERMIT[60] & ~reg_be))) |
+               (addr_hit[61] & (|(SPI_DEVICE_PERMIT[61] & ~reg_be))) |
+               (addr_hit[62] & (|(SPI_DEVICE_PERMIT[62] & ~reg_be))) |
+               (addr_hit[63] & (|(SPI_DEVICE_PERMIT[63] & ~reg_be))) |
+               (addr_hit[64] & (|(SPI_DEVICE_PERMIT[64] & ~reg_be))) |
+               (addr_hit[65] & (|(SPI_DEVICE_PERMIT[65] & ~reg_be))) |
+               (addr_hit[66] & (|(SPI_DEVICE_PERMIT[66] & ~reg_be))) |
+               (addr_hit[67] & (|(SPI_DEVICE_PERMIT[67] & ~reg_be))) |
+               (addr_hit[68] & (|(SPI_DEVICE_PERMIT[68] & ~reg_be))) |
+               (addr_hit[69] & (|(SPI_DEVICE_PERMIT[69] & ~reg_be)))));
   end
   assign intr_state_we = addr_hit[0] & reg_we & !reg_error;
 
-  assign intr_state_rxf_wd = reg_wdata[0];
+  assign intr_state_rx_full_wd = reg_wdata[0];
 
-  assign intr_state_rxlvl_wd = reg_wdata[1];
+  assign intr_state_rx_watermark_wd = reg_wdata[1];
 
-  assign intr_state_txlvl_wd = reg_wdata[2];
+  assign intr_state_tx_watermark_wd = reg_wdata[2];
 
-  assign intr_state_rxerr_wd = reg_wdata[3];
+  assign intr_state_rx_error_wd = reg_wdata[3];
 
-  assign intr_state_rxoverflow_wd = reg_wdata[4];
+  assign intr_state_rx_overflow_wd = reg_wdata[4];
 
-  assign intr_state_txunderflow_wd = reg_wdata[5];
+  assign intr_state_tx_underflow_wd = reg_wdata[5];
+
+  assign intr_state_tpm_header_not_empty_wd = reg_wdata[6];
   assign intr_enable_we = addr_hit[1] & reg_we & !reg_error;
 
-  assign intr_enable_rxf_wd = reg_wdata[0];
+  assign intr_enable_rx_full_wd = reg_wdata[0];
 
-  assign intr_enable_rxlvl_wd = reg_wdata[1];
+  assign intr_enable_rx_watermark_wd = reg_wdata[1];
 
-  assign intr_enable_txlvl_wd = reg_wdata[2];
+  assign intr_enable_tx_watermark_wd = reg_wdata[2];
 
-  assign intr_enable_rxerr_wd = reg_wdata[3];
+  assign intr_enable_rx_error_wd = reg_wdata[3];
 
-  assign intr_enable_rxoverflow_wd = reg_wdata[4];
+  assign intr_enable_rx_overflow_wd = reg_wdata[4];
 
-  assign intr_enable_txunderflow_wd = reg_wdata[5];
+  assign intr_enable_tx_underflow_wd = reg_wdata[5];
+
+  assign intr_enable_tpm_header_not_empty_wd = reg_wdata[6];
   assign intr_test_we = addr_hit[2] & reg_we & !reg_error;
 
-  assign intr_test_rxf_wd = reg_wdata[0];
+  assign intr_test_rx_full_wd = reg_wdata[0];
 
-  assign intr_test_rxlvl_wd = reg_wdata[1];
+  assign intr_test_rx_watermark_wd = reg_wdata[1];
 
-  assign intr_test_txlvl_wd = reg_wdata[2];
+  assign intr_test_tx_watermark_wd = reg_wdata[2];
 
-  assign intr_test_rxerr_wd = reg_wdata[3];
+  assign intr_test_rx_error_wd = reg_wdata[3];
 
-  assign intr_test_rxoverflow_wd = reg_wdata[4];
+  assign intr_test_rx_overflow_wd = reg_wdata[4];
 
-  assign intr_test_txunderflow_wd = reg_wdata[5];
+  assign intr_test_tx_underflow_wd = reg_wdata[5];
+
+  assign intr_test_tpm_header_not_empty_wd = reg_wdata[6];
   assign alert_test_we = addr_hit[3] & reg_we & !reg_error;
 
   assign alert_test_wd = reg_wdata[0];
@@ -13029,6 +16954,8 @@ module spi_device_reg_top (
   assign cfg_timer_v_wd = reg_wdata[15:8];
 
   assign cfg_addr_4b_en_wd = reg_wdata[16];
+
+  assign cfg_mailbox_en_wd = reg_wdata[24];
   assign fifo_level_we = addr_hit[6] & reg_we & !reg_error;
 
   assign fifo_level_rxlvl_wd = reg_wdata[15:0];
@@ -13067,7 +16994,12 @@ module spi_device_reg_top (
   assign read_threshold_we = addr_hit[16] & reg_we & !reg_error;
 
   assign read_threshold_wd = reg_wdata[9:0];
-  assign cmd_filter_0_we = addr_hit[17] & reg_we & !reg_error;
+  assign mailbox_addr_we = addr_hit[17] & reg_we & !reg_error;
+
+  assign mailbox_addr_wd = reg_wdata[31:0];
+  assign upload_cmdfifo_re = addr_hit[19] & reg_re & !reg_error;
+  assign upload_addrfifo_re = addr_hit[20] & reg_re & !reg_error;
+  assign cmd_filter_0_we = addr_hit[21] & reg_we & !reg_error;
 
   assign cmd_filter_0_filter_0_wd = reg_wdata[0];
 
@@ -13132,7 +17064,7 @@ module spi_device_reg_top (
   assign cmd_filter_0_filter_30_wd = reg_wdata[30];
 
   assign cmd_filter_0_filter_31_wd = reg_wdata[31];
-  assign cmd_filter_1_we = addr_hit[18] & reg_we & !reg_error;
+  assign cmd_filter_1_we = addr_hit[22] & reg_we & !reg_error;
 
   assign cmd_filter_1_filter_32_wd = reg_wdata[0];
 
@@ -13197,7 +17129,7 @@ module spi_device_reg_top (
   assign cmd_filter_1_filter_62_wd = reg_wdata[30];
 
   assign cmd_filter_1_filter_63_wd = reg_wdata[31];
-  assign cmd_filter_2_we = addr_hit[19] & reg_we & !reg_error;
+  assign cmd_filter_2_we = addr_hit[23] & reg_we & !reg_error;
 
   assign cmd_filter_2_filter_64_wd = reg_wdata[0];
 
@@ -13262,7 +17194,7 @@ module spi_device_reg_top (
   assign cmd_filter_2_filter_94_wd = reg_wdata[30];
 
   assign cmd_filter_2_filter_95_wd = reg_wdata[31];
-  assign cmd_filter_3_we = addr_hit[20] & reg_we & !reg_error;
+  assign cmd_filter_3_we = addr_hit[24] & reg_we & !reg_error;
 
   assign cmd_filter_3_filter_96_wd = reg_wdata[0];
 
@@ -13327,7 +17259,7 @@ module spi_device_reg_top (
   assign cmd_filter_3_filter_126_wd = reg_wdata[30];
 
   assign cmd_filter_3_filter_127_wd = reg_wdata[31];
-  assign cmd_filter_4_we = addr_hit[21] & reg_we & !reg_error;
+  assign cmd_filter_4_we = addr_hit[25] & reg_we & !reg_error;
 
   assign cmd_filter_4_filter_128_wd = reg_wdata[0];
 
@@ -13392,7 +17324,7 @@ module spi_device_reg_top (
   assign cmd_filter_4_filter_158_wd = reg_wdata[30];
 
   assign cmd_filter_4_filter_159_wd = reg_wdata[31];
-  assign cmd_filter_5_we = addr_hit[22] & reg_we & !reg_error;
+  assign cmd_filter_5_we = addr_hit[26] & reg_we & !reg_error;
 
   assign cmd_filter_5_filter_160_wd = reg_wdata[0];
 
@@ -13457,7 +17389,7 @@ module spi_device_reg_top (
   assign cmd_filter_5_filter_190_wd = reg_wdata[30];
 
   assign cmd_filter_5_filter_191_wd = reg_wdata[31];
-  assign cmd_filter_6_we = addr_hit[23] & reg_we & !reg_error;
+  assign cmd_filter_6_we = addr_hit[27] & reg_we & !reg_error;
 
   assign cmd_filter_6_filter_192_wd = reg_wdata[0];
 
@@ -13522,7 +17454,7 @@ module spi_device_reg_top (
   assign cmd_filter_6_filter_222_wd = reg_wdata[30];
 
   assign cmd_filter_6_filter_223_wd = reg_wdata[31];
-  assign cmd_filter_7_we = addr_hit[24] & reg_we & !reg_error;
+  assign cmd_filter_7_we = addr_hit[28] & reg_we & !reg_error;
 
   assign cmd_filter_7_filter_224_wd = reg_wdata[0];
 
@@ -13587,13 +17519,13 @@ module spi_device_reg_top (
   assign cmd_filter_7_filter_254_wd = reg_wdata[30];
 
   assign cmd_filter_7_filter_255_wd = reg_wdata[31];
-  assign addr_swap_mask_we = addr_hit[25] & reg_we & !reg_error;
+  assign addr_swap_mask_we = addr_hit[29] & reg_we & !reg_error;
 
   assign addr_swap_mask_wd = reg_wdata[31:0];
-  assign addr_swap_data_we = addr_hit[26] & reg_we & !reg_error;
+  assign addr_swap_data_we = addr_hit[30] & reg_we & !reg_error;
 
   assign addr_swap_data_wd = reg_wdata[31:0];
-  assign cmd_info_0_we = addr_hit[27] & reg_we & !reg_error;
+  assign cmd_info_0_we = addr_hit[31] & reg_we & !reg_error;
 
   assign cmd_info_0_opcode_0_wd = reg_wdata[7:0];
 
@@ -13612,7 +17544,11 @@ module spi_device_reg_top (
   assign cmd_info_0_payload_en_0_wd = reg_wdata[19:16];
 
   assign cmd_info_0_payload_dir_0_wd = reg_wdata[20];
-  assign cmd_info_1_we = addr_hit[28] & reg_we & !reg_error;
+
+  assign cmd_info_0_upload_0_wd = reg_wdata[24];
+
+  assign cmd_info_0_busy_0_wd = reg_wdata[25];
+  assign cmd_info_1_we = addr_hit[32] & reg_we & !reg_error;
 
   assign cmd_info_1_opcode_1_wd = reg_wdata[7:0];
 
@@ -13631,7 +17567,11 @@ module spi_device_reg_top (
   assign cmd_info_1_payload_en_1_wd = reg_wdata[19:16];
 
   assign cmd_info_1_payload_dir_1_wd = reg_wdata[20];
-  assign cmd_info_2_we = addr_hit[29] & reg_we & !reg_error;
+
+  assign cmd_info_1_upload_1_wd = reg_wdata[24];
+
+  assign cmd_info_1_busy_1_wd = reg_wdata[25];
+  assign cmd_info_2_we = addr_hit[33] & reg_we & !reg_error;
 
   assign cmd_info_2_opcode_2_wd = reg_wdata[7:0];
 
@@ -13650,7 +17590,11 @@ module spi_device_reg_top (
   assign cmd_info_2_payload_en_2_wd = reg_wdata[19:16];
 
   assign cmd_info_2_payload_dir_2_wd = reg_wdata[20];
-  assign cmd_info_3_we = addr_hit[30] & reg_we & !reg_error;
+
+  assign cmd_info_2_upload_2_wd = reg_wdata[24];
+
+  assign cmd_info_2_busy_2_wd = reg_wdata[25];
+  assign cmd_info_3_we = addr_hit[34] & reg_we & !reg_error;
 
   assign cmd_info_3_opcode_3_wd = reg_wdata[7:0];
 
@@ -13669,7 +17613,11 @@ module spi_device_reg_top (
   assign cmd_info_3_payload_en_3_wd = reg_wdata[19:16];
 
   assign cmd_info_3_payload_dir_3_wd = reg_wdata[20];
-  assign cmd_info_4_we = addr_hit[31] & reg_we & !reg_error;
+
+  assign cmd_info_3_upload_3_wd = reg_wdata[24];
+
+  assign cmd_info_3_busy_3_wd = reg_wdata[25];
+  assign cmd_info_4_we = addr_hit[35] & reg_we & !reg_error;
 
   assign cmd_info_4_opcode_4_wd = reg_wdata[7:0];
 
@@ -13688,7 +17636,11 @@ module spi_device_reg_top (
   assign cmd_info_4_payload_en_4_wd = reg_wdata[19:16];
 
   assign cmd_info_4_payload_dir_4_wd = reg_wdata[20];
-  assign cmd_info_5_we = addr_hit[32] & reg_we & !reg_error;
+
+  assign cmd_info_4_upload_4_wd = reg_wdata[24];
+
+  assign cmd_info_4_busy_4_wd = reg_wdata[25];
+  assign cmd_info_5_we = addr_hit[36] & reg_we & !reg_error;
 
   assign cmd_info_5_opcode_5_wd = reg_wdata[7:0];
 
@@ -13707,7 +17659,11 @@ module spi_device_reg_top (
   assign cmd_info_5_payload_en_5_wd = reg_wdata[19:16];
 
   assign cmd_info_5_payload_dir_5_wd = reg_wdata[20];
-  assign cmd_info_6_we = addr_hit[33] & reg_we & !reg_error;
+
+  assign cmd_info_5_upload_5_wd = reg_wdata[24];
+
+  assign cmd_info_5_busy_5_wd = reg_wdata[25];
+  assign cmd_info_6_we = addr_hit[37] & reg_we & !reg_error;
 
   assign cmd_info_6_opcode_6_wd = reg_wdata[7:0];
 
@@ -13726,7 +17682,11 @@ module spi_device_reg_top (
   assign cmd_info_6_payload_en_6_wd = reg_wdata[19:16];
 
   assign cmd_info_6_payload_dir_6_wd = reg_wdata[20];
-  assign cmd_info_7_we = addr_hit[34] & reg_we & !reg_error;
+
+  assign cmd_info_6_upload_6_wd = reg_wdata[24];
+
+  assign cmd_info_6_busy_6_wd = reg_wdata[25];
+  assign cmd_info_7_we = addr_hit[38] & reg_we & !reg_error;
 
   assign cmd_info_7_opcode_7_wd = reg_wdata[7:0];
 
@@ -13745,7 +17705,11 @@ module spi_device_reg_top (
   assign cmd_info_7_payload_en_7_wd = reg_wdata[19:16];
 
   assign cmd_info_7_payload_dir_7_wd = reg_wdata[20];
-  assign cmd_info_8_we = addr_hit[35] & reg_we & !reg_error;
+
+  assign cmd_info_7_upload_7_wd = reg_wdata[24];
+
+  assign cmd_info_7_busy_7_wd = reg_wdata[25];
+  assign cmd_info_8_we = addr_hit[39] & reg_we & !reg_error;
 
   assign cmd_info_8_opcode_8_wd = reg_wdata[7:0];
 
@@ -13764,7 +17728,11 @@ module spi_device_reg_top (
   assign cmd_info_8_payload_en_8_wd = reg_wdata[19:16];
 
   assign cmd_info_8_payload_dir_8_wd = reg_wdata[20];
-  assign cmd_info_9_we = addr_hit[36] & reg_we & !reg_error;
+
+  assign cmd_info_8_upload_8_wd = reg_wdata[24];
+
+  assign cmd_info_8_busy_8_wd = reg_wdata[25];
+  assign cmd_info_9_we = addr_hit[40] & reg_we & !reg_error;
 
   assign cmd_info_9_opcode_9_wd = reg_wdata[7:0];
 
@@ -13783,7 +17751,11 @@ module spi_device_reg_top (
   assign cmd_info_9_payload_en_9_wd = reg_wdata[19:16];
 
   assign cmd_info_9_payload_dir_9_wd = reg_wdata[20];
-  assign cmd_info_10_we = addr_hit[37] & reg_we & !reg_error;
+
+  assign cmd_info_9_upload_9_wd = reg_wdata[24];
+
+  assign cmd_info_9_busy_9_wd = reg_wdata[25];
+  assign cmd_info_10_we = addr_hit[41] & reg_we & !reg_error;
 
   assign cmd_info_10_opcode_10_wd = reg_wdata[7:0];
 
@@ -13802,7 +17774,11 @@ module spi_device_reg_top (
   assign cmd_info_10_payload_en_10_wd = reg_wdata[19:16];
 
   assign cmd_info_10_payload_dir_10_wd = reg_wdata[20];
-  assign cmd_info_11_we = addr_hit[38] & reg_we & !reg_error;
+
+  assign cmd_info_10_upload_10_wd = reg_wdata[24];
+
+  assign cmd_info_10_busy_10_wd = reg_wdata[25];
+  assign cmd_info_11_we = addr_hit[42] & reg_we & !reg_error;
 
   assign cmd_info_11_opcode_11_wd = reg_wdata[7:0];
 
@@ -13821,7 +17797,11 @@ module spi_device_reg_top (
   assign cmd_info_11_payload_en_11_wd = reg_wdata[19:16];
 
   assign cmd_info_11_payload_dir_11_wd = reg_wdata[20];
-  assign cmd_info_12_we = addr_hit[39] & reg_we & !reg_error;
+
+  assign cmd_info_11_upload_11_wd = reg_wdata[24];
+
+  assign cmd_info_11_busy_11_wd = reg_wdata[25];
+  assign cmd_info_12_we = addr_hit[43] & reg_we & !reg_error;
 
   assign cmd_info_12_opcode_12_wd = reg_wdata[7:0];
 
@@ -13840,7 +17820,11 @@ module spi_device_reg_top (
   assign cmd_info_12_payload_en_12_wd = reg_wdata[19:16];
 
   assign cmd_info_12_payload_dir_12_wd = reg_wdata[20];
-  assign cmd_info_13_we = addr_hit[40] & reg_we & !reg_error;
+
+  assign cmd_info_12_upload_12_wd = reg_wdata[24];
+
+  assign cmd_info_12_busy_12_wd = reg_wdata[25];
+  assign cmd_info_13_we = addr_hit[44] & reg_we & !reg_error;
 
   assign cmd_info_13_opcode_13_wd = reg_wdata[7:0];
 
@@ -13859,7 +17843,11 @@ module spi_device_reg_top (
   assign cmd_info_13_payload_en_13_wd = reg_wdata[19:16];
 
   assign cmd_info_13_payload_dir_13_wd = reg_wdata[20];
-  assign cmd_info_14_we = addr_hit[41] & reg_we & !reg_error;
+
+  assign cmd_info_13_upload_13_wd = reg_wdata[24];
+
+  assign cmd_info_13_busy_13_wd = reg_wdata[25];
+  assign cmd_info_14_we = addr_hit[45] & reg_we & !reg_error;
 
   assign cmd_info_14_opcode_14_wd = reg_wdata[7:0];
 
@@ -13878,7 +17866,11 @@ module spi_device_reg_top (
   assign cmd_info_14_payload_en_14_wd = reg_wdata[19:16];
 
   assign cmd_info_14_payload_dir_14_wd = reg_wdata[20];
-  assign cmd_info_15_we = addr_hit[42] & reg_we & !reg_error;
+
+  assign cmd_info_14_upload_14_wd = reg_wdata[24];
+
+  assign cmd_info_14_busy_14_wd = reg_wdata[25];
+  assign cmd_info_15_we = addr_hit[46] & reg_we & !reg_error;
 
   assign cmd_info_15_opcode_15_wd = reg_wdata[7:0];
 
@@ -13898,26 +17890,267 @@ module spi_device_reg_top (
 
   assign cmd_info_15_payload_dir_15_wd = reg_wdata[20];
 
+  assign cmd_info_15_upload_15_wd = reg_wdata[24];
+
+  assign cmd_info_15_busy_15_wd = reg_wdata[25];
+  assign cmd_info_16_we = addr_hit[47] & reg_we & !reg_error;
+
+  assign cmd_info_16_opcode_16_wd = reg_wdata[7:0];
+
+  assign cmd_info_16_addr_en_16_wd = reg_wdata[8];
+
+  assign cmd_info_16_addr_swap_en_16_wd = reg_wdata[9];
+
+  assign cmd_info_16_addr_4b_affected_16_wd = reg_wdata[10];
+
+  assign cmd_info_16_mbyte_en_16_wd = reg_wdata[11];
+
+  assign cmd_info_16_dummy_size_16_wd = reg_wdata[14:12];
+
+  assign cmd_info_16_dummy_en_16_wd = reg_wdata[15];
+
+  assign cmd_info_16_payload_en_16_wd = reg_wdata[19:16];
+
+  assign cmd_info_16_payload_dir_16_wd = reg_wdata[20];
+
+  assign cmd_info_16_upload_16_wd = reg_wdata[24];
+
+  assign cmd_info_16_busy_16_wd = reg_wdata[25];
+  assign cmd_info_17_we = addr_hit[48] & reg_we & !reg_error;
+
+  assign cmd_info_17_opcode_17_wd = reg_wdata[7:0];
+
+  assign cmd_info_17_addr_en_17_wd = reg_wdata[8];
+
+  assign cmd_info_17_addr_swap_en_17_wd = reg_wdata[9];
+
+  assign cmd_info_17_addr_4b_affected_17_wd = reg_wdata[10];
+
+  assign cmd_info_17_mbyte_en_17_wd = reg_wdata[11];
+
+  assign cmd_info_17_dummy_size_17_wd = reg_wdata[14:12];
+
+  assign cmd_info_17_dummy_en_17_wd = reg_wdata[15];
+
+  assign cmd_info_17_payload_en_17_wd = reg_wdata[19:16];
+
+  assign cmd_info_17_payload_dir_17_wd = reg_wdata[20];
+
+  assign cmd_info_17_upload_17_wd = reg_wdata[24];
+
+  assign cmd_info_17_busy_17_wd = reg_wdata[25];
+  assign cmd_info_18_we = addr_hit[49] & reg_we & !reg_error;
+
+  assign cmd_info_18_opcode_18_wd = reg_wdata[7:0];
+
+  assign cmd_info_18_addr_en_18_wd = reg_wdata[8];
+
+  assign cmd_info_18_addr_swap_en_18_wd = reg_wdata[9];
+
+  assign cmd_info_18_addr_4b_affected_18_wd = reg_wdata[10];
+
+  assign cmd_info_18_mbyte_en_18_wd = reg_wdata[11];
+
+  assign cmd_info_18_dummy_size_18_wd = reg_wdata[14:12];
+
+  assign cmd_info_18_dummy_en_18_wd = reg_wdata[15];
+
+  assign cmd_info_18_payload_en_18_wd = reg_wdata[19:16];
+
+  assign cmd_info_18_payload_dir_18_wd = reg_wdata[20];
+
+  assign cmd_info_18_upload_18_wd = reg_wdata[24];
+
+  assign cmd_info_18_busy_18_wd = reg_wdata[25];
+  assign cmd_info_19_we = addr_hit[50] & reg_we & !reg_error;
+
+  assign cmd_info_19_opcode_19_wd = reg_wdata[7:0];
+
+  assign cmd_info_19_addr_en_19_wd = reg_wdata[8];
+
+  assign cmd_info_19_addr_swap_en_19_wd = reg_wdata[9];
+
+  assign cmd_info_19_addr_4b_affected_19_wd = reg_wdata[10];
+
+  assign cmd_info_19_mbyte_en_19_wd = reg_wdata[11];
+
+  assign cmd_info_19_dummy_size_19_wd = reg_wdata[14:12];
+
+  assign cmd_info_19_dummy_en_19_wd = reg_wdata[15];
+
+  assign cmd_info_19_payload_en_19_wd = reg_wdata[19:16];
+
+  assign cmd_info_19_payload_dir_19_wd = reg_wdata[20];
+
+  assign cmd_info_19_upload_19_wd = reg_wdata[24];
+
+  assign cmd_info_19_busy_19_wd = reg_wdata[25];
+  assign cmd_info_20_we = addr_hit[51] & reg_we & !reg_error;
+
+  assign cmd_info_20_opcode_20_wd = reg_wdata[7:0];
+
+  assign cmd_info_20_addr_en_20_wd = reg_wdata[8];
+
+  assign cmd_info_20_addr_swap_en_20_wd = reg_wdata[9];
+
+  assign cmd_info_20_addr_4b_affected_20_wd = reg_wdata[10];
+
+  assign cmd_info_20_mbyte_en_20_wd = reg_wdata[11];
+
+  assign cmd_info_20_dummy_size_20_wd = reg_wdata[14:12];
+
+  assign cmd_info_20_dummy_en_20_wd = reg_wdata[15];
+
+  assign cmd_info_20_payload_en_20_wd = reg_wdata[19:16];
+
+  assign cmd_info_20_payload_dir_20_wd = reg_wdata[20];
+
+  assign cmd_info_20_upload_20_wd = reg_wdata[24];
+
+  assign cmd_info_20_busy_20_wd = reg_wdata[25];
+  assign cmd_info_21_we = addr_hit[52] & reg_we & !reg_error;
+
+  assign cmd_info_21_opcode_21_wd = reg_wdata[7:0];
+
+  assign cmd_info_21_addr_en_21_wd = reg_wdata[8];
+
+  assign cmd_info_21_addr_swap_en_21_wd = reg_wdata[9];
+
+  assign cmd_info_21_addr_4b_affected_21_wd = reg_wdata[10];
+
+  assign cmd_info_21_mbyte_en_21_wd = reg_wdata[11];
+
+  assign cmd_info_21_dummy_size_21_wd = reg_wdata[14:12];
+
+  assign cmd_info_21_dummy_en_21_wd = reg_wdata[15];
+
+  assign cmd_info_21_payload_en_21_wd = reg_wdata[19:16];
+
+  assign cmd_info_21_payload_dir_21_wd = reg_wdata[20];
+
+  assign cmd_info_21_upload_21_wd = reg_wdata[24];
+
+  assign cmd_info_21_busy_21_wd = reg_wdata[25];
+  assign cmd_info_22_we = addr_hit[53] & reg_we & !reg_error;
+
+  assign cmd_info_22_opcode_22_wd = reg_wdata[7:0];
+
+  assign cmd_info_22_addr_en_22_wd = reg_wdata[8];
+
+  assign cmd_info_22_addr_swap_en_22_wd = reg_wdata[9];
+
+  assign cmd_info_22_addr_4b_affected_22_wd = reg_wdata[10];
+
+  assign cmd_info_22_mbyte_en_22_wd = reg_wdata[11];
+
+  assign cmd_info_22_dummy_size_22_wd = reg_wdata[14:12];
+
+  assign cmd_info_22_dummy_en_22_wd = reg_wdata[15];
+
+  assign cmd_info_22_payload_en_22_wd = reg_wdata[19:16];
+
+  assign cmd_info_22_payload_dir_22_wd = reg_wdata[20];
+
+  assign cmd_info_22_upload_22_wd = reg_wdata[24];
+
+  assign cmd_info_22_busy_22_wd = reg_wdata[25];
+  assign cmd_info_23_we = addr_hit[54] & reg_we & !reg_error;
+
+  assign cmd_info_23_opcode_23_wd = reg_wdata[7:0];
+
+  assign cmd_info_23_addr_en_23_wd = reg_wdata[8];
+
+  assign cmd_info_23_addr_swap_en_23_wd = reg_wdata[9];
+
+  assign cmd_info_23_addr_4b_affected_23_wd = reg_wdata[10];
+
+  assign cmd_info_23_mbyte_en_23_wd = reg_wdata[11];
+
+  assign cmd_info_23_dummy_size_23_wd = reg_wdata[14:12];
+
+  assign cmd_info_23_dummy_en_23_wd = reg_wdata[15];
+
+  assign cmd_info_23_payload_en_23_wd = reg_wdata[19:16];
+
+  assign cmd_info_23_payload_dir_23_wd = reg_wdata[20];
+
+  assign cmd_info_23_upload_23_wd = reg_wdata[24];
+
+  assign cmd_info_23_busy_23_wd = reg_wdata[25];
+  assign tpm_cfg_we = addr_hit[56] & reg_we & !reg_error;
+
+  assign tpm_cfg_en_wd = reg_wdata[0];
+
+  assign tpm_cfg_tpm_mode_wd = reg_wdata[1];
+
+  assign tpm_cfg_hw_reg_dis_wd = reg_wdata[2];
+
+  assign tpm_cfg_tpm_reg_chk_dis_wd = reg_wdata[3];
+
+  assign tpm_cfg_invalid_locality_wd = reg_wdata[4];
+  assign tpm_access_0_we = addr_hit[58] & reg_we & !reg_error;
+
+  assign tpm_access_0_access_0_wd = reg_wdata[7:0];
+
+  assign tpm_access_0_access_1_wd = reg_wdata[15:8];
+
+  assign tpm_access_0_access_2_wd = reg_wdata[23:16];
+
+  assign tpm_access_0_access_3_wd = reg_wdata[31:24];
+  assign tpm_access_1_we = addr_hit[59] & reg_we & !reg_error;
+
+  assign tpm_access_1_wd = reg_wdata[7:0];
+  assign tpm_sts_we = addr_hit[60] & reg_we & !reg_error;
+
+  assign tpm_sts_wd = reg_wdata[31:0];
+  assign tpm_intf_capability_we = addr_hit[61] & reg_we & !reg_error;
+
+  assign tpm_intf_capability_wd = reg_wdata[31:0];
+  assign tpm_int_enable_we = addr_hit[62] & reg_we & !reg_error;
+
+  assign tpm_int_enable_wd = reg_wdata[31:0];
+  assign tpm_int_vector_we = addr_hit[63] & reg_we & !reg_error;
+
+  assign tpm_int_vector_wd = reg_wdata[7:0];
+  assign tpm_int_status_we = addr_hit[64] & reg_we & !reg_error;
+
+  assign tpm_int_status_wd = reg_wdata[31:0];
+  assign tpm_did_vid_we = addr_hit[65] & reg_we & !reg_error;
+
+  assign tpm_did_vid_vid_wd = reg_wdata[15:0];
+
+  assign tpm_did_vid_did_wd = reg_wdata[31:16];
+  assign tpm_rid_we = addr_hit[66] & reg_we & !reg_error;
+
+  assign tpm_rid_wd = reg_wdata[7:0];
+  assign tpm_cmd_addr_re = addr_hit[67] & reg_re & !reg_error;
+  assign tpm_read_fifo_we = addr_hit[68] & reg_we & !reg_error;
+
+  assign tpm_read_fifo_wd = reg_wdata[7:0];
+  assign tpm_write_fifo_re = addr_hit[69] & reg_re & !reg_error;
+
   // Read data return
   always_comb begin
     reg_rdata_next = '0;
     unique case (1'b1)
       addr_hit[0]: begin
-        reg_rdata_next[0] = intr_state_rxf_qs;
-        reg_rdata_next[1] = intr_state_rxlvl_qs;
-        reg_rdata_next[2] = intr_state_txlvl_qs;
-        reg_rdata_next[3] = intr_state_rxerr_qs;
-        reg_rdata_next[4] = intr_state_rxoverflow_qs;
-        reg_rdata_next[5] = intr_state_txunderflow_qs;
+        reg_rdata_next[0] = intr_state_rx_full_qs;
+        reg_rdata_next[1] = intr_state_rx_watermark_qs;
+        reg_rdata_next[2] = intr_state_tx_watermark_qs;
+        reg_rdata_next[3] = intr_state_rx_error_qs;
+        reg_rdata_next[4] = intr_state_rx_overflow_qs;
+        reg_rdata_next[5] = intr_state_tx_underflow_qs;
+        reg_rdata_next[6] = intr_state_tpm_header_not_empty_qs;
       end
 
       addr_hit[1]: begin
-        reg_rdata_next[0] = intr_enable_rxf_qs;
-        reg_rdata_next[1] = intr_enable_rxlvl_qs;
-        reg_rdata_next[2] = intr_enable_txlvl_qs;
-        reg_rdata_next[3] = intr_enable_rxerr_qs;
-        reg_rdata_next[4] = intr_enable_rxoverflow_qs;
-        reg_rdata_next[5] = intr_enable_txunderflow_qs;
+        reg_rdata_next[0] = intr_enable_rx_full_qs;
+        reg_rdata_next[1] = intr_enable_rx_watermark_qs;
+        reg_rdata_next[2] = intr_enable_tx_watermark_qs;
+        reg_rdata_next[3] = intr_enable_rx_error_qs;
+        reg_rdata_next[4] = intr_enable_rx_overflow_qs;
+        reg_rdata_next[5] = intr_enable_tx_underflow_qs;
+        reg_rdata_next[6] = intr_enable_tpm_header_not_empty_qs;
       end
 
       addr_hit[2]: begin
@@ -13927,6 +18160,7 @@ module spi_device_reg_top (
         reg_rdata_next[3] = '0;
         reg_rdata_next[4] = '0;
         reg_rdata_next[5] = '0;
+        reg_rdata_next[6] = '0;
       end
 
       addr_hit[3]: begin
@@ -13948,6 +18182,7 @@ module spi_device_reg_top (
         reg_rdata_next[3] = cfg_rx_order_qs;
         reg_rdata_next[15:8] = cfg_timer_v_qs;
         reg_rdata_next[16] = cfg_addr_4b_en_qs;
+        reg_rdata_next[24] = cfg_mailbox_en_qs;
       end
 
       addr_hit[6]: begin
@@ -14008,6 +18243,26 @@ module spi_device_reg_top (
       end
 
       addr_hit[17]: begin
+        reg_rdata_next[31:0] = mailbox_addr_qs;
+      end
+
+      addr_hit[18]: begin
+        reg_rdata_next[4:0] = upload_status_cmdfifo_depth_qs;
+        reg_rdata_next[7] = upload_status_cmdfifo_notempty_qs;
+        reg_rdata_next[12:8] = upload_status_addrfifo_depth_qs;
+        reg_rdata_next[15] = upload_status_addrfifo_notempty_qs;
+        reg_rdata_next[24:16] = upload_status_payload_depth_qs;
+      end
+
+      addr_hit[19]: begin
+        reg_rdata_next[7:0] = upload_cmdfifo_qs;
+      end
+
+      addr_hit[20]: begin
+        reg_rdata_next[31:0] = upload_addrfifo_qs;
+      end
+
+      addr_hit[21]: begin
         reg_rdata_next[0] = cmd_filter_0_filter_0_qs;
         reg_rdata_next[1] = cmd_filter_0_filter_1_qs;
         reg_rdata_next[2] = cmd_filter_0_filter_2_qs;
@@ -14042,7 +18297,7 @@ module spi_device_reg_top (
         reg_rdata_next[31] = cmd_filter_0_filter_31_qs;
       end
 
-      addr_hit[18]: begin
+      addr_hit[22]: begin
         reg_rdata_next[0] = cmd_filter_1_filter_32_qs;
         reg_rdata_next[1] = cmd_filter_1_filter_33_qs;
         reg_rdata_next[2] = cmd_filter_1_filter_34_qs;
@@ -14077,7 +18332,7 @@ module spi_device_reg_top (
         reg_rdata_next[31] = cmd_filter_1_filter_63_qs;
       end
 
-      addr_hit[19]: begin
+      addr_hit[23]: begin
         reg_rdata_next[0] = cmd_filter_2_filter_64_qs;
         reg_rdata_next[1] = cmd_filter_2_filter_65_qs;
         reg_rdata_next[2] = cmd_filter_2_filter_66_qs;
@@ -14112,7 +18367,7 @@ module spi_device_reg_top (
         reg_rdata_next[31] = cmd_filter_2_filter_95_qs;
       end
 
-      addr_hit[20]: begin
+      addr_hit[24]: begin
         reg_rdata_next[0] = cmd_filter_3_filter_96_qs;
         reg_rdata_next[1] = cmd_filter_3_filter_97_qs;
         reg_rdata_next[2] = cmd_filter_3_filter_98_qs;
@@ -14147,7 +18402,7 @@ module spi_device_reg_top (
         reg_rdata_next[31] = cmd_filter_3_filter_127_qs;
       end
 
-      addr_hit[21]: begin
+      addr_hit[25]: begin
         reg_rdata_next[0] = cmd_filter_4_filter_128_qs;
         reg_rdata_next[1] = cmd_filter_4_filter_129_qs;
         reg_rdata_next[2] = cmd_filter_4_filter_130_qs;
@@ -14182,7 +18437,7 @@ module spi_device_reg_top (
         reg_rdata_next[31] = cmd_filter_4_filter_159_qs;
       end
 
-      addr_hit[22]: begin
+      addr_hit[26]: begin
         reg_rdata_next[0] = cmd_filter_5_filter_160_qs;
         reg_rdata_next[1] = cmd_filter_5_filter_161_qs;
         reg_rdata_next[2] = cmd_filter_5_filter_162_qs;
@@ -14217,7 +18472,7 @@ module spi_device_reg_top (
         reg_rdata_next[31] = cmd_filter_5_filter_191_qs;
       end
 
-      addr_hit[23]: begin
+      addr_hit[27]: begin
         reg_rdata_next[0] = cmd_filter_6_filter_192_qs;
         reg_rdata_next[1] = cmd_filter_6_filter_193_qs;
         reg_rdata_next[2] = cmd_filter_6_filter_194_qs;
@@ -14252,7 +18507,7 @@ module spi_device_reg_top (
         reg_rdata_next[31] = cmd_filter_6_filter_223_qs;
       end
 
-      addr_hit[24]: begin
+      addr_hit[28]: begin
         reg_rdata_next[0] = cmd_filter_7_filter_224_qs;
         reg_rdata_next[1] = cmd_filter_7_filter_225_qs;
         reg_rdata_next[2] = cmd_filter_7_filter_226_qs;
@@ -14287,15 +18542,15 @@ module spi_device_reg_top (
         reg_rdata_next[31] = cmd_filter_7_filter_255_qs;
       end
 
-      addr_hit[25]: begin
+      addr_hit[29]: begin
         reg_rdata_next[31:0] = addr_swap_mask_qs;
       end
 
-      addr_hit[26]: begin
+      addr_hit[30]: begin
         reg_rdata_next[31:0] = addr_swap_data_qs;
       end
 
-      addr_hit[27]: begin
+      addr_hit[31]: begin
         reg_rdata_next[7:0] = cmd_info_0_opcode_0_qs;
         reg_rdata_next[8] = cmd_info_0_addr_en_0_qs;
         reg_rdata_next[9] = cmd_info_0_addr_swap_en_0_qs;
@@ -14305,9 +18560,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_0_dummy_en_0_qs;
         reg_rdata_next[19:16] = cmd_info_0_payload_en_0_qs;
         reg_rdata_next[20] = cmd_info_0_payload_dir_0_qs;
+        reg_rdata_next[24] = cmd_info_0_upload_0_qs;
+        reg_rdata_next[25] = cmd_info_0_busy_0_qs;
       end
 
-      addr_hit[28]: begin
+      addr_hit[32]: begin
         reg_rdata_next[7:0] = cmd_info_1_opcode_1_qs;
         reg_rdata_next[8] = cmd_info_1_addr_en_1_qs;
         reg_rdata_next[9] = cmd_info_1_addr_swap_en_1_qs;
@@ -14317,9 +18574,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_1_dummy_en_1_qs;
         reg_rdata_next[19:16] = cmd_info_1_payload_en_1_qs;
         reg_rdata_next[20] = cmd_info_1_payload_dir_1_qs;
+        reg_rdata_next[24] = cmd_info_1_upload_1_qs;
+        reg_rdata_next[25] = cmd_info_1_busy_1_qs;
       end
 
-      addr_hit[29]: begin
+      addr_hit[33]: begin
         reg_rdata_next[7:0] = cmd_info_2_opcode_2_qs;
         reg_rdata_next[8] = cmd_info_2_addr_en_2_qs;
         reg_rdata_next[9] = cmd_info_2_addr_swap_en_2_qs;
@@ -14329,9 +18588,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_2_dummy_en_2_qs;
         reg_rdata_next[19:16] = cmd_info_2_payload_en_2_qs;
         reg_rdata_next[20] = cmd_info_2_payload_dir_2_qs;
+        reg_rdata_next[24] = cmd_info_2_upload_2_qs;
+        reg_rdata_next[25] = cmd_info_2_busy_2_qs;
       end
 
-      addr_hit[30]: begin
+      addr_hit[34]: begin
         reg_rdata_next[7:0] = cmd_info_3_opcode_3_qs;
         reg_rdata_next[8] = cmd_info_3_addr_en_3_qs;
         reg_rdata_next[9] = cmd_info_3_addr_swap_en_3_qs;
@@ -14341,9 +18602,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_3_dummy_en_3_qs;
         reg_rdata_next[19:16] = cmd_info_3_payload_en_3_qs;
         reg_rdata_next[20] = cmd_info_3_payload_dir_3_qs;
+        reg_rdata_next[24] = cmd_info_3_upload_3_qs;
+        reg_rdata_next[25] = cmd_info_3_busy_3_qs;
       end
 
-      addr_hit[31]: begin
+      addr_hit[35]: begin
         reg_rdata_next[7:0] = cmd_info_4_opcode_4_qs;
         reg_rdata_next[8] = cmd_info_4_addr_en_4_qs;
         reg_rdata_next[9] = cmd_info_4_addr_swap_en_4_qs;
@@ -14353,9 +18616,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_4_dummy_en_4_qs;
         reg_rdata_next[19:16] = cmd_info_4_payload_en_4_qs;
         reg_rdata_next[20] = cmd_info_4_payload_dir_4_qs;
+        reg_rdata_next[24] = cmd_info_4_upload_4_qs;
+        reg_rdata_next[25] = cmd_info_4_busy_4_qs;
       end
 
-      addr_hit[32]: begin
+      addr_hit[36]: begin
         reg_rdata_next[7:0] = cmd_info_5_opcode_5_qs;
         reg_rdata_next[8] = cmd_info_5_addr_en_5_qs;
         reg_rdata_next[9] = cmd_info_5_addr_swap_en_5_qs;
@@ -14365,9 +18630,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_5_dummy_en_5_qs;
         reg_rdata_next[19:16] = cmd_info_5_payload_en_5_qs;
         reg_rdata_next[20] = cmd_info_5_payload_dir_5_qs;
+        reg_rdata_next[24] = cmd_info_5_upload_5_qs;
+        reg_rdata_next[25] = cmd_info_5_busy_5_qs;
       end
 
-      addr_hit[33]: begin
+      addr_hit[37]: begin
         reg_rdata_next[7:0] = cmd_info_6_opcode_6_qs;
         reg_rdata_next[8] = cmd_info_6_addr_en_6_qs;
         reg_rdata_next[9] = cmd_info_6_addr_swap_en_6_qs;
@@ -14377,9 +18644,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_6_dummy_en_6_qs;
         reg_rdata_next[19:16] = cmd_info_6_payload_en_6_qs;
         reg_rdata_next[20] = cmd_info_6_payload_dir_6_qs;
+        reg_rdata_next[24] = cmd_info_6_upload_6_qs;
+        reg_rdata_next[25] = cmd_info_6_busy_6_qs;
       end
 
-      addr_hit[34]: begin
+      addr_hit[38]: begin
         reg_rdata_next[7:0] = cmd_info_7_opcode_7_qs;
         reg_rdata_next[8] = cmd_info_7_addr_en_7_qs;
         reg_rdata_next[9] = cmd_info_7_addr_swap_en_7_qs;
@@ -14389,9 +18658,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_7_dummy_en_7_qs;
         reg_rdata_next[19:16] = cmd_info_7_payload_en_7_qs;
         reg_rdata_next[20] = cmd_info_7_payload_dir_7_qs;
+        reg_rdata_next[24] = cmd_info_7_upload_7_qs;
+        reg_rdata_next[25] = cmd_info_7_busy_7_qs;
       end
 
-      addr_hit[35]: begin
+      addr_hit[39]: begin
         reg_rdata_next[7:0] = cmd_info_8_opcode_8_qs;
         reg_rdata_next[8] = cmd_info_8_addr_en_8_qs;
         reg_rdata_next[9] = cmd_info_8_addr_swap_en_8_qs;
@@ -14401,9 +18672,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_8_dummy_en_8_qs;
         reg_rdata_next[19:16] = cmd_info_8_payload_en_8_qs;
         reg_rdata_next[20] = cmd_info_8_payload_dir_8_qs;
+        reg_rdata_next[24] = cmd_info_8_upload_8_qs;
+        reg_rdata_next[25] = cmd_info_8_busy_8_qs;
       end
 
-      addr_hit[36]: begin
+      addr_hit[40]: begin
         reg_rdata_next[7:0] = cmd_info_9_opcode_9_qs;
         reg_rdata_next[8] = cmd_info_9_addr_en_9_qs;
         reg_rdata_next[9] = cmd_info_9_addr_swap_en_9_qs;
@@ -14413,9 +18686,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_9_dummy_en_9_qs;
         reg_rdata_next[19:16] = cmd_info_9_payload_en_9_qs;
         reg_rdata_next[20] = cmd_info_9_payload_dir_9_qs;
+        reg_rdata_next[24] = cmd_info_9_upload_9_qs;
+        reg_rdata_next[25] = cmd_info_9_busy_9_qs;
       end
 
-      addr_hit[37]: begin
+      addr_hit[41]: begin
         reg_rdata_next[7:0] = cmd_info_10_opcode_10_qs;
         reg_rdata_next[8] = cmd_info_10_addr_en_10_qs;
         reg_rdata_next[9] = cmd_info_10_addr_swap_en_10_qs;
@@ -14425,9 +18700,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_10_dummy_en_10_qs;
         reg_rdata_next[19:16] = cmd_info_10_payload_en_10_qs;
         reg_rdata_next[20] = cmd_info_10_payload_dir_10_qs;
+        reg_rdata_next[24] = cmd_info_10_upload_10_qs;
+        reg_rdata_next[25] = cmd_info_10_busy_10_qs;
       end
 
-      addr_hit[38]: begin
+      addr_hit[42]: begin
         reg_rdata_next[7:0] = cmd_info_11_opcode_11_qs;
         reg_rdata_next[8] = cmd_info_11_addr_en_11_qs;
         reg_rdata_next[9] = cmd_info_11_addr_swap_en_11_qs;
@@ -14437,9 +18714,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_11_dummy_en_11_qs;
         reg_rdata_next[19:16] = cmd_info_11_payload_en_11_qs;
         reg_rdata_next[20] = cmd_info_11_payload_dir_11_qs;
+        reg_rdata_next[24] = cmd_info_11_upload_11_qs;
+        reg_rdata_next[25] = cmd_info_11_busy_11_qs;
       end
 
-      addr_hit[39]: begin
+      addr_hit[43]: begin
         reg_rdata_next[7:0] = cmd_info_12_opcode_12_qs;
         reg_rdata_next[8] = cmd_info_12_addr_en_12_qs;
         reg_rdata_next[9] = cmd_info_12_addr_swap_en_12_qs;
@@ -14449,9 +18728,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_12_dummy_en_12_qs;
         reg_rdata_next[19:16] = cmd_info_12_payload_en_12_qs;
         reg_rdata_next[20] = cmd_info_12_payload_dir_12_qs;
+        reg_rdata_next[24] = cmd_info_12_upload_12_qs;
+        reg_rdata_next[25] = cmd_info_12_busy_12_qs;
       end
 
-      addr_hit[40]: begin
+      addr_hit[44]: begin
         reg_rdata_next[7:0] = cmd_info_13_opcode_13_qs;
         reg_rdata_next[8] = cmd_info_13_addr_en_13_qs;
         reg_rdata_next[9] = cmd_info_13_addr_swap_en_13_qs;
@@ -14461,9 +18742,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_13_dummy_en_13_qs;
         reg_rdata_next[19:16] = cmd_info_13_payload_en_13_qs;
         reg_rdata_next[20] = cmd_info_13_payload_dir_13_qs;
+        reg_rdata_next[24] = cmd_info_13_upload_13_qs;
+        reg_rdata_next[25] = cmd_info_13_busy_13_qs;
       end
 
-      addr_hit[41]: begin
+      addr_hit[45]: begin
         reg_rdata_next[7:0] = cmd_info_14_opcode_14_qs;
         reg_rdata_next[8] = cmd_info_14_addr_en_14_qs;
         reg_rdata_next[9] = cmd_info_14_addr_swap_en_14_qs;
@@ -14473,9 +18756,11 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_14_dummy_en_14_qs;
         reg_rdata_next[19:16] = cmd_info_14_payload_en_14_qs;
         reg_rdata_next[20] = cmd_info_14_payload_dir_14_qs;
+        reg_rdata_next[24] = cmd_info_14_upload_14_qs;
+        reg_rdata_next[25] = cmd_info_14_busy_14_qs;
       end
 
-      addr_hit[42]: begin
+      addr_hit[46]: begin
         reg_rdata_next[7:0] = cmd_info_15_opcode_15_qs;
         reg_rdata_next[8] = cmd_info_15_addr_en_15_qs;
         reg_rdata_next[9] = cmd_info_15_addr_swap_en_15_qs;
@@ -14485,6 +18770,194 @@ module spi_device_reg_top (
         reg_rdata_next[15] = cmd_info_15_dummy_en_15_qs;
         reg_rdata_next[19:16] = cmd_info_15_payload_en_15_qs;
         reg_rdata_next[20] = cmd_info_15_payload_dir_15_qs;
+        reg_rdata_next[24] = cmd_info_15_upload_15_qs;
+        reg_rdata_next[25] = cmd_info_15_busy_15_qs;
+      end
+
+      addr_hit[47]: begin
+        reg_rdata_next[7:0] = cmd_info_16_opcode_16_qs;
+        reg_rdata_next[8] = cmd_info_16_addr_en_16_qs;
+        reg_rdata_next[9] = cmd_info_16_addr_swap_en_16_qs;
+        reg_rdata_next[10] = cmd_info_16_addr_4b_affected_16_qs;
+        reg_rdata_next[11] = cmd_info_16_mbyte_en_16_qs;
+        reg_rdata_next[14:12] = cmd_info_16_dummy_size_16_qs;
+        reg_rdata_next[15] = cmd_info_16_dummy_en_16_qs;
+        reg_rdata_next[19:16] = cmd_info_16_payload_en_16_qs;
+        reg_rdata_next[20] = cmd_info_16_payload_dir_16_qs;
+        reg_rdata_next[24] = cmd_info_16_upload_16_qs;
+        reg_rdata_next[25] = cmd_info_16_busy_16_qs;
+      end
+
+      addr_hit[48]: begin
+        reg_rdata_next[7:0] = cmd_info_17_opcode_17_qs;
+        reg_rdata_next[8] = cmd_info_17_addr_en_17_qs;
+        reg_rdata_next[9] = cmd_info_17_addr_swap_en_17_qs;
+        reg_rdata_next[10] = cmd_info_17_addr_4b_affected_17_qs;
+        reg_rdata_next[11] = cmd_info_17_mbyte_en_17_qs;
+        reg_rdata_next[14:12] = cmd_info_17_dummy_size_17_qs;
+        reg_rdata_next[15] = cmd_info_17_dummy_en_17_qs;
+        reg_rdata_next[19:16] = cmd_info_17_payload_en_17_qs;
+        reg_rdata_next[20] = cmd_info_17_payload_dir_17_qs;
+        reg_rdata_next[24] = cmd_info_17_upload_17_qs;
+        reg_rdata_next[25] = cmd_info_17_busy_17_qs;
+      end
+
+      addr_hit[49]: begin
+        reg_rdata_next[7:0] = cmd_info_18_opcode_18_qs;
+        reg_rdata_next[8] = cmd_info_18_addr_en_18_qs;
+        reg_rdata_next[9] = cmd_info_18_addr_swap_en_18_qs;
+        reg_rdata_next[10] = cmd_info_18_addr_4b_affected_18_qs;
+        reg_rdata_next[11] = cmd_info_18_mbyte_en_18_qs;
+        reg_rdata_next[14:12] = cmd_info_18_dummy_size_18_qs;
+        reg_rdata_next[15] = cmd_info_18_dummy_en_18_qs;
+        reg_rdata_next[19:16] = cmd_info_18_payload_en_18_qs;
+        reg_rdata_next[20] = cmd_info_18_payload_dir_18_qs;
+        reg_rdata_next[24] = cmd_info_18_upload_18_qs;
+        reg_rdata_next[25] = cmd_info_18_busy_18_qs;
+      end
+
+      addr_hit[50]: begin
+        reg_rdata_next[7:0] = cmd_info_19_opcode_19_qs;
+        reg_rdata_next[8] = cmd_info_19_addr_en_19_qs;
+        reg_rdata_next[9] = cmd_info_19_addr_swap_en_19_qs;
+        reg_rdata_next[10] = cmd_info_19_addr_4b_affected_19_qs;
+        reg_rdata_next[11] = cmd_info_19_mbyte_en_19_qs;
+        reg_rdata_next[14:12] = cmd_info_19_dummy_size_19_qs;
+        reg_rdata_next[15] = cmd_info_19_dummy_en_19_qs;
+        reg_rdata_next[19:16] = cmd_info_19_payload_en_19_qs;
+        reg_rdata_next[20] = cmd_info_19_payload_dir_19_qs;
+        reg_rdata_next[24] = cmd_info_19_upload_19_qs;
+        reg_rdata_next[25] = cmd_info_19_busy_19_qs;
+      end
+
+      addr_hit[51]: begin
+        reg_rdata_next[7:0] = cmd_info_20_opcode_20_qs;
+        reg_rdata_next[8] = cmd_info_20_addr_en_20_qs;
+        reg_rdata_next[9] = cmd_info_20_addr_swap_en_20_qs;
+        reg_rdata_next[10] = cmd_info_20_addr_4b_affected_20_qs;
+        reg_rdata_next[11] = cmd_info_20_mbyte_en_20_qs;
+        reg_rdata_next[14:12] = cmd_info_20_dummy_size_20_qs;
+        reg_rdata_next[15] = cmd_info_20_dummy_en_20_qs;
+        reg_rdata_next[19:16] = cmd_info_20_payload_en_20_qs;
+        reg_rdata_next[20] = cmd_info_20_payload_dir_20_qs;
+        reg_rdata_next[24] = cmd_info_20_upload_20_qs;
+        reg_rdata_next[25] = cmd_info_20_busy_20_qs;
+      end
+
+      addr_hit[52]: begin
+        reg_rdata_next[7:0] = cmd_info_21_opcode_21_qs;
+        reg_rdata_next[8] = cmd_info_21_addr_en_21_qs;
+        reg_rdata_next[9] = cmd_info_21_addr_swap_en_21_qs;
+        reg_rdata_next[10] = cmd_info_21_addr_4b_affected_21_qs;
+        reg_rdata_next[11] = cmd_info_21_mbyte_en_21_qs;
+        reg_rdata_next[14:12] = cmd_info_21_dummy_size_21_qs;
+        reg_rdata_next[15] = cmd_info_21_dummy_en_21_qs;
+        reg_rdata_next[19:16] = cmd_info_21_payload_en_21_qs;
+        reg_rdata_next[20] = cmd_info_21_payload_dir_21_qs;
+        reg_rdata_next[24] = cmd_info_21_upload_21_qs;
+        reg_rdata_next[25] = cmd_info_21_busy_21_qs;
+      end
+
+      addr_hit[53]: begin
+        reg_rdata_next[7:0] = cmd_info_22_opcode_22_qs;
+        reg_rdata_next[8] = cmd_info_22_addr_en_22_qs;
+        reg_rdata_next[9] = cmd_info_22_addr_swap_en_22_qs;
+        reg_rdata_next[10] = cmd_info_22_addr_4b_affected_22_qs;
+        reg_rdata_next[11] = cmd_info_22_mbyte_en_22_qs;
+        reg_rdata_next[14:12] = cmd_info_22_dummy_size_22_qs;
+        reg_rdata_next[15] = cmd_info_22_dummy_en_22_qs;
+        reg_rdata_next[19:16] = cmd_info_22_payload_en_22_qs;
+        reg_rdata_next[20] = cmd_info_22_payload_dir_22_qs;
+        reg_rdata_next[24] = cmd_info_22_upload_22_qs;
+        reg_rdata_next[25] = cmd_info_22_busy_22_qs;
+      end
+
+      addr_hit[54]: begin
+        reg_rdata_next[7:0] = cmd_info_23_opcode_23_qs;
+        reg_rdata_next[8] = cmd_info_23_addr_en_23_qs;
+        reg_rdata_next[9] = cmd_info_23_addr_swap_en_23_qs;
+        reg_rdata_next[10] = cmd_info_23_addr_4b_affected_23_qs;
+        reg_rdata_next[11] = cmd_info_23_mbyte_en_23_qs;
+        reg_rdata_next[14:12] = cmd_info_23_dummy_size_23_qs;
+        reg_rdata_next[15] = cmd_info_23_dummy_en_23_qs;
+        reg_rdata_next[19:16] = cmd_info_23_payload_en_23_qs;
+        reg_rdata_next[20] = cmd_info_23_payload_dir_23_qs;
+        reg_rdata_next[24] = cmd_info_23_upload_23_qs;
+        reg_rdata_next[25] = cmd_info_23_busy_23_qs;
+      end
+
+      addr_hit[55]: begin
+        reg_rdata_next[7:0] = tpm_cap_rev_qs;
+        reg_rdata_next[8] = tpm_cap_locality_qs;
+        reg_rdata_next[18:16] = tpm_cap_max_xfer_size_qs;
+      end
+
+      addr_hit[56]: begin
+        reg_rdata_next[0] = tpm_cfg_en_qs;
+        reg_rdata_next[1] = tpm_cfg_tpm_mode_qs;
+        reg_rdata_next[2] = tpm_cfg_hw_reg_dis_qs;
+        reg_rdata_next[3] = tpm_cfg_tpm_reg_chk_dis_qs;
+        reg_rdata_next[4] = tpm_cfg_invalid_locality_qs;
+      end
+
+      addr_hit[57]: begin
+        reg_rdata_next[0] = tpm_status_cmdaddr_notempty_qs;
+        reg_rdata_next[1] = tpm_status_rdfifo_notempty_qs;
+        reg_rdata_next[6:4] = tpm_status_rdfifo_depth_qs;
+        reg_rdata_next[10:8] = tpm_status_wrfifo_depth_qs;
+      end
+
+      addr_hit[58]: begin
+        reg_rdata_next[7:0] = tpm_access_0_access_0_qs;
+        reg_rdata_next[15:8] = tpm_access_0_access_1_qs;
+        reg_rdata_next[23:16] = tpm_access_0_access_2_qs;
+        reg_rdata_next[31:24] = tpm_access_0_access_3_qs;
+      end
+
+      addr_hit[59]: begin
+        reg_rdata_next[7:0] = tpm_access_1_qs;
+      end
+
+      addr_hit[60]: begin
+        reg_rdata_next[31:0] = tpm_sts_qs;
+      end
+
+      addr_hit[61]: begin
+        reg_rdata_next[31:0] = tpm_intf_capability_qs;
+      end
+
+      addr_hit[62]: begin
+        reg_rdata_next[31:0] = tpm_int_enable_qs;
+      end
+
+      addr_hit[63]: begin
+        reg_rdata_next[7:0] = tpm_int_vector_qs;
+      end
+
+      addr_hit[64]: begin
+        reg_rdata_next[31:0] = tpm_int_status_qs;
+      end
+
+      addr_hit[65]: begin
+        reg_rdata_next[15:0] = tpm_did_vid_vid_qs;
+        reg_rdata_next[31:16] = tpm_did_vid_did_qs;
+      end
+
+      addr_hit[66]: begin
+        reg_rdata_next[7:0] = tpm_rid_qs;
+      end
+
+      addr_hit[67]: begin
+        reg_rdata_next[23:0] = tpm_cmd_addr_addr_qs;
+        reg_rdata_next[31:24] = tpm_cmd_addr_cmd_qs;
+      end
+
+      addr_hit[68]: begin
+        reg_rdata_next[7:0] = '0;
+      end
+
+      addr_hit[69]: begin
+        reg_rdata_next[7:0] = tpm_write_fifo_qs;
       end
 
       default: begin
@@ -14493,12 +18966,18 @@ module spi_device_reg_top (
     endcase
   end
 
+  // shadow busy
+  logic shadow_busy;
+  assign shadow_busy = 1'b0;
+
   // register busy
+  logic reg_busy_sel;
+  assign reg_busy = reg_busy_sel | shadow_busy;
   always_comb begin
-    reg_busy = '0;
+    reg_busy_sel = '0;
     unique case (1'b1)
       default: begin
-        reg_busy  = '0;
+        reg_busy_sel  = '0;
       end
     endcase
   end

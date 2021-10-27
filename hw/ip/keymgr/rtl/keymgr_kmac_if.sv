@@ -131,9 +131,10 @@ module keymgr_kmac_if import keymgr_pkg::*;(
   assign start = adv_en_i | id_en_i | gen_en_i;
 
   logic cnt_err;
-  keymgr_cnt #(
+  prim_count #(
     .Width(CntWidth),
-    .OutSelDnCnt(1'b1)
+    .OutSelDnCnt(1'b1),
+    .CntStyle(prim_count_pkg::CrossCnt)
   ) u_cnt (
     .clk_i,
     .rst_ni,
@@ -141,6 +142,7 @@ module keymgr_kmac_if import keymgr_pkg::*;(
     .set_i(cnt_set),
     .set_cnt_i(rounds),
     .en_i(cnt_en),
+    .step_i(CntWidth'(1'b1)),
     .cnt_o(cnt),
     .err_o(cnt_err)
   );
@@ -350,5 +352,9 @@ module keymgr_kmac_if import keymgr_pkg::*;(
 
   // request entropy to churn whenever a transaction is accepted
   assign prng_en_o = kmac_data_o.valid & kmac_data_i.ready;
+
+  // as long as we are transmitting, the strobe should never be 0.
+  `ASSERT(LastStrb_A, valid |-> strb != '0)
+
 
 endmodule // keymgr_kmac_if

@@ -8,6 +8,7 @@
 #include <stddef.h>
 
 #include "sw/device/lib/base/macros.h"
+#include "sw/device/silicon_creator/lib/drivers/lifecycle.h"
 #include "sw/device/silicon_creator/lib/epmp.h"
 #include "sw/device/silicon_creator/lib/error.h"
 #include "sw/device/silicon_creator/lib/keymgr_binding_value.h"
@@ -17,6 +18,89 @@
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
+
+/**
+ * Usage constraints.
+ *
+ * This struct is used to constrain a boot stage image to a set of devices based
+ * on their device IDs, creator and/or owner manufacturing states, and life
+ * cycle states. Bits of `selector_bits` determine which fields (or individual
+ * words of a field as in the case of `device_id`) must be read from the
+ * hardware during verification. Unselected fields must be set to
+ * `MANIFEST_USAGE_CONSTRAINT_UNSELECTED_WORD_VAL` to be able to generate a
+ * consistent value during verification.
+ */
+typedef struct manifest_usage_constraints {
+  /**
+   * Usage constraint selector bits.
+   *
+   * The bits of this field are mapped to the remaining fields as follows:
+   * - Bits 0-7: `device_id[0-7]`
+   * - Bit 8   : `manuf_state_creator`
+   * - Bit 9   : `manuf_state_owner`
+   * - Bit 10  : `life_cycle_state`
+   */
+  uint32_t selector_bits;
+  /**
+   * Device identifier value which is compared against the `DEVICE_ID` value
+   * stored in the `HW_CFG` partition in OTP.
+   *
+   * Mapped to bits 0-7 of `selector_bits`.
+   */
+  lifecycle_device_id_t device_id;
+  /**
+   * Device Silicon Creator manufacting status compared against the
+   * `CREATOR_SW_MANUF_STATUS` value stored in the `CREATOR_SW_CFG` partition in
+   * OTP.
+   *
+   * Mapped to bit 8 of `selector_bits`.
+   */
+  uint32_t manuf_state_creator;
+  /**
+   * Device Silicon Owner manufacturing status compared against the
+   * `OWNER_SW_MANUF_STATUS` value stored in the `OWNER_SW_CFG` partition in
+   * OTP.
+   *
+   * Mapped to bit 9 of `selector_bits`.
+   */
+  uint32_t manuf_state_owner;
+  /**
+   * Device life cycle status compared against the status reported by the life
+   * cycle controller.
+   *
+   * Mapped to bit 10 of `selector_bits`.
+   */
+  uint32_t life_cycle_state;
+} manifest_usage_constraints_t;
+
+/**
+ * Value to use for unselected usage constraint words.
+ */
+#define MANIFEST_USAGE_CONSTRAINT_UNSELECTED_WORD_VAL 0xA5A5A5A5
+
+/**
+ * `selector_bits` bit indices for usage constraints fields.
+ */
+enum {
+  /**
+   * Bits mapped to the `device_id` field.
+   */
+  kManifestSelectorBitDeviceIdFirst = 0,
+  kManifestSelectorBitDeviceIdLast = 7,
+
+  /**
+   * Bit mapped to the `manuf_state_creator` field.
+   */
+  kManifestSelectorBitManufStateCreator = 8,
+  /**
+   * Bit mapped to the `manuf_state_owner` field.
+   */
+  kManifestSelectorBitManufStateOwner = 9,
+  /**
+   * Bit mapped to the `life_cycle_state` field.
+   */
+  kManifestSelectorBitLifeCycleState = 10,
+};
 
 /**
  * Manifest for boot stage images stored in flash.
@@ -41,11 +125,25 @@ typedef struct manifest {
    *
    * RSASSA-PKCS1-v1_5 signature of the image generated using a 3072-bit RSA
    * private key and the SHA-256 hash function. The signed region of an image
-   * starts immediately after this field and ends at the end of the image. The
-   * start and the length of the signed region can be obtained using
-   * `manifest_signed_region_get`.
+   * starts immediately after this field and ends at the end of the image.
+   *
+   * On-target verification should also integrate usage constraints comparison
+   * to signature verification to harden it against potential attacks. During
+   * verification, the digest of an image should be computed by first reading
+   * the usage constraints from the hardware and then concatenating the rest of
+   * the image:
+   *
+   *   digest = SHA256(usage_constraints_from_hw || rest_of_the_image)
+   *
+   * The start and the length of the region that should be concatenated to the
+   * usage constraints read from the hardware can be obtained using
+   * `manifest_digest_region_get()`.
    */
   sigverify_rsa_buffer_t signature;
+  /**
+   * Usage constraints.
+   */
+  manifest_usage_constraints_t usage_constraints;
   /**
    * Modulus of the signer's 3072-bit RSA public key.
    */
@@ -114,89 +212,125 @@ typedef struct manifest {
 } manifest_t;
 
 OT_ASSERT_MEMBER_OFFSET(manifest_t, signature, 0);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, modulus, 384);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, exponent, 768);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, identifier, 772);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, length, 776);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, version_major, 780);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, version_minor, 784);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, security_version, 788);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, timestamp, 792);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, binding_value, 800);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, max_key_version, 832);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, code_start, 836);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, code_end, 840);
-OT_ASSERT_MEMBER_OFFSET(manifest_t, entry_point, 844);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, usage_constraints, 384);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, modulus, 432);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, exponent, 816);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, identifier, 820);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, length, 824);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, version_major, 828);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, version_minor, 832);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, security_version, 836);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, timestamp, 840);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, binding_value, 848);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, max_key_version, 880);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, code_start, 884);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, code_end, 888);
+OT_ASSERT_MEMBER_OFFSET(manifest_t, entry_point, 892);
 OT_ASSERT_SIZE(manifest_t, MANIFEST_SIZE);
 
 /**
- * Signed region of an image.
+ * Region of an image that should be included in the digest computation.
  */
-typedef struct manifest_signed_region {
+typedef struct manifest_digest_region {
   /**
-   * Start of the signed region of an image.
+   * Start of the region.
    */
   const void *start;
   /**
-   * Length of the signed region of an image in bytes.
+   * Length of the region in bytes.
    */
   size_t length;
-} manifest_signed_region_t;
+} manifest_digest_region_t;
 
 /**
- * Allowed bounds for the `length` field.
+ * ROM_EXT manifest identifier (ASCII "OTRE").
+ */
+#define MANIFEST_IDENTIFIER_ROM_EXT 0x4552544f
+
+/**
+ * First owner boot stage manifest identifier (ASCII "OTSO").
+ */
+#define MANIFEST_IDENTIFIER_OWNER_STAGE 0x4f53544f
+
+/**
+ * Allowed bounds for the `length` field of a ROM_EXT manifest.
  */
 // FIXME: Update min value after we have a fairly representative ROM_EXT.
-#define MANIFEST_LENGTH_FIELD_MIN MANIFEST_SIZE
-#define MANIFEST_LENGTH_FIELD_MAX 65536
+#define MANIFEST_LENGTH_FIELD_ROM_EXT_MIN MANIFEST_SIZE
+#define MANIFEST_LENGTH_FIELD_ROM_EXT_MAX 0x10000
 
 /**
- * Gets the signed region of an image.
- *
- * This function also performs a basic check to ensure that the length of the
- * image is within a reasonable range.
- *
- * @param manifest A manifest
- * @param[out] signed_region Signed region of an image.
- * @return The result of the operation.
+ * Allowed bounds for the `length` field of a first owner boot stage manifest.
  */
-inline rom_error_t manifest_signed_region_get(
-    const manifest_t *manifest, manifest_signed_region_t *signed_region) {
-  if (manifest->length < MANIFEST_LENGTH_FIELD_MIN ||
-      manifest->length > MANIFEST_LENGTH_FIELD_MAX) {
-    return kErrorManifestBadLength;
+#define MANIFEST_LENGTH_FIELD_OWNER_STAGE_MIN MANIFEST_SIZE
+#define MANIFEST_LENGTH_FIELD_OWNER_STAGE_MAX 0x70000
+
+#ifndef OT_OFF_TARGET_TEST
+/**
+ * Checks the fields of a manifest.
+ *
+ * This function performs several basic checks to ensure that
+ * - Executable region is non-empty, inside the image, located after the
+ * manifest, and word aligned, and
+ * - Entry point is inside the executable region and word aligned.
+ *
+ * @param manfiest A manifest.
+ * @return Result of the operation.
+ */
+inline rom_error_t manifest_check(const manifest_t *manifest) {
+  // Executable region must be empty, inside the image, located after the
+  // manifest, and word aligned.
+  if (manifest->code_start >= manifest->code_end ||
+      manifest->code_start < sizeof(manifest_t) ||
+      manifest->code_end > manifest->length ||
+      (manifest->code_start & 0x3) != 0 || (manifest->code_end & 0x3) != 0) {
+    return kErrorManifestBadCodeRegion;
   }
-  *signed_region = (manifest_signed_region_t){
-      .start = (const char *)manifest + sizeof(manifest->signature),
-      .length = manifest->length - sizeof(manifest->signature),
-  };
+
+  // Entry point must be inside the executable region and word aligned.
+  if (manifest->entry_point < manifest->code_start ||
+      manifest->entry_point >= manifest->code_end ||
+      (manifest->entry_point & 0x3) != 0) {
+    return kErrorManifestBadEntryPoint;
+  }
+
   return kErrorOk;
+}
+
+/**
+ * Gets the region of the image that should be included in the digest
+ * computation.
+ *
+ * Digest region of an image starts immediately after the `usage_constraints`
+ * field of its manifest and ends at the end of the image.
+ *
+ * @param manifest A manifest.
+ * return digest_region Region of the image that should be included in the
+ * digest computation.
+ */
+inline manifest_digest_region_t manifest_digest_region_get(
+    const manifest_t *manifest) {
+  enum {
+    kDigestRegionOffset =
+        sizeof(manifest->signature) + sizeof(manifest->usage_constraints),
+  };
+  return (manifest_digest_region_t){
+      .start = (const char *)manifest + kDigestRegionOffset,
+      .length = manifest->length - kDigestRegionOffset,
+  };
 }
 
 /**
  * Gets the executable region of the image.
  *
- * This function also checks that the executable region is non-empty, inside
- * the image, located after the manifest, and word aligned.
- *
  * @param manifest A manifest.
- * @param[out] code_region Executable region of the image.
- * @return The result of the operation.
+ * return Executable region of the image.
  */
-inline rom_error_t manifest_code_region_get(const manifest_t *manifest,
-                                            epmp_region_t *code_region) {
-  if (manifest->code_start >= manifest->code_end ||
-      manifest->code_start < sizeof(manifest_t) ||
-      manifest->code_end > manifest->length ||
-      // FIXME: Replace this when we have a function/macro for alignment checks.
-      (manifest->code_start & 0x3) != 0 || (manifest->code_end & 0x3) != 0) {
-    return kErrorManifestBadCodeRegion;
-  }
-  *code_region = (epmp_region_t){
+inline epmp_region_t manifest_code_region_get(const manifest_t *manifest) {
+  return (epmp_region_t){
       .start = (uintptr_t)manifest + manifest->code_start,
       .end = (uintptr_t)manifest + manifest->code_end,
   };
-  return kErrorOk;
 }
 
 /**
@@ -207,45 +341,21 @@ inline rom_error_t manifest_code_region_get(const manifest_t *manifest,
  * of a function pointer to accommodate for entry points with different
  * parameters and return types.
  *
- * This function also checks that the entry point is inside both the image and
- * the executable region of the image and word aligned.
- *
  * @param manfiest A manifest.
- * @param[out] entry_point Entry point address.
- * @return The result of the operation.
+ * return Entry point address.
  */
-inline rom_error_t manifest_entry_point_get(const manifest_t *manifest,
-                                            uintptr_t *entry_point) {
-  if (manifest->entry_point < manifest->code_start ||
-      manifest->entry_point >= manifest->code_end ||
-      manifest->entry_point >= manifest->length ||
-      // FIXME: Replace this when we have a function/macro for alignment checks.
-      (manifest->entry_point & 0x3) != 0) {
-    return kErrorManifestBadEntryPoint;
-  }
-  *entry_point = (uintptr_t)manifest + manifest->entry_point;
-  return kErrorOk;
+inline uintptr_t manifest_entry_point_get(const manifest_t *manifest) {
+  return (uintptr_t)manifest + manifest->entry_point;
 }
-
-// TODO: Move this definition to a more suitable place. Defined here for now
-// until we implement the boot policy module or the flash driver.
+#else
 /**
- * Flash slots.
- *
- * OpenTitan's flash is split into two slots: A and B. Each stage in the boot
- * chain is responsible for choosing and verifying the slot from which the next
- * stage in the boot chain is executed.
+ * Declarations for the functions above that should be defined in tests.
  */
-typedef enum flash_slot {
-  /**
-   * Flash slot A.
-   */
-  kFlashSlotA,
-  /**
-   * Flash slot B.
-   */
-  kFlashSlotB,
-} flash_slot_t;
+rom_error_t manifest_check(const manifest_t *manifest);
+manifest_digest_region_t manifest_digest_region_get(const manifest_t *manifest);
+epmp_region_t manifest_code_region_get(const manifest_t *manifest);
+uintptr_t manifest_entry_point_get(const manifest_t *manifest);
+#endif
 
 #ifdef __cplusplus
 }  // extern "C"

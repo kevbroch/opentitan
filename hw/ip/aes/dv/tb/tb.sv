@@ -13,21 +13,26 @@ module tb;
   `include "uvm_macros.svh"
   `include "dv_macros.svh"
 
-  wire clk, rst_n;
+  wire clk, rst_n, rst_shadowed_n;
   wire devmode;
   wire [NUM_MAX_INTERRUPTS-1:0] interrupts;
   wire edn_req;
+  keymgr_pkg::hw_key_req_t keymgr_key;
 
   // interfaces
   clk_rst_if clk_rst_if(.clk(clk), .rst_n(rst_n));
+  rst_shadowed_if rst_shadowed_if(.rst_n(rst_n), .rst_shadowed_n(rst_shadowed_n));
   pins_if #(NUM_MAX_INTERRUPTS) intr_if(interrupts);
 
   pins_if #(1) devmode_if(devmode);
   tl_if tl_if(.clk(clk), .rst_n(rst_n));
 
-    // edn_clk, edn_rst_n and edn_if is defined and driven in below macro
+  // edn_clk, edn_rst_n and edn_if is defined and driven in below macro
   `DV_EDN_IF_CONNECT
   `DV_ALERT_IF_CONNECT
+
+  // for now drive a static key marked as invalid
+  assign keymgr_key = keymgr_pkg::HW_KEY_REQ_DEFAULT;
 
   // dut
   aes #(
@@ -37,6 +42,7 @@ module tb;
   ) dut (
     .clk_i            ( clk                           ),
     .rst_ni           ( rst_n                         ),
+    .rst_shadowed_ni  ( rst_shadowed_n                ),
 
     .idle_o           (                               ),
     .lc_escalate_en_i ( lc_ctrl_pkg::Off              ),
@@ -44,6 +50,7 @@ module tb;
     .rst_edn_ni       ( edn_rst_n                     ),
     .edn_o            ( edn_if.req                    ),
     .edn_i            ( {edn_if.ack, edn_if.d_data}   ),
+    .keymgr_key_i     ( keymgr_key                    ),
 
     .tl_i             ( tl_if.h2d                     ),
     .tl_o             ( tl_if.d2h                     ),
@@ -56,6 +63,8 @@ module tb;
     // drive clk and rst_n from clk_if
     clk_rst_if.set_active();
     uvm_config_db#(virtual clk_rst_if)::set(null, "*.env", "clk_rst_vif", clk_rst_if);
+    uvm_config_db#(virtual rst_shadowed_if)::set(null, "*.env", "rst_shadowed_vif",
+                                                 rst_shadowed_if);
     uvm_config_db#(intr_vif)::set(null, "*.env", "intr_vif", intr_if);
     uvm_config_db#(devmode_vif)::set(null, "*.env", "devmode_vif", devmode_if);
     uvm_config_db#(virtual tl_if)::set(null, "*.env.m_tl_agent*", "vif", tl_if);

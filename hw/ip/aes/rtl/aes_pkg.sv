@@ -47,21 +47,21 @@ parameter clearing_lfsr_perm_t RndCnstClearingSharePermDefault = {
 };
 
 // Masking PRNG default LFSR seed and permutation
-// We use a single seed that is split down into chunks internally. All LFSR chunks use the same
-// permutation.
+// We use a single seed that is split down into chunks internally.
 // These LFSR parameters have been generated with
 // $ util/design/gen-lfsr-seed.py --width 160 --seed 31468618 --prefix "Masking"
 parameter int MaskingLfsrWidth = 160; // = WidthPRDMasking = WidthPRDSBox * (16 + 4)
 typedef logic [MaskingLfsrWidth-1:0] masking_lfsr_seed_t;
+typedef logic [MaskingLfsrWidth-1:0][$clog2(MaskingLfsrWidth)-1:0] masking_lfsr_perm_t;
 parameter masking_lfsr_seed_t RndCnstMaskingLfsrSeedDefault =
   160'hc132b5723c5a4cf4743b3c7c32d580f74f1713a;
-
-// These LFSR parameters have been generated with
-// $ util/design/gen-lfsr-seed.py --width 32 --seed 31468618 --prefix "MskgChunk"
-parameter int MskgChunkLfsrWidth = 32; // = ChunkSizePRDMasking = WidthPRDMasking/5
-typedef logic [MskgChunkLfsrWidth-1:0][$clog2(MskgChunkLfsrWidth)-1:0] mskg_chunk_lfsr_perm_t;
-parameter mskg_chunk_lfsr_perm_t RndCnstMskgChunkLfsrPermDefault =
-  160'heb3749dc187e7434d7f62a3d251e1c5b8cd10491;
+parameter masking_lfsr_perm_t RndCnstMaskingLfsrPermDefault = {
+  256'h17261943423e4c5c03872194050c7e5f8497081d96666d406f4b606473303469,
+  256'h8e7c721c8832471f59919e0b128f067b25622768462e554d8970815d490d7f44,
+  256'h048c867d907a239b20220f6c79071a852d76485452189f14091b1e744e396737,
+  256'h4f785b772b352f6550613c58130a8b104a3f28019c9a380233956b00563a512c,
+  256'h808d419d63982a16995e0e3b57826a36718a9329452492533d83115a75316e15
+};
 
 typedef enum integer {
   SBoxImplLut,                   // Unmasked LUT-based S-Box
@@ -257,11 +257,12 @@ typedef enum logic [AddRKSelWidth-1:0] {
   ADD_RK_FINAL = MUX3_SEL_2
 } add_rk_sel_e;
 
-parameter int KeyInitSelNum = 2;
-parameter int KeyInitSelWidth = Mux2SelWidth;
+parameter int KeyInitSelNum = 3;
+parameter int KeyInitSelWidth = Mux3SelWidth;
 typedef enum logic [KeyInitSelWidth-1:0] {
-  KEY_INIT_INPUT = MUX2_SEL_0,
-  KEY_INIT_CLEAR = MUX2_SEL_1
+  KEY_INIT_INPUT  = MUX3_SEL_0,
+  KEY_INIT_KEYMGR = MUX3_SEL_1,
+  KEY_INIT_CLEAR  = MUX3_SEL_2
 } key_init_sel_e;
 
 parameter int IVSelNum = 6;
@@ -327,6 +328,7 @@ typedef enum logic [Sp2VWidth-1:0] {
 typedef struct packed {
   logic      force_zero_masks;
   logic      manual_operation;
+  logic      sideload;
   key_len_e  key_len;
   aes_mode_e mode;
   aes_op_e   operation;
@@ -335,6 +337,7 @@ typedef struct packed {
 parameter ctrl_reg_t CTRL_RESET = '{
   force_zero_masks: aes_reg_pkg::AES_CTRL_SHADOWED_FORCE_ZERO_MASKS_RESVAL,
   manual_operation: aes_reg_pkg::AES_CTRL_SHADOWED_MANUAL_OPERATION_RESVAL,
+  sideload:         aes_reg_pkg::AES_CTRL_SHADOWED_SIDELOAD_RESVAL,
   key_len:          key_len_e'(aes_reg_pkg::AES_CTRL_SHADOWED_KEY_LEN_RESVAL),
   mode:             aes_mode_e'(aes_reg_pkg::AES_CTRL_SHADOWED_MODE_RESVAL),
   operation:        aes_op_e'(aes_reg_pkg::AES_CTRL_SHADOWED_OPERATION_RESVAL)

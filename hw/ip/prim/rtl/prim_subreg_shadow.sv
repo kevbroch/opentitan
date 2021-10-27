@@ -4,6 +4,8 @@
 //
 // Shadowed register slice conforming to Comportibility guide.
 
+`include "prim_assert.sv"
+
 module prim_subreg_shadow
   import prim_subreg_pkg::*;
 #(
@@ -13,6 +15,7 @@ module prim_subreg_shadow
 ) (
   input clk_i,
   input rst_ni,
+  input rst_shadowed_ni,
 
   // From SW: valid for RW, WO, W1C, W1S, W0C, RC.
   // SW reads clear phase unless SwAccess is RO.
@@ -35,13 +38,21 @@ module prim_subreg_shadow
   output logic err_storage
 );
 
-  // Since the shadow and staging registers work with the 1's complement value,
+  // Since the shadow register works with the 1's complement value,
   // we need to invert the polarity of the SW access if it is either "W1S" or "W0C".
   // W1C is forbidden since the W0S complement is not implemented.
   `ASSERT_INIT(CheckSwAccessIsLegal_A,
-      SwAccess inside {SwAccessRW, SwAccessRO, SwAccessWO, SwAccessW1S, SwAccessW0C, SwAccessRC})
+      SwAccess inside {SwAccessRW, SwAccessRO, SwAccessWO, SwAccessW1S, SwAccessW0C})
   localparam sw_access_e InvertedSwAccess = (SwAccess == SwAccessW1S) ? SwAccessW0C :
                                             (SwAccess == SwAccessW0C) ? SwAccessW1S : SwAccess;
+
+  // For the staging register, we set the SwAccess to RW in case of W1S and W0C in
+  // order to always capture the data value on the first write operation - no matter
+  // whether the data value will actually have an effect. That way, we can still capture
+  // inconsistent double writes which would otherwise be ignored due to the data value filtering
+  // effect that W1S and W0C can have.
+  localparam sw_access_e StagedSwAccess = (SwAccess == SwAccessW1S) ? SwAccessRW :
+                                          (SwAccess == SwAccessW0C) ? SwAccessRW : SwAccess;
 
   // Subreg control signals
   logic          phase_clear;
@@ -50,7 +61,7 @@ module prim_subreg_shadow
   logic          staged_de, shadow_de, committed_de;
 
   // Subreg status and data signals
-  logic          staged_qe, shadow_qe, committed_qe;
+  logic          committed_qe;
   logic [DW-1:0] staged_q,  shadow_q,  committed_q;
   logic [DW-1:0] committed_qs;
 
@@ -83,9 +94,9 @@ module prim_subreg_shadow
   always_ff @(posedge clk_i or negedge rst_ni) begin : phase_reg
     if (!rst_ni) begin
       phase_q <= 1'b0;
-    end else if (wr_en) begin
+    end else if (wr_en && !err_storage) begin
       phase_q <= ~phase_q;
-    end else if (phase_clear) begin
+    end else if (phase_clear || err_storage) begin
       phase_q <= 1'b0;
     end
   end
@@ -93,12 +104,13 @@ module prim_subreg_shadow
   // The staged register:
   // - Holds the 1's complement value.
   // - Written in Phase 0.
-  assign staged_we = we & ~phase_q;
-  assign staged_de = de & ~phase_q;
+  // - Once storage error occurs, do not allow any further update until reset
+  assign staged_we = we & ~phase_q & ~err_storage;
+  assign staged_de = de & ~phase_q & ~err_storage;
   prim_subreg #(
-    .DW       ( DW               ),
-    .SwAccess ( InvertedSwAccess ),
-    .RESVAL   ( ~RESVAL          )
+    .DW       ( DW             ),
+    .SwAccess ( StagedSwAccess ),
+    .RESVAL   ( ~RESVAL        )
   ) staged_reg (
     .clk_i    ( clk_i     ),
     .rst_ni   ( rst_ni    ),
@@ -106,7 +118,7 @@ module prim_subreg_shadow
     .wd       ( ~wr_data  ),
     .de       ( staged_de ),
     .d        ( ~d        ),
-    .qe       ( staged_qe ),
+    .qe       (           ),
     .q        ( staged_q  ),
     .qs       (           )
   );
@@ -116,22 +128,23 @@ module prim_subreg_shadow
   // - Written in Phase 1.
   // - Writes are ignored in case of update errors.
   // - Gets the value from the staged register.
-  assign shadow_we = we & phase_q & ~err_update;
-  assign shadow_de = de & phase_q & ~err_update;
+  // - Once storage error occurs, do not allow any further update until reset
+  assign shadow_we = we & phase_q & ~err_update & ~err_storage;
+  assign shadow_de = de & phase_q & ~err_update & ~err_storage;
   prim_subreg #(
     .DW       ( DW               ),
     .SwAccess ( InvertedSwAccess ),
     .RESVAL   ( ~RESVAL          )
   ) shadow_reg (
-    .clk_i    ( clk_i     ),
-    .rst_ni   ( rst_ni    ),
-    .we       ( shadow_we ),
-    .wd       ( staged_q  ),
-    .de       ( shadow_de ),
-    .d        ( staged_q  ),
-    .qe       ( shadow_qe ),
-    .q        ( shadow_q  ),
-    .qs       (           )
+    .clk_i    ( clk_i           ),
+    .rst_ni   ( rst_shadowed_ni ),
+    .we       ( shadow_we       ),
+    .wd       ( staged_q        ),
+    .de       ( shadow_de       ),
+    .d        ( staged_q        ),
+    .qe       (                 ),
+    .q        ( shadow_q        ),
+    .qs       (                 )
   );
 
   // The committed register:
@@ -160,7 +173,7 @@ module prim_subreg_shadow
   assign err_storage = (~shadow_q != committed_q);
 
   // Remaining output assignments
-  assign qe = staged_qe | shadow_qe | committed_qe;
+  assign qe = committed_qe;
   assign q  = committed_q;
   assign qs = committed_qs;
 
