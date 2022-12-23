@@ -54,3 +54,4 @@ git+https://github.com/lowRISC/edalize.git@ot#egg=edalize >= 0.2.4
 # (The chipwhisperer repository is rather large and uses additionally uses
 # submodules, which need to be fetched as well.)
 https://github.com/newaetech/chipwhisperer/archive/9b6825b495f14f85aae8b11007c63c59a1654584.tar.gz
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
