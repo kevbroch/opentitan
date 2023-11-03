@@ -5,3 +5,4 @@ sphinx~=3.0
 sphinx_rtd_theme
 sphinxcontrib-wavedrom
 wavedrom>=1.9.0rc1
+pillow>=10.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
