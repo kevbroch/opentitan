@@ -23,3 +23,4 @@ premailer < 3.9.0
 
 # Recurse to get any requirements from riscv-dv
 -r vendor/google_riscv-dv/requirements.txt
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
